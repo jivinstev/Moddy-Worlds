@@ -1,0 +1,40 @@
+{
+  "store": "world-rules",
+  "v": 1,
+  "world": "arena",
+  "rules": [
+    {
+      "id": "the-arena-place",
+      "type": "arena_place",
+      "params": {
+        "arenaSize": 31,
+        "prepSize": 9,
+        "wallHeight": 4
+      }
+    },
+    {
+      "id": "wishes-stay-in-the-arena",
+      "type": "base_reach",
+      "effects": [
+        "outside_own_base",
+        "others_bases",
+        "other_dimensions"
+      ],
+      "message": {
+        "rule": "a wish stays inside the arena",
+        "why": "the arena is where the battles happen"
+      }
+    },
+    {
+      "id": "short-powers-small-gifts",
+      "type": "clamp",
+      "params": {
+        "powerSeconds": 60,
+        "stacksPerKind": 1,
+        "kindsPerWish": 2,
+        "xpLevels": 2
+      }
+    }
+  ],
+  "_notes": "What Moddy Arena allows. arena_place (the arena's own rule type): the fighting floor's width inside its walls, the prep room's width, and the arena wall's height, in blocks; odd widths, arena 15 to 63, prep room 5 to 15 and smaller than the arena, wall 3 to 8. They are read when the place is first built and kept with it after that. base_reach: a wish lands only inside the arena or the prep room, never outside them and never in the Nether or the End. The clamp: a power at most 60 s and never forever, one stack of each item and 2 kinds a wish, 2 XP levels a wish; shortened or shrunk and said, never refused. Schema: the core's WorldRules.parse."
+}

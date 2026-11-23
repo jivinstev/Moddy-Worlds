@@ -1,0 +1,13 @@
+// MODDY ARENA, the `moddyarena` world jar, beside the Moddy core mod. Everything every world repeats is
+// ../shared/level.gradle; this file says only what is this world's own.
+plugins {
+    id 'java-library'
+    id 'net.neoforged.gradle.userdev' version '7.1.39'
+}
+
+ext.levelId = 'arena'
+// -Plevel=on also names the arena's module (worlds/arena.json "module"), as a server's launcher does: a dev world not
+// made with the World Type is claimed by nothing else.
+ext.levelRunProps = { manifest -> ['world.module': manifest.module] }
+
+apply from: '../shared/level.gradle'
