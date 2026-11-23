@@ -12,7 +12,8 @@ skip:tools/leak-rules.txt
 [other-repos]
 # A link to any other repository of this account whose name starts with "moddy-": this repository (moddy-worlds) and
 # the core (ModdyTheWishWatch, no hyphen, so the rule never sees it) are the only ones public text may point at.
-re:\bjivinstev/moddy-(?!worlds\b)[A-Za-z0-9_.-]+
+# moddy-the-wish-watch is the core's own former name (it redirects there, 2026-11-23): earlier commits carry it.
+re:\bjivinstev/moddy-(?!worlds\b|the-wish-watch\b)[A-Za-z0-9_.-]+
 
 [plan-ids]
 # A step id from a private plan (a capital T, digits, a dot and digits; or HD, a dash and digits): a comment names what a thing does, not the step that built it.
