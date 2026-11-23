@@ -21,8 +21,8 @@ moddy apprentice a cozy house
 @click slot 0
 @expect chat /didn't work this time/ within 90s
 @wait 2s
-# the prep room is as it was: plank floor behind him, clear air above it, the whole room still empty air (compared with the empty sky at y 200)
+# the prep room is as it was: plank floor behind him, clear air above it, the room behind the start button still empty air (compared with the empty sky at y 200)
 @assert execute if block 0 63 24 minecraft:oak_planks
 @assert execute if block 0 64 24 minecraft:air
-@assert execute if blocks -4 64 17 4 67 25 -4 200 17 all
+@assert execute if blocks -4 64 18 4 67 25 -4 200 18 all
 @shot refused

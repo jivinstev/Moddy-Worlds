@@ -3,14 +3,21 @@ package com.moddingfromamod.levels.arena;
 import com.moddingfromamod.levels.arena.shared.LevelClaim;
 import com.moddingfromamod.plugin.ModdyPlugin;
 import com.moddingfromamod.plugin.Plugins;
+import com.moddingfromamod.wish.ChildBranch;
 import com.moddingfromamod.world.WorldModule;
 import com.moddingfromamod.world.WorldModuleType;
 import com.moddingfromamod.world.WorldRuleType;
+import net.minecraft.commands.Commands;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.entity.ai.attributes.DefaultAttributes;
 
 /**
- * Moddy Arena, plugged into the core: its world module, which runs in the worlds made as Moddy Arena, and its rule
- * type, {@code arena_place} ({@link ArenaRule}), which sizes the place in a world's rules file.
+ * Moddy Arena, plugged into the core: its world module, which runs in the worlds made as Moddy Arena; its two rule
+ * types, {@code arena_place} ({@link ArenaRule}), which sizes the place, and {@code arena_waves}
+ * ({@link ArenaWavesRule}), the battle's waves; and {@code /moddy arena start} (a branch of {@code /moddy}, never a
+ * command of its own), which starts a battle as the prep room's button does.
  */
 public final class ArenaPlugin implements ModdyPlugin {
 
@@ -39,5 +46,17 @@ public final class ArenaPlugin implements ModdyPlugin {
             }
         });
         plugins.add(WorldRuleType.class, new ArenaRule());
+        plugins.add(WorldRuleType.class, new ArenaWavesRule(ArenaPlugin::livingEntity));
+        plugins.add(ChildBranch.class, () -> Commands.literal("arena")
+                .then(Commands.literal("start").executes(ctx -> ArenaModule.startCommand(ctx.getSource()))));
+    }
+
+    /** True when the id names a living entity this game knows (one with attributes: every living entity has them). */
+    static boolean livingEntity(String id) {
+        ResourceLocation rl = ResourceLocation.tryParse(id);
+        if (rl == null) {
+            return false;
+        }
+        return BuiltInRegistries.ENTITY_TYPE.getOptional(rl).map(DefaultAttributes::hasSupplier).orElse(false);
     }
 }

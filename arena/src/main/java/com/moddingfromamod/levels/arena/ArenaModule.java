@@ -15,6 +15,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.GameRules;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,8 +24,8 @@ import org.slf4j.LoggerFactory;
  * {@link ArenaPlace}, sized by the world's {@code arena_place} rule), sets the world spawn in the prep room facing the
  * arena, and returns {@link ArenaBases} so the core's {@code base_reach} rule keeps every wish inside the arena. A
  * player's first join puts him in the prep room, facing the arena; the words he reads then are the manifest's
- * {@code intro}, which the core says once per player per world. Named by
- * {@code worlds/arena.json}'s {@code "module": "arena"}.
+ * {@code intro}, which the core says once per player per world. Its battles are {@link ArenaBattle}, ticked here. Named
+ * by {@code worlds/arena.json}'s {@code "module": "arena"}.
  */
 public final class ArenaModule implements WorldModule {
 
@@ -32,8 +33,12 @@ public final class ArenaModule implements WorldModule {
 
     private static final Logger LOG = LoggerFactory.getLogger("moddingfromamod/arena");
 
+    /** The running arena module, for {@code /moddy arena start}; null in any other world. */
+    private static volatile ArenaModule live;
+
     private MinecraftServer server;
     private ArenaBases bases;
+    private ArenaBattle battle;
 
     @Override
     public String id() {
@@ -51,11 +56,13 @@ public final class ArenaModule implements WorldModule {
             long t0 = System.nanoTime();
             int set = ArenaBuilder.build(level, place);
             state.markBuilt(place);
+            state.markUpgraded(ArenaPlace.UPGRADE_START_CONTROL);   // fills() carries it
             LOG.info("Moddy Arena: built the place ({}): {} blocks in {} ms", place.describe(), set,
                     (System.nanoTime() - t0) / 1_000_000);
         } else {
             LOG.info("Moddy Arena: the place stands ({}); nothing to build", place.describe());
         }
+        upgrade(server, level, state, place);
         if (!s.note().isEmpty()) {
             LOG.warn("Moddy Arena: {}", s.note());
         }
@@ -70,13 +77,80 @@ public final class ArenaModule implements WorldModule {
             return p == null ? null : new Bases.Pos(p.level().dimension().location().toString(), p.getX(),
                     p.getY(), p.getZ());
         });
+        battle = new ArenaBattle(server, place, state);
+        live = this;
         return bases;
+    }
+
+    /**
+     * What a place built earlier still needs, each once and recorded ({@link ArenaPlace#pendingUpgrades}): its start
+     * control, placed only where the blocks are still as built; and natural mob spawning switched off in this world,
+     * since nothing should come but a battle's waves (the arena's floor is dark at night).
+     */
+    private static void upgrade(MinecraftServer server, ServerLevel level, ArenaState state, ArenaPlace place) {
+        for (String u : ArenaPlace.pendingUpgrades(state.upgrades())) {
+            switch (u) {
+                case ArenaPlace.UPGRADE_START_CONTROL -> {
+                    int set = ArenaBuilder.addStartControl(level, place);
+                    if (set < 0) {
+                        LOG.warn("Moddy Arena: the place has no start button, and something stands where it goes"
+                                + " (beside the gate, in the prep room); it is not added. /moddy arena start still"
+                                + " starts a battle.");
+                        continue;
+                    }
+                    LOG.info("Moddy Arena: the place was missing its start control; added the start button and its"
+                            + " sign beside the gate ({} blocks)", set);
+                }
+                case ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS -> {
+                    level.getGameRules().getRule(GameRules.RULE_DOMOBSPAWNING).set(false, server);
+                    LOG.info("Moddy Arena: natural mob spawning switched off in this world (game rule doMobSpawning"
+                            + " false), once: only a battle's waves come to the arena");
+                }
+                default -> {
+                    continue;
+                }
+            }
+            state.markUpgraded(u);
+        }
     }
 
     @Override
     public void stop() {
+        ArenaBattle b = battle;
+        if (b != null) {
+            b.stop();
+        }
+        if (live == this) {
+            live = null;
+        }
+        battle = null;
         bases = null;
         server = null;
+    }
+
+    @Override
+    public void onTick() {
+        ArenaBattle b = battle;
+        if (b != null) {
+            b.tick();
+        }
+    }
+
+    @Override
+    public String keepTicking() {
+        ArenaBattle b = battle;
+        return b == null ? null : b.keepTicking();
+    }
+
+    /** {@code /moddy arena start}: starts a battle in an arena world; says why not anywhere else. */
+    static int startCommand(net.minecraft.commands.CommandSourceStack source) {
+        ArenaModule m = live;
+        ArenaBattle b = m == null ? null : m.battle;
+        if (b == null) {
+            source.sendFailure(net.minecraft.network.chat.Component.literal(ArenaWords.notAnArena()));
+            return 0;
+        }
+        return b.startFromCommand(source);
     }
 
     /** A first join: into the prep room, facing the arena (the core then says the manifest's intro). A returning player stays put. */

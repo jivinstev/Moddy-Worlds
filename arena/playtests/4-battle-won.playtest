@@ -1,0 +1,75 @@
+# Moddy Arena: a whole battle, won. The player presses the start button in the prep room the Minecraft way, five waves
+# come one after another (the default table in the arena's rules file), each is cleared, the battle is won, and the
+# arena is put back as built: no mobs, no drops, and a wall of planks put in it during the battle gone.
+# The mobs are killed by command (this proves the battle loop, not the player's sword); the player is kept safe.
+@intent a player presses the start button, clears five waves, wins, and the arena is tidied afterwards
+@world flat seed=1
+
+@step arrive
+@expect chat Welcome to Moddy Arena within 90s
+@wait 2s
+# a fresh world's difficulty may be anything but Peaceful's; make sure (each command must change something)
+difficulty hard
+difficulty normal
+effect give @s minecraft:resistance 600 4 true
+effect give @s minecraft:saturation 600 0 true
+
+@step he presses the start button
+# beside the gate, on the prep room's side of the shared wall, at chest height
+tp @s 1.5 64 19.5 180 0
+@wait 1s
+@aim pos 2.5 65.5 17.1
+@key key.use
+@expect chat A battle is starting within 5s
+@expect bossbar Wave 1 of 5 within 5s
+@shot countdown
+
+@step wave 1 comes
+@expect title Wave 1 of 5 within 15s
+@assert execute if entity @e[tag=moddyarena_wave]
+# into the arena through the gate's place, looking north over the floor at the mobs
+tp @s 0 64 12 180 10
+@wait 2s
+@expect bossbar /Wave 1 of 5: [0-9]+ monsters? left/ within 5s
+@shot wave-1-in-the-arena
+# something put in the arena during the battle, as a wish would: the reset clears it
+fill -3 64 -8 3 66 -8 minecraft:oak_planks
+kill @e[tag=moddyarena_wave]
+@expect chat Wave 1 cleared within 5s
+
+@step waves 2 to 4
+@expect title Wave 2 of 5 within 20s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect chat Wave 2 cleared within 5s
+@expect title Wave 3 of 5 within 20s
+@wait 1s
+@shot wave-3
+kill @e[tag=moddyarena_wave]
+@expect chat Wave 3 cleared within 5s
+@expect title Wave 4 of 5 within 20s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect chat Wave 4 cleared within 5s
+
+@step the last wave, and the win
+@expect title Wave 5 of 5 within 20s
+@wait 2s
+@shot wave-5
+kill @e[tag=moddyarena_wave]
+@expect title You won within 5s
+@expect chat You won the battle within 5s
+@shot won
+
+@step the arena is tidied
+@expect chat The arena is tidy again within 15s
+@wait 1s
+@assert execute unless entity @e[type=!minecraft:player,x=-17,y=60,z=-17,dx=34,dy=40,dz=34]
+# the arena's inside is empty air again (compared with the empty sky at y 200), the planks gone
+@assert execute if blocks -15 64 -15 15 67 15 -15 200 -15 all
+@assert execute if block 0 63 0 minecraft:smooth_sandstone
+@assert execute if block -16 65 0 minecraft:stone_bricks
+@expect bossbar Wave gone within 5s
+@aim look 180 15
+@wait 1s
+@shot the-arena-tidy

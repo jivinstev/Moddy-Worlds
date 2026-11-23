@@ -15,8 +15,10 @@ import net.minecraft.world.level.saveddata.SavedDataType;
 
 /**
  * <b>What this world remembers about its arena</b> ({@code data/moddyarena_place.dat}): the sizes the place was built
- * with (none until it is built, so a restart builds nothing), and who has already arrived (so only a first join is
- * put in the prep room; a returning player stays where he left).
+ * with (none until it is built, so a restart builds nothing), who has already arrived (so only a first join is
+ * put in the prep room; a returning player stays where he left), which upgrades the place has had (a step-1 place
+ * gains its start control once), and whether a battle was on (so a restart in the middle of one ends it and resets the
+ * arena, rather than leaving a half battle).
  */
 public final class ArenaState extends SavedData {
 
@@ -32,20 +34,50 @@ public final class ArenaState extends SavedData {
     static final Codec<ArenaState> CODEC = RecordCodecBuilder.create(i -> i.group(
             Built.CODEC.optionalFieldOf("built").forGetter(s -> Optional.ofNullable(s.built)),
             UUIDUtil.STRING_CODEC.listOf().optionalFieldOf("arrived", List.of())
-                    .forGetter(s -> new ArrayList<>(s.arrived))).apply(i, ArenaState::new));
+                    .forGetter(s -> new ArrayList<>(s.arrived)),
+            Codec.STRING.listOf().optionalFieldOf("upgrades", List.of())
+                    .forGetter(s -> new ArrayList<>(s.upgrades)),
+            Codec.BOOL.optionalFieldOf("battleOn", false).forGetter(s -> s.battleOn)).apply(i, ArenaState::new));
 
     static final SavedDataType<ArenaState> TYPE =
             new SavedDataType<>(ArenaMod.MODID + "_place", ArenaState::new, CODEC);
 
     private Built built;
     private final Set<UUID> arrived = new LinkedHashSet<>();
+    private final Set<String> upgrades = new LinkedHashSet<>();
+    private boolean battleOn;
 
     private ArenaState() {
     }
 
-    private ArenaState(Optional<Built> built, List<UUID> arrived) {
+    private ArenaState(Optional<Built> built, List<UUID> arrived, List<String> upgrades, boolean battleOn) {
         this.built = built.orElse(null);
         this.arrived.addAll(arrived);
+        this.upgrades.addAll(upgrades);
+        this.battleOn = battleOn;
+    }
+
+    /** The upgrades this world's place has had ({@link ArenaPlace#UPGRADES}). */
+    Set<String> upgrades() {
+        return Set.copyOf(upgrades);
+    }
+
+    void markUpgraded(String upgrade) {
+        if (upgrades.add(upgrade)) {
+            setDirty();
+        }
+    }
+
+    /** True when a battle was on when this record was last saved. */
+    boolean battleOn() {
+        return battleOn;
+    }
+
+    void battleOn(boolean on) {
+        if (battleOn != on) {
+            battleOn = on;
+            setDirty();
+        }
     }
 
     /** This world's record (made empty on first use). Server thread. */

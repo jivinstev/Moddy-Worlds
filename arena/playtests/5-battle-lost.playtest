@@ -1,0 +1,48 @@
+# Moddy Arena: a battle lost. The player starts a battle and is knocked out during the first wave; on his own he is
+# every fighter, so the battle is lost at once. He comes back in the prep room (the arena's home), is told in plain
+# words, and the arena is tidied: the wave's mobs are gone, and what he dropped is carried to the prep room for him.
+@intent a player who is knocked out in a battle loses it, comes back in the prep room, and the arena is tidied
+@world flat seed=1
+
+@step arrive
+@expect chat Welcome to Moddy Arena within 90s
+@wait 2s
+difficulty hard
+difficulty normal
+# something of his own, to show that being knocked out in a battle loses him nothing
+give @s minecraft:iron_sword
+
+@step he starts a battle with the button
+tp @s 1.5 64 19.5 180 0
+@wait 1s
+@aim pos 2.5 65.5 17.1
+@key key.use
+@expect chat A battle is starting within 5s
+
+@step wave 1 comes and he goes in
+@expect title Wave 1 of 5 within 15s
+tp @s 0 64 12 180 10
+@wait 2s
+@assert execute if entity @e[tag=moddyarena_wave]
+@shot in-the-arena
+
+@step he is knocked out
+kill @s
+@expect chat knocked out or left within 10s
+@wait 2s
+@shot lost
+
+@step back in the prep room, and the arena is tidied
+# he respawns at the arena's home, the prep room
+@assert execute if entity @s[x=-4,y=63,z=17,dx=8,dy=3,dz=8]
+@expect chat The arena is tidy again within 15s
+@assert execute unless entity @e[tag=moddyarena_wave]
+@assert execute unless entity @e[type=!minecraft:player,x=-17,y=60,z=-17,dx=34,dy=40,dz=34]
+# what he dropped when he was knocked out was carried to the prep room, where he stands, and he has it again
+@repeat 40 until execute if items entity @s container.* minecraft:iron_sword
+@wait 5t
+@end-repeat
+@assert execute if items entity @s container.* minecraft:iron_sword
+@aim look 180 12
+@wait 1s
+@shot back-in-the-prep-room

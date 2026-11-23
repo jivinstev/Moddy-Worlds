@@ -192,4 +192,65 @@ class ArenaPlaceTest {
             }
         }
     }
+    @Test
+    void theStartButtonIsInThePrepRoomBesideTheGateOnTheSharedWall() {
+        Map<List<Integer>, Kind> m = built(P);
+        int[] b = P.startButton();
+        assertEquals(List.of(2, 65, 17), List.of(b[0], b[1], b[2]));
+        assertTrue(P.prepInside().contains(b[0], b[1], b[2]), "a player in the prep room reaches it");
+        assertEquals(Kind.START_BUTTON, m.get(List.of(b[0], b[1], b[2])));
+        assertEquals(Kind.CONTROL, m.get(List.of(b[0], b[1], b[2] - 1)), "it is fixed to the wall north of it");
+        assertEquals(Kind.START_SIGN, m.get(List.of(b[0], b[1] + 1, b[2])));
+        assertEquals(Kind.CONTROL, m.get(List.of(b[0], b[1] + 1, b[2] - 1)));
+        for (ArenaPlace p : List.of(new ArenaPlace(15, 5, 3, 64), new ArenaPlace(63, 15, 8, 64))) {
+            int[] c = p.startButton();
+            assertTrue(p.prepInside().contains(c[0], c[1], c[2]));
+            assertTrue(c[1] + 1 <= p.floorY() + p.wallHeight() - 1, "the sign's block is in the wall's window");
+        }
+    }
+
+    @Test
+    void upgradesAreGivenOnceInOrder() {
+        assertEquals(ArenaPlace.UPGRADES, ArenaPlace.pendingUpgrades(java.util.Set.of()));
+        assertEquals(List.of(ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS),
+                ArenaPlace.pendingUpgrades(java.util.Set.of(ArenaPlace.UPGRADE_START_CONTROL)));
+        assertTrue(ArenaPlace.pendingUpgrades(java.util.Set.copyOf(ArenaPlace.UPGRADES)).isEmpty());
+    }
+
+    @Test
+    void aMobIsKeptInsideThePlaceAndLostBelowTheFloorOrPastTheWalls() {
+        assertTrue(P.keeps(0.5, 64, 0.5));
+        assertTrue(P.keeps(0.5, 64, 21.5), "in the prep room, through an open gate");
+        assertTrue(!P.keeps(0.5, 61.9, 0.5), "fallen below the floor");
+        assertTrue(!P.keeps(20.5, 64, 0.5), "past the east wall");
+        assertTrue(!P.keeps(0.5, 64, -18.5), "past the north wall");
+    }
+
+    @Test
+    void aResetPutsBackTheArenaAsBuiltAndLeavesThePrepRoomAlone() {
+        Map<List<Integer>, Kind> m = built(P);
+        ArenaPlace.Reset r = P.reset();
+        Box box = P.resetBox(319);
+        for (int x = box.x0(); x <= box.x1(); x++) {
+            for (int z = box.z0(); z <= box.z1(); z++) {
+                for (int y = box.y0(); y <= box.y1(); y++) {
+                    Kind k = r.kindAt(x, y, z);
+                    Kind built = m.get(List.of(x, y, z));
+                    if (built == Kind.PREP_FLOOR || built == Kind.PREP_ROOF || built == Kind.PREP_LIGHT) {
+                        assertEquals(null, k, "the prep room's block at " + x + "," + y + "," + z + " is left");
+                    } else if (built != null) {
+                        assertEquals(built, k, "put back as built at " + x + "," + y + "," + z);
+                    } else if (y >= P.floorY()) {
+                        assertEquals(Kind.AIR, k, "cleared at " + x + "," + y + "," + z);
+                    }
+                }
+            }
+        }
+        assertEquals(Kind.AIR, r.kindAt(0, 300, 0), "a wished tower is cleared to the sky");
+        assertEquals(Kind.ARENA_FLOOR, r.kindAt(0, 63, 0));
+        assertEquals(Kind.GATE, r.kindAt(0, 64, 16));
+        assertEquals(null, r.kindAt(0, 64, 21), "never inside the prep room");
+        assertEquals(null, r.kindAt(2, 65, 17), "the button is the prep room's");
+        assertEquals(null, r.kindAt(0, 62, 0), "never below the floor");
+    }
 }

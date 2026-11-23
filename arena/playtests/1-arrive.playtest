@@ -7,7 +7,7 @@
 @step he joins
 # the arena's first-join words: worlds/arena.json "intro", which the core says once per player per world
 @expect chat Welcome to Moddy Arena within 90s
-@expect chat Battles are coming soon within 10s
+@expect chat Press the button beside the gate within 10s
 
 @step the prep room
 # the arrival spot: the middle of the prep room, on its plank floor, facing north (yaw 180) toward the arena
@@ -25,7 +25,10 @@
 @step the arena in view
 # through the window: the gate in the middle of the shared wall, the sandstone floor and the stone brick walls beyond
 @assert execute if block 0 64 16 minecraft:oak_fence_gate
-@assert execute if block 2 65 16 minecraft:glass
+@assert execute if block -2 65 16 minecraft:glass
+# the start button beside the gate, its sign above it
+@assert execute if block 2 65 17 minecraft:stone_button
+@assert execute if block 2 66 17 minecraft:oak_wall_sign
 @assert execute if block 0 63 0 minecraft:smooth_sandstone
 @assert execute if block 0 64 -16 minecraft:stone_bricks
 @aim look 180 12
