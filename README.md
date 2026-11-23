@@ -1,6 +1,6 @@
 # Moddy worlds
 
-The **worlds** of [Moddy the Wish Watch](https://github.com/jivinstev/moddy-the-wish-watch): each one a world with its
+The **worlds** of [Moddy the Wish Watch](https://github.com/jivinstev/ModdyTheWishWatch): each one a world with its
 own rules and its own game, shipped as its own mod (jar) that runs on the public Moddy core. A player installs the
 core and the world's jar; nothing else.
 
