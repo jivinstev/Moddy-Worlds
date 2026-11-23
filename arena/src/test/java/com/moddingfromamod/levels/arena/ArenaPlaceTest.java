@@ -130,14 +130,17 @@ class ArenaPlaceTest {
         assertFalse(P.inReach(inArena[0], inArena[1], 0, 16), "the gate's wall");
         assertFalse(P.inReach(inArena[0], inArena[1], 0, 21), "the prep room, from the arena");
         assertFalse(P.inReach(inArena[0], inArena[1], 40, 0), "beyond the wall");
-        // standing in the prep room: its inside
+        // standing in the prep room: its inside, and the arena straight ahead of it through the gate
         assertTrue(P.inReach(inPrep[0], inPrep[1], 0, 21), "the prep room's middle");
         assertTrue(P.inReach(inPrep[0], inPrep[1], -4, 17), "the prep room's corner by the gate");
         assertTrue(P.inReach(inPrep[0], inPrep[1], 4, 25), "the prep room's far corner");
         assertFalse(P.inReach(inPrep[0], inPrep[1], 5, 21), "the prep room's glass wall");
-        assertFalse(P.inReach(inPrep[0], inPrep[1], 0, 16), "the shared wall, from the prep room");
-        assertFalse(P.inReach(inPrep[0], inPrep[1], 0, 0), "the arena, from the prep room");
+        assertFalse(P.inReach(inPrep[0], inPrep[1], 0, 26), "the prep room's back wall");
+        assertTrue(P.inReach(inPrep[0], inPrep[1], 0, 9), "12 blocks ahead of the middle of the prep room, in the arena");
+        assertTrue(P.inReach(inPrep[0], inPrep[1], 4, -15), "the arena's far wall, in the prep room's width");
+        assertFalse(P.inReach(inPrep[0], inPrep[1], 10, 0), "the arena beside that strip");
         assertFalse(P.inReach(inPrep[0], inPrep[1], 10, 21), "the open sky beside the prep room");
+        assertFalse(P.inReach(inPrep[0], inPrep[1], 0, 33), "12 blocks behind him: outside");
         // standing on the prep room's glass wall counts as the prep room; the gate (the shared wall) as the arena
         assertTrue(P.inPrepRoom(5.5, 21.5) && P.inPrepRoom(-4.5, 26.5));
         assertFalse(P.inPrepRoom(0.5, 16.5), "the gate is in the arena's wall");
@@ -207,7 +210,9 @@ class ArenaPlaceTest {
                 assertTrue(place.prepInside().contains(arr[0], arr[1], arr[2]));
                 assertTrue(place.inPrepRoom(arr[0] + 0.5, arr[2] + 0.5), "he arrives in the prep room");
                 assertTrue(place.inReach(arr[0] + 0.5, arr[2] + 0.5, arr[0], arr[2]), "and may wish there");
-                assertFalse(place.inReach(arr[0] + 0.5, arr[2] + 0.5, 0, 0), "but not into the arena from it");
+                assertTrue(place.inReach(arr[0] + 0.5, arr[2] + 0.5, 0, 0), "and into the arena ahead of it");
+                assertFalse(place.inReach(arr[0] + 0.5, arr[2] + 0.5, place.arenaInside().x1(), 0),
+                        "but not beside the prep room's width");
                 assertTrue(place.area().contains(arr[0], arr[2]));
                 assertTrue(place.inReach(0.5, 0.5, 0, 0));
                 assertTrue(place.footprint().containsColumn(place.prepInside().x1() + 1, place.prepInside().z1() + 1));

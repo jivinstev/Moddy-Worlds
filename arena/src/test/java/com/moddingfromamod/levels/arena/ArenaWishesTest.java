@@ -65,7 +65,7 @@ class ArenaWishesTest {
         WorldRule r = p.rules().first(ArenaWishesRule.KEY);
         assertNotNull(r, "the arena's rules carry arena_wishes");
         assertEquals(new ArenaWishes(3, 10), ArenaWishesRule.wishesOf(p.rules()));
-        assertTrue(text.contains("the arena or the prep room"), "the reach rule's words say where a wish lands");
+        assertTrue(text.contains("the arena and its prep room"), "the reach rule's words say where a wish lands");
     }
 
     @Test

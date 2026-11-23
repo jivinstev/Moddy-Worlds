@@ -207,12 +207,17 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
     }
 
     /**
-     * Where a wish may be AIMED, for a player standing at (x, z): the inside of the room he is in. In the prep room (its
-     * floor's columns, walls included) that is the prep room's inside; anywhere else, the arena's inside, wall to wall
-     * (every height, as the core's reach rule reads a base). One rectangle at a time, because the core's base has one
-     * reach: a rectangle round both rooms would also take in the open sky beside the prep room, where a wish aimed at
-     * the sky would float outside the walls. From inside either room the other is behind glass or the gate, so an aim
-     * from one cannot land in the other anyway.
+     * Where a wish may be AIMED, for a player standing at (x, z). The core's base has one reach rectangle, so it follows
+     * the room he stands in:
+     * <ul>
+     *   <li>in the prep room (its columns, walls included): the prep room's inside AND the arena's floor straight ahead
+     *       of it, through the gate, wall to wall ({@link #prepReach}): a wish aimed at the prep room's floor lands
+     *       there, and a make put in front of him (the core's Builder puts one 12 blocks ahead of a player who aims at
+     *       nothing) lands in the arena;</li>
+     *   <li>anywhere else: the arena's inside, wall to wall ({@link #arenaReach}).</li>
+     * </ul>
+     * Every height, as the core's reach rule reads a base. Never one rectangle round both rooms: that would also take in
+     * the open sky beside the prep room, where a wish would float outside the walls.
      */
     public Columns reachFor(double x, double z) {
         return inPrepRoom(x, z) ? prepReach() : arenaReach();
@@ -224,10 +229,14 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
         return new Columns(a.x0(), a.x1(), a.z0(), a.z1());
     }
 
-    /** The prep room's inside, as columns: where a wish lands for a player in the prep room. */
+    /**
+     * Where a wish lands for a player in the prep room: the prep room's inside, and the arena's floor in the prep room's
+     * width from the gate to the arena's far wall (the shared wall between them, glass and the gate, included).
+     */
     public Columns prepReach() {
         Box p = prepInside();
-        return new Columns(p.x0(), p.x1(), p.z0(), p.z1());
+        Box a = arenaInside();
+        return new Columns(p.x0(), p.x1(), a.z0(), p.z1());
     }
 
     /** True when (x, z) is in the prep room's columns, its walls included (not the shared wall, which is the arena's). */

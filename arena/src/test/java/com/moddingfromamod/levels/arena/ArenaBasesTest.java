@@ -26,9 +26,10 @@ class ArenaBasesTest {
         assertEquals(a[0], base.x());
         assertEquals(a[2], base.z());
         assertEquals(P.floorY(), base.homeY());
-        // he stands in the prep room: his wishes land in the prep room
+        // he stands in the prep room: his wishes land in the prep room, or in the arena ahead of it
         assertTrue(base.reach().contains(0.5, 21.5), "aimed at the prep room, from it: it lands");
-        assertFalse(base.reach().contains(0.5, 0.5), "aimed at the arena from the prep room: refused");
+        assertTrue(base.reach().contains(0.5, 0.5), "aimed through the gate at the arena's middle: it lands");
+        assertFalse(base.reach().contains(12.5, 0.5), "the arena beside the prep room's width: refused");
         assertFalse(base.reach().contains(40.5, 0.5), "aimed past the wall: refused");
         assertTrue(base.holds(Bases.OVERWORLD, 0.5, 21.5), "he stands on his base in the prep room");
         assertFalse(base.holds("minecraft:the_nether", 0.5, 21.5));
@@ -42,9 +43,11 @@ class ArenaBasesTest {
         ArenaBases b = new ArenaBases(P, id -> new Bases.Pos(Bases.OVERWORLD, at[0], 64, at[1]));
         assertTrue(b.baseOf(HIM).reach().contains(0.5, 0.5));
         assertFalse(b.baseOf(HIM).reach().contains(0.5, 21.5));
+        assertTrue(b.baseOf(HIM).reach().contains(12.5, 0.5), "the whole arena, from inside it");
         // he walks to the prep room: the next wish asks again
         at[1] = 21.5;
         assertTrue(b.baseOf(HIM).reach().contains(0.5, 21.5));
+        assertFalse(b.baseOf(HIM).reach().contains(12.5, 0.5));
         // away from the place, offline, or in another dimension: the arena's inside, as before
         assertEquals(P.arenaReach().minX(), new ArenaBases(P, id -> null).baseOf(HIM).reach().minX());
         ArenaBases nether = new ArenaBases(P, id -> new Bases.Pos("minecraft:the_nether", 0.5, 64, 21.5));
