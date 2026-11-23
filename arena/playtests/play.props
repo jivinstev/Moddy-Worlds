@@ -1,0 +1,3 @@
+# The properties tools/play.sh passes as moddingfromamod.<key> (beside world.id and world.rules), the way a server's
+# launcher switches the arena on in a world not made with its World Type: its module, named by worlds/arena.json.
+world.module=@manifest:module

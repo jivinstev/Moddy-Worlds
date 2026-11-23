@@ -1,0 +1,31 @@
+# Moddy Arena: a ready-made make aimed inside the arena lands there (the core's base_reach rule, with the arena as the
+# player's base). No model anywhere: the Apprentice's local matcher offers the make.
+@intent a player in Moddy Arena steps into the arena, aims at its floor and makes a house there with the Apprentice
+@world flat seed=1
+
+@step arrive
+@expect chat Welcome to Moddy Arena within 90s
+@wait 2s
+
+@step into the arena
+# through the gate, onto the sandstone floor, looking north along it
+tp @s 0 64 10 180 0
+@aim look 180 12
+@wait 2s
+@assert execute at @s if block ~ ~-1 ~ minecraft:smooth_sandstone
+@shot aiming-into-the-arena
+
+@step the Apprentice offers a house
+moddy apprentice a cozy house
+@expect screen Container within 10s
+@shot apprentice-page
+
+@step he presses the top tile and it lands
+@click slot 0
+@expect chat /is ready/ within 90s
+@wait 3s
+# the arena ahead of him is no longer empty air (compared with the empty sky at y 200): the house stands in it
+@assert execute unless blocks -15 64 -15 15 67 8 -15 200 -15 all
+@aim look 180 25
+@wait 1s
+@shot the-house-in-the-arena

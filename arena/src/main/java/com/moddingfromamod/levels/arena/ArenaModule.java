@@ -10,11 +10,8 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Set;
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -25,17 +22,13 @@ import org.slf4j.LoggerFactory;
  * <b>Moddy Arena's world module</b>: on start it builds the place once (the prep room and the walled arena,
  * {@link ArenaPlace}, sized by the world's {@code arena_place} rule), sets the world spawn in the prep room facing the
  * arena, and returns {@link ArenaBases} so the core's {@code base_reach} rule keeps every wish inside the arena. A
- * player's first join puts him in the prep room, facing the arena, and says where he is. Named by
+ * player's first join puts him in the prep room, facing the arena; the words he reads then are the manifest's
+ * {@code intro}, which the core says once per player per world. Named by
  * {@code worlds/arena.json}'s {@code "module": "arena"}.
  */
 public final class ArenaModule implements WorldModule {
 
     public static final String ID = "arena";
-
-    /** What a player reads on his first join: where he is, and what is coming. */
-    static final List<String> ARRIVAL_WORDS = List.of(
-            "Welcome to Moddy Arena! You are in the prep room. The arena is through the glass, past the gate.",
-            "Battles are coming soon. For now, aim your wishes into the arena: that is where they land.");
 
     private static final Logger LOG = LoggerFactory.getLogger("moddingfromamod/arena");
 
@@ -86,7 +79,7 @@ public final class ArenaModule implements WorldModule {
         server = null;
     }
 
-    /** A first join: into the prep room, facing the arena, and told where he is. A returning player stays put. */
+    /** A first join: into the prep room, facing the arena (the core then says the manifest's intro). A returning player stays put. */
     @Override
     public void onLogin(ServerPlayer player) {
         MinecraftServer s = server;
@@ -98,9 +91,6 @@ public final class ArenaModule implements WorldModule {
         ServerLevel level = s.overworld();
         player.teleportTo(level, a[0] + 0.5, a[1], a[2] + 0.5, Set.of(), ArenaPlace.ARRIVAL_YAW, 0f, true);
         player.fallDistance = 0;
-        for (String line : ARRIVAL_WORDS) {
-            player.sendSystemMessage(Component.literal(line).withStyle(ChatFormatting.GOLD));
-        }
         LOG.info("Moddy Arena: {} arrived in the prep room", player.getScoreboardName());
     }
 

@@ -1,0 +1,28 @@
+# Moddy Arena: the same make aimed OUTSIDE the arena (at the prep room's floor behind him) is refused by the reach rule,
+# and nothing is built there.
+@intent a player in Moddy Arena aims a make at the prep room's floor, outside the arena, and it is refused
+@world flat seed=1
+
+@step arrive
+@expect chat Welcome to Moddy Arena within 90s
+@wait 2s
+
+@step aim at the prep room floor
+# from the arrival spot, turned round (south, yaw 0) and looking down at the planks behind him
+@aim look 0 35
+@wait 1s
+@shot aiming-at-the-prep-room
+
+@step the Apprentice offers a house
+moddy apprentice a cozy house
+@expect screen Container within 10s
+
+@step he presses the top tile and it is refused
+@click slot 0
+@expect chat /didn't work this time/ within 90s
+@wait 2s
+# the prep room is as it was: plank floor behind him, clear air above it, the whole room still empty air (compared with the empty sky at y 200)
+@assert execute if block 0 63 24 minecraft:oak_planks
+@assert execute if block 0 64 24 minecraft:air
+@assert execute if blocks -4 64 17 4 67 25 -4 200 17 all
+@shot refused

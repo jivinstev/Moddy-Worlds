@@ -1,0 +1,33 @@
+# Moddy Arena (the moddyarena world jar) on the PUBLIC core: a new player arrives in the prep room, facing the arena.
+# tools/play.sh switches the arena on by properties (its world id, its rules file, its module), as a server's launcher
+# does; the place is built once at y 63-68 above the flat world.
+@intent a new player in Moddy Arena stands in the lit prep room, facing the walled arena through the glass
+@world flat seed=1
+
+@step he joins
+# the arena's first-join words: worlds/arena.json "intro", which the core says once per player per world
+@expect chat Welcome to Moddy Arena within 90s
+@expect chat Battles are coming soon within 10s
+
+@step the prep room
+# the arrival spot: the middle of the prep room, on its plank floor, facing north (yaw 180) toward the arena
+@assert execute if entity @s[x=-1,y=63,z=20,dx=2,dy=2,dz=2]
+@assert execute at @s if block ~ ~-1 ~ minecraft:oak_planks
+@assert execute unless entity @s[y_rotation=-135..135]
+# a roof over him, lights in the floor, glass to every side
+@assert execute at @s if block ~ ~4 ~ minecraft:spruce_planks
+@assert execute if block 3 63 18 minecraft:sea_lantern
+@assert execute if block 5 65 21 minecraft:glass
+@assert execute if block 0 65 26 minecraft:glass
+@wait 2s
+@shot prep-room
+
+@step the arena in view
+# through the window: the gate in the middle of the shared wall, the sandstone floor and the stone brick walls beyond
+@assert execute if block 0 64 16 minecraft:oak_fence_gate
+@assert execute if block 2 65 16 minecraft:glass
+@assert execute if block 0 63 0 minecraft:smooth_sandstone
+@assert execute if block 0 64 -16 minecraft:stone_bricks
+@aim look 180 12
+@wait 1s
+@shot arena-in-view
