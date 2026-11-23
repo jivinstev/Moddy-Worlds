@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 /** {@code arena_place} through the core's own rules parser, as a server reads the arena's rules file. */
 class ArenaRuleTest {
 
-    private static final List<WorldRuleType> TYPES = List.of(new ArenaRule(), new ArenaWavesRule(null));
+    private static final List<WorldRuleType> TYPES = List.of(new ArenaRule(), new ArenaWavesRule(null), new ArenaWishesRule());
 
     private static String bundled() throws IOException {
         try (InputStream in = ArenaRuleTest.class.getResourceAsStream("/worlds/rules/arena.rules.json")) {
