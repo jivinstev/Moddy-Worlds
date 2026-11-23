@@ -1,10 +1,10 @@
 # Moddy Arena: the prep phase and a battle's wishes. In prep, an Apprentice make from the prep room lands in the arena
-# ahead of him and one made standing in the arena lands there; a recipe wish (the starter Lightning Sword, made again
-# by its recipe) is put on his hotbar from its page in My wishes. In the battle the hotbar makes it again with one
-# click, a second click at once is refused with the seconds left, and a new make is refused with the arena's words.
-# After the battle the wish is still on his hotbar and new makes work again. No model anywhere: the Apprentice's local
-# matcher offers the makes, and the hotbar replays a kept recipe.
-@intent in prep a player makes things from the prep room and in the arena and puts a recipe wish on his hotbar; in a battle the hotbar fires it, it rests between fires, and new wishes are refused; after the battle the hotbar wish is still there
+# ahead of him and one made standing in the arena lands there; an Apprentice item (a Fire Sword, a Builder make) is put
+# on his hotbar from its own page in My wishes, by the page's "Add to hotbar" tile. In the battle the hotbar makes it
+# again with one click, a second click at once is refused with the seconds left, and a new make is refused with the
+# arena's words. After the battle the wish is still on his hotbar and new makes work again. No model anywhere: the
+# Apprentice's local matcher offers the makes, and the hotbar replays the kept make's recipe.
+@intent in prep a player makes things from the prep room and in the arena and puts one of his makes on his hotbar from its page; in a battle the hotbar fires it, it rests between fires, and new wishes are refused; after the battle the hotbar wish is still there
 @world flat seed=1
 @continue-on-fail
 
@@ -38,10 +38,14 @@ moddy apprentice a stone well
 @assert execute unless blocks -4 64 3 4 67 15 -4 200 3 all
 @shot made-from-the-prep-room
 
-@step a recipe wish in the prep room: the starter Lightning Sword
-moddy again starter_lightning_sword
-@expect chat /[Ll]ightning [Ss]word/ within 60s
+@step an Apprentice sword in the prep room
+tp @s 0.5 64 21.5 180 0
+moddy apprentice a fire sword
+@expect screen Container within 10s
+@click slot 0
+@expect chat /Fire Sword( [0-9]+)? is in slot 3/ within 60s
 @wait 3s
+@assert execute if items entity @s hotbar.2 *
 @shot the-sword
 
 @step a make in the arena lands there
@@ -56,19 +60,24 @@ moddy apprentice a cozy house
 @assert execute unless blocks -15 64 -15 15 67 3 -15 200 -15 all
 @shot made-in-the-arena
 
-@step the Lightning Sword wish goes on his hotbar
-# In a real game: My wishes, RIGHT-click the Lightning Sword's tile (a left click makes another one), "Add to hotbar".
-# The carrier clicks with the left button only, so this script makes another one with the left click (a kept thing made
-# again, which the arena lets through), and then puts the proxy where "Add to hotbar" puts it, with the data the core
-# writes (the recipe, its owner, its picture): the core's own use of it is what the battle below exercises.
+@step the Fire Sword goes on his hotbar from its page
+# My wishes, press the Fire Sword (one of his makes: its page opens), press "Add to hotbar": the core puts its hotbar
+# wish in the first empty slot (slot 4: the watch, the Wish Bag and the sword are in the first three)
 moddy library
 @expect screen My wishes within 10s
 @shot my-wishes
-@click item "lightning"
-@expect chat /Lightning Sword is in slot/ within 30s
+@click item "Fire Sword"
+@expect screen Fire Sword within 10s
 @wait 1s
-item replace entity @s hotbar.3 with minecraft:paper[custom_data={mfam_hotbar:"starter_lightning_sword",mfam_hotbar_owner:"00000000-0000-0000-0000-000000000000",mfam_hotbar_icon:"minecraft:diamond_sword"},custom_name="Wish: Lightning Sword",max_stack_size=1]
+@shot its-page
+@click item "Add to hotbar"
+@expect chat On your hotbar, slot 4 within 10s
+@wait 1s
 @assert execute if items entity @s hotbar.3 minecraft:paper
+# the sword he made is put away, so the one the hotbar makes in the battle is plainly a new one
+item replace entity @s hotbar.2 with minecraft:air
+@assert execute unless items entity @s hotbar.2 *
+@wait 1s
 @shot on-the-hotbar
 
 @step he starts a battle with the button
@@ -91,7 +100,9 @@ tp @s 0 64 10 180 0
 @wait 5t
 @assert execute if items entity @s weapon.mainhand minecraft:paper
 @key key.use
-@expect chat /[Ll]ightning [Ss]word/ within 60s
+@expect chat /Fire Sword( [0-9]+)? is in slot 3/ within 60s
+@wait 1s
+@assert execute if items entity @s hotbar.2 *
 @shot fired-from-the-hotbar
 
 @step at once again: it rests, and says how long
@@ -140,12 +151,3 @@ moddy apprentice a cozy house
 @expect chat /is ready/ within 90s
 @wait 2s
 @shot after-the-battle
-
-@step knocked out: what happens to a hotbar wish (the core's own rule)
-kill @s
-@wait 3s
-@shot after-knocked-out
-# back in the prep room: the hotbar wish is not in his inventory, and was not dropped either
-@assert execute if entity @s[x=-4,y=63,z=17,dx=8,dy=3,dz=8]
-@assert execute unless items entity @s container.* minecraft:paper
-@assert execute unless entity @e[type=minecraft:item,nbt={Item:{id:"minecraft:paper"}}]

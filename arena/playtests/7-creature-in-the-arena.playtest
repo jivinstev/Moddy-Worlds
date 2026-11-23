@@ -1,0 +1,43 @@
+# Moddy Arena: a creature wished in prep. An Apprentice creature (a cat, a Builder make) made standing in the arena and
+# aimed at its floor lands there; the same make made standing on the ground outside the place is refused by the reach
+# rule, and nothing is left there. No model anywhere: the Apprentice's local matcher offers the make.
+@intent in prep a player makes a creature with the Apprentice in the arena and it lands there; outside the place the same make is refused
+@world flat seed=1
+@continue-on-fail
+
+@step arrive
+@expect chat Welcome to Moddy Arena within 90s
+@wait 2s
+
+@step a creature aimed at the arena floor lands there
+tp @s 0 64 10 180 0
+@aim look 180 12
+@wait 2s
+# no battle is on and nothing else is in the arena: only what the wish makes will be there
+@assert execute unless entity @e[type=!minecraft:player,x=-15,y=60,z=-15,dx=30,dy=12,dz=30]
+moddy apprentice a cat
+@expect screen Container within 10s
+@shot apprentice-page
+@click slot 0
+@expect chat /is ready/ within 90s
+@wait 3s
+@assert execute if entity @e[type=!minecraft:player,x=-15,y=60,z=-15,dx=30,dy=12,dz=30]
+@aim look 180 25
+@wait 1s
+@shot the-cat-in-the-arena
+
+@step the same creature aimed outside the place is refused
+# the flat world's ground, far below and away from the place, looking down at the grass in front of him
+tp @s 40 -60 0 90 0
+@aim look 90 40
+@wait 2s
+@assert execute at @s if block ~ ~-1 ~ minecraft:grass_block
+@assert execute unless entity @e[type=!minecraft:player,distance=..30]
+moddy apprentice a cat
+@expect screen Container within 10s
+@click slot 0
+@expect chat /didn't work this time/ within 90s
+@wait 3s
+# nothing was left round him
+@assert execute unless entity @e[type=!minecraft:player,distance=..30]
+@shot refused-outside
