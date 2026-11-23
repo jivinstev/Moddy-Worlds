@@ -1,0 +1,13 @@
+// SCARCITY ISLE, the `moddyisle` level jar: the Isle (isle/) and its wish bank (bank/), beside the Moddy core mod.
+// Everything every world repeats (the pinned core, the shared level code, the built-in packs, mods.toml, the access
+// transformer, the runs) is ../shared/level.gradle; this file says only what is the Isle's own.
+plugins {
+    id 'java-library'
+    id 'net.neoforged.gradle.userdev' version '7.1.39'
+}
+
+ext.levelId = 'isle'
+// -Plevel=on also passes the islands' spacing from the Isle's manifest, as a server's launcher does.
+ext.levelRunProps = { manifest -> ['islands.spacing': manifest.islands.spacing] }
+
+apply from: '../shared/level.gradle'

@@ -1,0 +1,81 @@
+{
+  "_comment": "The Isle's built-in third-party DATAPACKS, pinned by version AND sha1. build.gradle downloads each one, refuses any other bytes, and unpacks it unmodified into the jar's datapacks/<folder>/. The licence line is what was READ out of each zip's own LICENSE file (MIT, (c) 2024 BPR02), not what Modrinth's metadata says; every zip carries that LICENSE inside it, and THIRD_PARTY_NOTICES.txt carries it again. Adding a pack: read its LICENSE first, then add a row with every field.",
+  "v": 1,
+  "packs": {
+    "standard-skyblock": {
+      "title": "SkyBlock - Standard (Standard SkyBlock)",
+      "packId": "skyvoid_standard_skyblock",
+      "author": "BluePsychoRanger (BPR02)",
+      "license": "MIT",
+      "copyright": "Copyright (c) 2024 BPR02",
+      "project": "https://modrinth.com/datapack/standard-skyblock",
+      "source": "https://github.com/BPR02/SkyBlock_Collection",
+      "version": "2.1.1",
+      "mc": [
+        "1.21.6",
+        "1.21.7",
+        "1.21.8"
+      ],
+      "packFormats": [
+        80,
+        81
+      ],
+      "file": "skyvoid_standard_skyblock_v2_1_1-MC_1_21_6-1_21_8.zip",
+      "url": "https://cdn.modrinth.com/data/bbtyQ1Po/versions/67unTDLm/skyvoid_standard_skyblock_v2_1_1-MC_1_21_6-1_21_8.zip",
+      "sha1": "22de68b50930c2d2b17a5d06c6705597ca3258c9",
+      "bytes": 1410264,
+      "does": "void world generation (every structure's bounding box, no blocks) and the starter island at world spawn, placed when the first player joins (skyvoid_worldgen:v2.0/load_wait waits for @a)",
+      "folder": "standard_skyblock"
+    },
+    "sky-void-additions": {
+      "title": "Sky Void Additions",
+      "packId": "skyvoid_additions",
+      "author": "BluePsychoRanger (BPR02)",
+      "license": "MIT",
+      "copyright": "Copyright (c) 2024 BPR02",
+      "project": "https://modrinth.com/datapack/sky-void-additions",
+      "source": "https://github.com/BPR02/SkyBlock_Collection",
+      "version": "1.4.1",
+      "mc": [
+        "1.21.6",
+        "1.21.7",
+        "1.21.8"
+      ],
+      "packFormats": [
+        80,
+        81
+      ],
+      "file": "skyvoid_additions_v1_4_1-MC_1_21_6-1_21_8.zip",
+      "url": "https://cdn.modrinth.com/data/HlddKKKU/versions/AmvS9rez/skyvoid_additions_v1_4_1-MC_1_21_6-1_21_8.zip",
+      "sha1": "061564138b11d69a531c8a204cc061eb04c3d652",
+      "bytes": 234191,
+      "does": "vanilla-like mechanics that make every item, mob and advancement obtainable in SkyBlock; each toggleable (/function skyvoid_additions:customize/update_config/open_menu)",
+      "folder": "sky_void_additions"
+    },
+    "skyblock-advancements": {
+      "title": "SkyBlock Advancements",
+      "packId": "skyvoid_advancements",
+      "author": "EpyonProjects (the pack's own credit); the LICENSE inside the zip reads BPR02",
+      "license": "MIT",
+      "copyright": "Copyright (c) 2024 BPR02",
+      "project": "https://modrinth.com/datapack/skyblock-advancements",
+      "source": "https://github.com/BPR02/SkyBlock_Collection",
+      "version": "1.0.9",
+      "mc": [
+        "1.21.6",
+        "1.21.7",
+        "1.21.8"
+      ],
+      "packFormats": [
+        80,
+        81
+      ],
+      "file": "skyvoid_advancements_v1_0_9-MC_1_21_6-1_21_8.zip",
+      "url": "https://cdn.modrinth.com/data/xuhPkHjq/versions/ryUJsg8g/skyvoid_advancements_v1_0_9-MC_1_21_6-1_21_8.zip",
+      "sha1": "225aead84d4d1f1f3301a0be3de195526331a7ed",
+      "bytes": 344325,
+      "does": "the story and nether advancement tabs rearranged for SkyBlock progression, plus new ones (skyvoid_advancements:overworld/*). Its optional RESOURCE pack (rp_skyvoid_advancements_*.zip) is deliberately not fetched: the level offers no resource pack",
+      "folder": "skyblock_advancements"
+    }
+  }
+}

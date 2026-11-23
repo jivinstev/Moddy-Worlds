@@ -1,0 +1,198 @@
+// THE BUILD EVERY WORLD SHARES, applied by each world's build.gradle after its plugins block:
+//
+//   plugins { id 'java-library'; id 'net.neoforged.gradle.userdev' version '7.1.39' }
+//   ext.levelId = 'isle'                        // the world's folder, level id and world files' name
+//   apply from: '../shared/level.gradle'
+//
+// It reads the world's gradle.properties (mod_id, versions, mod metadata), core.lock (the public core jar, pinned by
+// version and sha256) and datapacks.lock.json (its built-in packs, pinned by sha1), and gives every world the same:
+//   * the shared level code (shared/src/main/java, package com.moddingfromamod.levels.shared) compiled INTO the world's
+//     jar under the world's own package, com.moddingfromamod.levels.<levelId>.shared, so two world jars in one game
+//     never carry the same package; and shared/src/test/java into its unit tests the same way;
+//   * shared/resources: META-INF/neoforge.mods.toml (templated from gradle.properties) and the access transformer the
+//     World Type listener needs, applied to the dev Minecraft too;
+//   * the built-in packs unpacked into datapacks/<folder>/ with THIRD_PARTY_NOTICES.txt beside them, and the level's
+//     empty marker pack, datapacks/level_marker/, which is what claims a world for it (shared Level.MARKER);
+//   * the repository's LICENSE in the jar, the dev runs, and -Plevel=on to switch the world on by properties.
+// A world's own build.gradle may set ext.levelRunProps = { manifest -> [key: value] } before applying this, for the
+// extra moddingfromamod.<key> properties -Plevel=on passes (the Isle's islands.spacing).
+
+import java.security.MessageDigest
+
+def levelId = project.ext.levelId
+def sharedDir = rootProject.file('../shared')
+
+def digestOf = { File f, String algo ->
+    def md = MessageDigest.getInstance(algo)
+    f.withInputStream { s -> byte[] b = new byte[1 << 16]; int n; while ((n = s.read(b)) > 0) { md.update(b, 0, n) } }
+    md.digest().encodeHex().toString()
+}
+
+// ── the public core jar, pinned ──────────────────────────────────────────────────────────────────────────────────────
+def lock = new Properties()
+file('core.lock').withInputStream { lock.load(it) }
+def coreDir = file('.core')
+def coreJar
+if (project.hasProperty('coreJar')) {
+    coreJar = file(project.property('coreJar'))
+    if (!coreJar.isFile()) {
+        throw new GradleException("${levelId}: -PcoreJar=${coreJar} is not a file")
+    }
+    logger.warn("${levelId}: building against ${coreJar}, NOT the pinned core (core.lock); this build is for local use only")
+} else {
+    coreJar = new File(coreDir, lock.core_asset)
+    if (!(lock.core_sha256 ==~ /[0-9a-f]{64}/)) {
+        throw new GradleException("${levelId}: core.lock has no sha256 for ${lock.core_asset} yet (core_sha256=${lock.core_sha256}). " +
+                "Fill it in from the release, or build against a local core jar with -PcoreJar=<jar>")
+    }
+    if (!coreJar.isFile()) {
+        // While the core's repository is private its assets need a token: CI and tools/play.sh download the jar into
+        // .core/ with tools/fetch-core.sh first. Once it is public this plain download is all it takes.
+        def url = "https://github.com/${lock.core_repo}/releases/download/${lock.core_tag}/${lock.core_asset}"
+        logger.lifecycle("${levelId}: downloading the core jar ${url}")
+        coreDir.mkdirs()
+        def part = new File(coreDir, lock.core_asset + '.part')
+        try {
+            new URL(url).withInputStream { i -> part.withOutputStream { o -> o << i } }
+        } catch (Exception e) {
+            part.delete()
+            throw new GradleException("${levelId}: could not download ${url} (${e.message}). While the core's repository " +
+                    "is private: GH_TOKEN=<a token that can read it> tools/fetch-core.sh ${levelId}")
+        }
+        part.renameTo(coreJar)
+    }
+    def got = digestOf(coreJar, 'SHA-256')
+    if (got != lock.core_sha256) {
+        coreJar.delete()
+        throw new GradleException("${levelId}: sha256 MISMATCH for ${lock.core_asset}: pinned ${lock.core_sha256}, got ${got}. " +
+                "The file was deleted; refusing to build against bytes nobody pinned")
+    }
+}
+
+version = "${mod_version}+mc${minecraft_version}"   // the store-jar shape, as the core: <modid>-<version>+mc<mc>.jar
+group = "com.moddingfromamod.levels.${levelId}"
+base { archivesName = mod_id }
+java.toolchain.languageVersion = JavaLanguageVersion.of(java_version as int)
+
+// ── the shared level code, in this world's own package ───────────────────────────────────────────────────────────────
+def sharedPkg = 'com/moddingfromamod/levels/shared/'
+def ownPkg = "com/moddingfromamod/levels/${levelId}/shared/"
+def relocate = { String srcSet ->
+    tasks.register("${srcSet}LevelShared", Copy) {
+        def out = layout.buildDirectory.dir("generated/shared/${srcSet}")
+        from(new File(sharedDir, "src/${srcSet}/java"))
+        into(out)
+        include("${sharedPkg}**/*.java")
+        eachFile { it.path = it.path.replace(sharedPkg, ownPkg) }
+        includeEmptyDirs = false
+        filter { String line -> line.replace('com.moddingfromamod.levels.shared', "com.moddingfromamod.levels.${levelId}.shared") }
+    }
+}
+def sharedMain = relocate('main')
+def sharedTest = relocate('test')
+sourceSets.main.java.srcDir(sharedMain)
+sourceSets.test.java.srcDir(sharedTest)
+
+// What only the LEVEL jar carries: its world preset and World Type entry, its name, its world files (worlds/), and
+// (generated below) its built-in packs.
+sourceSets.main.resources.srcDir 'src/level/resources'
+def levelPacks = layout.buildDirectory.dir('generated/level-packs')
+sourceSets.main.resources.srcDir levelPacks
+
+def packCache = file("${gradle.gradleUserHomeDir}/caches/moddy-worlds/datapacks")
+def unpackLevelPacks = tasks.register('unpackLevelPacks') {
+    inputs.file('datapacks.lock.json')
+    inputs.file('THIRD_PARTY_NOTICES.txt')
+    inputs.property('mod_name', mod_name)
+    outputs.dir(levelPacks)
+    doLast {
+        def packs = new groovy.json.JsonSlurper().parse(file('datapacks.lock.json')).packs
+        def dir = levelPacks.get().asFile
+        project.delete(dir)
+        packCache.mkdirs()
+        packs.each { id, row ->
+            def zip = new File(packCache, row.file)
+            if (!zip.isFile() || digestOf(zip, 'SHA-1') != row.sha1) {
+                logger.lifecycle("${levelId}: downloading ${id} ${row.version}")
+                def part = new File(packCache, row.file + '.part')
+                new URL(row.url).withInputStream { i -> part.withOutputStream { o -> o << i } }
+                part.renameTo(zip)
+            }
+            def got = digestOf(zip, 'SHA-1')
+            if (got != row.sha1) {
+                zip.delete()
+                throw new GradleException("${levelId}: sha1 MISMATCH for ${id}: pinned ${row.sha1}, got ${got}; the file was deleted")
+            }
+            project.copy { from(project.zipTree(zip)); into(new File(dir, "datapacks/${row.folder}")) }
+        }
+        project.copy { from('THIRD_PARTY_NOTICES.txt'); into(dir) }
+        // The marker pack every level carries (shared Level.MARKER): empty, ticked with the level's packs by its World
+        // Type and named in a server's initial-enabled-packs; its presence is what claims a world for the level.
+        def marker = new File(dir, 'datapacks/level_marker')
+        marker.mkdirs()
+        new File(marker, 'pack.mcmeta').text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(
+                [pack: [pack_format: 81, description: "${mod_name}: marks a world made as this level (empty)".toString()]])) + '\n'
+    }
+}
+
+dependencies {
+    implementation "net.neoforged:neoforge:${neo_version}"
+    // The public core mod: compiled against, and loaded as a mod in every dev run (a classpath jar with a mods.toml).
+    // Its libraries come from INSIDE it (META-INF/jarjar/): naming them again stops the boot.
+    implementation files(coreJar)
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+// The access transformer applies to the dev Minecraft too, so the World Type listener compiles.
+minecraft {
+    accessTransformers {
+        file(new File(sharedDir, 'resources/META-INF/accesstransformer.cfg'))
+    }
+}
+
+runs {
+    configureEach {
+        workingDirectory project.layout.projectDirectory.dir('run').dir(name)
+        modSource project.sourceSets.main
+        systemProperty 'forge.logging.console.level', 'info'
+        // -Plevel=on: the world switched on by properties, as a server's launcher would (its world id, its rules file,
+        // and whatever ext.levelRunProps adds from its manifest), for a dev world not made with its World Type.
+        // -PmoddyProps=k=v,k=v adds any other moddingfromamod.<k>.
+        if (project.findProperty('level') == 'on') {
+            def manifest = new groovy.json.JsonSlurper().parse(file("src/level/resources/worlds/${levelId}.json"))
+            systemProperty 'moddingfromamod.world.id', levelId
+            systemProperty 'moddingfromamod.world.rules', file("src/level/resources/worlds/rules/${levelId}.rules.json").absolutePath
+            if (project.ext.has('levelRunProps')) {
+                project.ext.levelRunProps(manifest).each { k, v -> systemProperty "moddingfromamod.${k}", "${v}" }
+            }
+        }
+        ((project.findProperty('moddyProps') ?: '') as String).split(',').findAll { it.contains('=') }.each {
+            def (k, v) = it.split('=', 2)
+            systemProperty "moddingfromamod.${k}", v
+        }
+    }
+    server {
+        arguments.add '--nogui'
+    }
+    client {
+    }
+}
+
+def templateProps = [mod_id: mod_id, mod_name: mod_name, mod_version: mod_version, mod_license: mod_license,
+                     mod_authors: mod_authors, mod_description: mod_description, core_mod_id: core_mod_id,
+                     core_version_range: core_version_range, minecraft_version_range: minecraft_version_range]
+tasks.named('processResources') {
+    dependsOn unpackLevelPacks
+    inputs.properties templateProps
+    from(new File(sharedDir, 'resources'))
+    filesMatching('META-INF/neoforge.mods.toml') { expand templateProps }
+}
+
+tasks.named('jar') {
+    from(rootProject.file('../LICENSE')) { rename { "LICENSE_${mod_id}" } }
+}
