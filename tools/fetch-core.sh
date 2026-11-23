@@ -3,9 +3,10 @@
 #
 #   tools/fetch-core.sh [LEVEL]        # default isle; writes LEVEL/.core/<asset> and prints its path
 #
-# Downloads the release asset core.lock names (with `gh release download` when gh is there, which works while the
-# core's repository is private given GH_TOKEN with read access to it; else a plain curl, which works once it is
-# public) and checks its sha256 against core.lock EVERY time, the already-present file included. A mismatch deletes
+# Downloads the release asset core.lock names (a plain curl first, which works once the core's repository is public;
+# else gh's REST API, `gh api repos/<repo>/releases/tags/<tag>` for the asset id and `gh api .../releases/assets/<id>`
+# with Accept: application/octet-stream, which works while it is private given GH_TOKEN that can read it) and checks
+# its sha256 against core.lock EVERY time, the already-present file included. A mismatch deletes
 # the file. Exit 0 the jar is there and matches · 1 a download failed or the sha256 did not match · 2 core.lock has no
 # sha256 yet or is malformed.
 set -euo pipefail
@@ -21,14 +22,19 @@ dir="$here/$level/.core"; jar="$dir/$asset"
 mkdir -p "$dir"
 sha() { if command -v sha256sum >/dev/null; then sha256sum "$1"; else shasum -a 256 "$1"; fi | awk '{print $1}'; }
 if [ ! -f "$jar" ]; then
-    if command -v gh >/dev/null && [ -n "${GH_TOKEN:-}${GITHUB_TOKEN:-}" ]; then
-        gh release download "$tag" -R "$repo" -p "$asset" -D "$dir" --clobber >&2 \
-            || { echo "fetch-core: gh could not download $asset from $repo@$tag (a private repository needs a token that can read it)" >&2; exit 1; }
-    else
-        curl -fsSL --retry 3 -o "$jar.part" "https://github.com/$repo/releases/download/$tag/$asset" \
-            || { rm -f "$jar.part"; echo "fetch-core: could not download $asset from $repo@$tag" >&2; exit 1; }
-        mv "$jar.part" "$jar"
+    # 1. a plain download: works once the core's repository is public.
+    if ! curl -fsSL --retry 3 -o "$jar.part" "https://github.com/$repo/releases/download/$tag/$asset" 2>/dev/null; then
+        rm -f "$jar.part"
+        # 2. the REST API with a token that can read the repository (gh's `release download` is GraphQL, which some
+        #    environments refuse; these two calls are plain REST).
+        command -v gh >/dev/null || { echo "fetch-core: could not download $asset from $repo@$tag, and there is no gh for a private repository" >&2; exit 1; }
+        id="$(gh api "repos/$repo/releases/tags/$tag" -q ".assets[] | select(.name == \"$asset\") | .id")" \
+            || { echo "fetch-core: no release $tag on $repo readable with this token (a private repository needs GH_TOKEN that can read it)" >&2; exit 1; }
+        [ -n "$id" ] || { echo "fetch-core: release $tag on $repo has no asset $asset" >&2; exit 1; }
+        gh api "repos/$repo/releases/assets/$id" -H 'Accept: application/octet-stream' > "$jar.part" \
+            || { rm -f "$jar.part"; echo "fetch-core: could not download asset $id ($asset) from $repo" >&2; exit 1; }
     fi
+    mv "$jar.part" "$jar"
 fi
 got="$(sha "$jar")"
 if [ "$got" != "$want" ]; then

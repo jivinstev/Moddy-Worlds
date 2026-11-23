@@ -6,7 +6,7 @@
 #   tools/play.sh isle --build                 # this checkout's Isle jar beside the pinned core, every playtest
 #   tools/play.sh isle,arena --build           # SEVERAL worlds in one instance: playtests/ at the repository root
 #
-# 1. the jars. The WORLD jar: a pre-release of this repository (`gh release download`; the newest `WORLD-*` one by
+# 1. the jars. The WORLD jar: a pre-release of this repository (gh's REST API; the newest `WORLD-*` one by
 #    default, --tag for one; SHA256SUMS checked), or --build (this checkout's ./gradlew -p WORLD jar), or --jars DIR (a
 #    folder holding <modid>-*.jar, and optionally the core jar). The CORE jar: the release WORLD/core.lock pins,
 #    fetched by tools/fetch-core.sh and checked against its sha256 (a core jar in --jars DIR is used as it is).
@@ -103,7 +103,17 @@ elif [ -z "$JARS" ]; then
     JARS="$WORK/jars/$TAG"
     if [ ! -f "$JARS/.complete" ]; then
         rm -rf "$JARS"; mkdir -p "$JARS"
-        gh release download "$TAG" -R "$GH_REPO" -D "$JARS" -p "$MODID-*.jar" -p 'SHA256SUMS' || die "could not download $TAG"
+        # REST only (gh's `release download` is GraphQL, which some environments refuse): list the assets, fetch each
+        gh api "repos/$GH_REPO/releases/tags/$TAG" -q '.assets[] | "\(.id) \(.name)"' > "$JARS/.assets" \
+            || die "could not read release $TAG of $GH_REPO"
+        while read -r id name; do
+            case "$name" in
+                "$MODID"-*.jar|SHA256SUMS)
+                    gh api "repos/$GH_REPO/releases/assets/$id" -H 'Accept: application/octet-stream' > "$JARS/$name" \
+                        || die "could not download $name from $TAG" ;;
+            esac
+        done < "$JARS/.assets"
+        rm -f "$JARS/.assets"
         if [ -f "$JARS/SHA256SUMS" ]; then
             while read -r sum name; do
                 [ -n "$name" ] || continue
