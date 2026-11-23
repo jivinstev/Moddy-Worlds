@@ -119,20 +119,35 @@ class ArenaPlaceTest {
     }
 
     @Test
-    void aWishLandsInsideTheArenaOrThePrepRoomAndNowhereElse() {
-        assertTrue(P.inReach(0, 64, 0), "the arena's middle");
-        assertTrue(P.inReach(15, 64, -15), "the arena's corner");
-        assertTrue(P.inReach(0, 64 + 20, 0), "above the arena floor");
-        assertTrue(P.inReach(0, 64, 21), "the prep room");
-        assertFalse(P.inReach(16, 64, 0), "the wall");
-        assertFalse(P.inReach(40, 64, 0), "beyond the wall");
-        assertFalse(P.inReach(0, 64, 30), "behind the prep room");
-        assertFalse(P.inReach(0, 64 + ArenaPlace.REACH_UP + 1, 0), "too high");
-        assertFalse(P.inReach(0, 0, 0), "the void below");
-        Box f = P.footprint();
-        for (Box b : P.reach()) {
-            assertTrue(f.containsColumn(b.x0(), b.z0()) && f.containsColumn(b.x1(), b.z1()));
-        }
+    void aWishIsAimedInsideTheArenaAndNowhereElse() {
+        assertTrue(P.inReach(0, 0), "the arena's middle");
+        assertTrue(P.inReach(15, -15), "the arena's corner");
+        assertFalse(P.inReach(16, 0), "the wall");
+        assertFalse(P.inReach(0, 16), "the gate's wall");
+        assertFalse(P.inReach(0, 21), "the prep room: a wish stays inside the arena");
+        assertFalse(P.inReach(40, 0), "beyond the wall");
+        ArenaPlace.Columns area = P.area();
+        assertTrue(area.contains(0, 21), "nothing reaches past the place, and the prep room is in it");
+        assertTrue(area.contains(-16, -16) && area.contains(16, 26));
+        assertFalse(area.contains(0, 27), "behind the prep room");
+        ArenaPlace.Columns r = P.reach();
+        assertTrue(area.contains(r.minX(), r.minZ()) && area.contains(r.maxX(), r.maxZ()), "the reach is in the area");
+    }
+
+    @Test
+    void aPlaceIsBuiltOnceAndKeptWhenTheRuleChangesLater() {
+        ArenaPlace.Start first = ArenaPlace.onStart(null, P);
+        assertTrue(first.build());
+        assertEquals(P, first.place());
+        ArenaPlace.Start again = ArenaPlace.onStart(P, P);
+        assertFalse(again.build(), "a restart builds nothing");
+        assertEquals("", again.note());
+        ArenaPlace bigger = new ArenaPlace(41, 9, 4, 64);
+        ArenaPlace.Start changed = ArenaPlace.onStart(P, bigger);
+        assertFalse(changed.build(), "what stands is kept");
+        assertEquals(P, changed.place(), "and its reach with it");
+        assertTrue(changed.note().contains("arena 41") && changed.note().contains("arena 31"), changed.note());
+        assertEquals(P, ArenaPlace.onStart(null, null).place(), "no rule: the default");
     }
 
     @Test
@@ -160,6 +175,7 @@ class ArenaPlaceTest {
         assertFalse(ArenaPlace.parse(Map.of("arenaSize", 21.5)).ok());
         assertFalse(ArenaPlace.parse(Map.of("arenaSize", "big")).ok());
         assertTrue(ArenaPlace.parse(Map.of("size", 21)).problem().contains("unknown"));
+        assertEquals(P, ArenaPlace.parse(Map.of("_note", "a note")).place(), "a note is not a param");
     }
 
     @Test
@@ -169,7 +185,9 @@ class ArenaPlaceTest {
                 ArenaPlace place = new ArenaPlace(a, p, ArenaPlace.MIN_WALL, 64);
                 int[] arr = place.arrival();
                 assertTrue(place.prepInside().contains(arr[0], arr[1], arr[2]));
-                assertTrue(place.inReach(arr[0], arr[1], arr[2]));
+                assertFalse(place.inReach(arr[0], arr[2]), "he arrives outside the reach, and aims into it");
+                assertTrue(place.area().contains(arr[0], arr[2]));
+                assertTrue(place.inReach(0, 0));
                 assertTrue(place.footprint().containsColumn(place.prepInside().x1() + 1, place.prepInside().z1() + 1));
             }
         }

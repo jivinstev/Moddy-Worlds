@@ -5,9 +5,13 @@ import com.moddingfromamod.plugin.ModdyPlugin;
 import com.moddingfromamod.plugin.Plugins;
 import com.moddingfromamod.world.WorldModule;
 import com.moddingfromamod.world.WorldModuleType;
+import com.moddingfromamod.world.WorldRuleType;
 import net.minecraft.server.MinecraftServer;
 
-/** Moddy Arena, plugged into the core: its world module, which runs in the worlds made as Moddy Arena. */
+/**
+ * Moddy Arena, plugged into the core: its world module, which runs in the worlds made as Moddy Arena, and its rule
+ * type, {@code arena_place} ({@link ArenaRule}), which sizes the place in a world's rules file.
+ */
 public final class ArenaPlugin implements ModdyPlugin {
 
     @Override
@@ -34,5 +38,6 @@ public final class ArenaPlugin implements ModdyPlugin {
                 return LevelClaim.claims(server, ArenaMod.LEVEL);
             }
         });
+        plugins.add(WorldRuleType.class, new ArenaRule());
     }
 }

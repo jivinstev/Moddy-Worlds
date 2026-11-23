@@ -36,8 +36,6 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
     public static final int MAX_WALL = 8;
     /** The prep room's inside height (and its glass walls'). */
     public static final int PREP_HEIGHT = 4;
-    /** How far above the floor a wish may still land: the arena's air, well over the wall. */
-    public static final int REACH_UP = 32;
 
     /** The default place: an arena 31 wide, a prep room 9 wide, a wall 4 high, standing at y 64. */
     public static final ArenaPlace DEFAULT = new ArenaPlace(31, 9, 4, 64);
@@ -73,6 +71,9 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
     public static Parsed parse(Map<String, ?> params) {
         Map<String, ?> p = params == null ? Map.of() : params;
         for (String key : p.keySet()) {
+            if (key.startsWith("_")) {
+                continue;                       // a note, as everywhere in a rules file
+            }
             if (!key.equals("arenaSize") && !key.equals("prepSize") && !key.equals("wallHeight")) {
                 return new Parsed(null, "unknown param '" + key + "' (arenaSize, prepSize, wallHeight)");
             }
@@ -139,7 +140,7 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
         GLASS,
         /** the prep room's roof */
         PREP_ROOF,
-        /** air: clears the gate's opening above the gate */
+        /** air: the insides, and the gate's opening above the gate */
         AIR,
         /** the gate between the prep room and the arena (a fence gate, facing the arena) */
         GATE
@@ -190,26 +191,63 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
         return new Box(-ah() - 1, floorY - 1, -ah() - 1, ah() + 1, floorY + wallHeight, p.z1() + 1);
     }
 
-    /**
-     * Where a wish may land: the arena's inside and the prep room's inside, from the floor up to {@link #REACH_UP}
-     * blocks above it, walls excluded. Two boxes; a point is inside when either holds it.
-     */
-    public List<Box> reach() {
-        Box a = arenaInside();
-        Box p = prepInside();
-        int top = floorY + REACH_UP;
-        return List.of(new Box(a.x0(), floorY - 1, a.z0(), a.x1(), top, a.z1()),
-                new Box(p.x0(), floorY - 1, p.z0(), p.x1(), p.y1(), p.z1()));
+    /** A column-aligned rectangle (every y), both corners inclusive: the shape the core's bases speak. */
+    public record Columns(int minX, int maxX, int minZ, int maxZ) {
+        public boolean contains(int x, int z) {
+            return x >= minX && x <= maxX && z >= minZ && z <= maxZ;
+        }
     }
 
-    /** True when (x, y, z) is where a wish may land ({@link #reach}). */
-    public boolean inReach(int x, int y, int z) {
-        for (Box b : reach()) {
-            if (b.contains(x, y, z)) {
-                return true;
-            }
+    /**
+     * Where a wish may be AIMED: the arena's floor, wall to wall (every height, as the core's reach rule reads a
+     * base). The prep room is not in it: "a wish stays inside the arena".
+     */
+    public Columns reach() {
+        Box a = arenaInside();
+        return new Columns(a.x0(), a.x1(), a.z0(), a.z1());
+    }
+
+    /** True when a wish aimed at the column (x, z) lands ({@link #reach}). */
+    public boolean inReach(int x, int z) {
+        return reach().contains(x, z);
+    }
+
+    /**
+     * What nothing a wish does may reach past: the whole place, walls and prep room included (the rectangle round
+     * both; where a wish runs from, he stands in the prep room).
+     */
+    public Columns area() {
+        Box f = footprint();
+        return new Columns(f.x0(), f.x1(), f.z0(), f.z1());
+    }
+
+    /** The way a player faces on arrival: north, through the glass at the arena (Minecraft's yaw 180). */
+    public static final float ARRIVAL_YAW = 180f;
+
+    /**
+     * What a world's start does, given the place it already built (null: none yet) and the place its rules ask for:
+     * build the wanted one, or keep what stands. Sizes that change after the place is built change nothing that
+     * stands: the built place is kept (and its reach), and {@code note} says so for the log.
+     */
+    public record Start(ArenaPlace place, boolean build, String note) {
+    }
+
+    /** {@link Start}, decided. Pure. */
+    public static Start onStart(ArenaPlace built, ArenaPlace wanted) {
+        ArenaPlace want = wanted == null ? DEFAULT : wanted;
+        if (built == null) {
+            return new Start(want, true, "");
         }
-        return false;
+        if (built.equals(want)) {
+            return new Start(built, false, "");
+        }
+        return new Start(built, false, "the rules now ask for " + want.describe() + ", but this world's place was built as "
+                + built.describe() + " and is kept as it is (a new world gets the new sizes)");
+    }
+
+    /** "arena 31, prep room 9, wall 4" */
+    public String describe() {
+        return "arena " + arenaSize + ", prep room " + prepSize + ", wall " + wallHeight;
     }
 
     /** The boxes to fill, in order, to build the place on nothing (a void world). */
@@ -218,6 +256,9 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
         int a = ah();
         int fy = floorY - 1;
         int top = floorY + wallHeight - 1;
+        // the insides cleared first (nothing to clear in a void world; in any other, the room is a room)
+        out.add(new Fill(arenaInside(), Kind.AIR));
+        out.add(new Fill(prepInside(), Kind.AIR));
         // the arena: floor, then the wall ring (floor to top), then the rim one block wider inward on top
         out.add(new Fill(new Box(-a - 1, fy, -a - 1, a + 1, fy, a + 1), Kind.ARENA_FLOOR));
         out.add(new Fill(new Box(-a - 1, floorY, -a - 1, a + 1, top, -a - 1), Kind.ARENA_WALL));
