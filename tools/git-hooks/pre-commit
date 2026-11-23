@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# PRE-COMMIT: refuse a commit whose staged changes ADD an API key or token, or private work.
+#
+# Installed by tools/git-hooks/install.sh with pre-push. Two scans of what the index adds:
+#   * tools/secret-scan.py --staged: every credential shape in tools/secret_patterns.py, and the live secret values of
+#     the environment you commit from (any *_KEY, *_TOKEN, *_SECRET with a long value);
+#   * tools/leak-scan.py over the staged files: the built-in rules, this repository's tools/leak-rules.txt, and your
+#     private forbidden list when one is configured (git config moddy.forbidden, $MODDY_FORBIDDEN_FILE or
+#     ~/.moddy/forbidden.txt).
+# A finding names the file, the line and the kind; never what matched. pre-push scans every outgoing commit again.
+set -uo pipefail
+top="$(git rev-parse --show-toplevel)" || exit 1
+for f in secret-scan.py secret_patterns.py leak-scan.py; do
+    if [ ! -f "$top/tools/$f" ]; then
+        echo "pre-commit: tools/$f is missing, so nothing can be checked; refusing the commit" >&2
+        exit 1
+    fi
+done
+rc=0
+if ! python3 "$top/tools/secret-scan.py" --repo "$top" --staged >&2; then
+    echo "pre-commit: REFUSED. Take the credential out (refer to it by its environment variable), and rotate it if" >&2
+    echo "pre-commit: it was real. A documented fake goes on a line marked 'secret-scan: allow'." >&2
+    rc=1
+fi
+args=()
+listed="$(git config --get moddy.forbidden || true)"
+[ -n "$listed" ] && args=(--forbidden "$listed")
+staged=()
+while IFS= read -r -d '' p; do staged+=("$p"); done < <(git -C "$top" diff --cached --name-only --diff-filter=ACMR -z)
+if [ "${#staged[@]}" -gt 0 ]; then
+    if ! (cd "$top" && python3 tools/leak-scan.py "${args[@]}" "${staged[@]}") >&2; then
+        echo "pre-commit: REFUSED. A staged file carries private work (or the scan could not run). This repository is" >&2
+        echo "pre-commit: public: take it out of the file, never only out of a later commit." >&2
+        rc=1
+    fi
+fi
+exit "$rc"

@@ -1,0 +1,59 @@
+# CI: nothing private and no credential gets into this repository.
+#
+#   no-private-work  tools/leak-scan.py over every tracked file AND every commit in the history (its built-in rules,
+#                    tools/leak-rules.txt, and the maintainers' private forbidden list when the FORBIDDEN_LIST secret is
+#                    set), then tools/secret-scan.py over the tree and the history. A finding never prints what matched.
+#
+# Light on purpose while the repository is private (its Actions minutes are limited): pull requests to main and a manual
+# run (Actions -> CI -> Run workflow), nothing on a push to a feature branch, and a newer push to a PR cancels the older run.
+#
+# Secret (Settings -> Secrets and variables -> Actions), optional:
+#   FORBIDDEN_LIST   the maintainers' private forbidden list, as text (the format of tools/leak-scan.py). Absent, the
+#                    scan runs the committed rules only; a pull request from a fork never sees it.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  no-private-work:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: The scanners' rules can still go red
+        run: |
+          python3 tools/test-leak-scan.py
+          python3 tools/test-secret-scan.py
+      - name: The private forbidden list, when configured
+        env:
+          FORBIDDEN_LIST: ${{ secrets.FORBIDDEN_LIST }}
+        run: |
+          if [ -n "$FORBIDDEN_LIST" ]; then
+            umask 077
+            printf '%s\n' "$FORBIDDEN_LIST" > "$RUNNER_TEMP/forbidden.txt"
+            echo "MODDY_FORBIDDEN_FILE=$RUNNER_TEMP/forbidden.txt" >> "$GITHUB_ENV"
+            echo "leak scan: with the private forbidden list"
+          else
+            echo "::notice::no FORBIDDEN_LIST secret: the leak scan runs the built-in and committed rules only"
+          fi
+      - name: Leak scan, every tracked file
+        run: python3 tools/leak-scan.py --tree
+      - name: Leak scan, every commit in the history
+        run: python3 tools/leak-scan.py --commits -- HEAD
+      - name: Secret scan, the tree and the history
+        run: |
+          python3 tools/secret-scan.py --tree
+          python3 tools/secret-scan.py --history
+
