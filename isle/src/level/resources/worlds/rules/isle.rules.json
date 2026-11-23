@@ -1,0 +1,108 @@
+{
+  "store": "world-rules",
+  "v": 1,
+  "world": "isle",
+  "rules": [
+    {
+      "id": "same-time-for-all",
+      "type": "deny_world_effect",
+      "effects": [
+        "time"
+      ],
+      "message": {
+        "rule": "time is the same for every island",
+        "why": "so the sun rises and sets for everyone together"
+      }
+    },
+    {
+      "id": "same-sky-for-all",
+      "type": "deny_world_effect",
+      "effects": [
+        "weather"
+      ],
+      "message": {
+        "rule": "the weather is the same for every island",
+        "why": "we all share one sky"
+      }
+    },
+    {
+      "id": "same-game-for-all",
+      "type": "deny_world_effect",
+      "effects": [
+        "gamerules_difficulty"
+      ],
+      "message": {
+        "rule": "the game rules are the same for everyone",
+        "why": "every island plays the same game"
+      }
+    },
+    {
+      "id": "no-world-rules",
+      "type": "deny_world_effect",
+      "effects": [
+        "worldwide_datapacks_standing_rules"
+      ],
+      "message": {
+        "rule": "a wish can't make a rule for the whole world",
+        "why": "it would change every other island too"
+      }
+    },
+    {
+      "id": "same-recipes-for-all",
+      "type": "deny_world_effect",
+      "effects": [
+        "recipes_drops"
+      ],
+      "message": {
+        "rule": "recipes and drops are the same for everyone",
+        "why": "that is what makes things rare and worth finding"
+      }
+    },
+    {
+      "id": "your-own-island",
+      "type": "base_reach",
+      "effects": [
+        "outside_own_base",
+        "others_bases",
+        "other_dimensions"
+      ],
+      "message": {
+        "rule": "a wish stays on your own island",
+        "why": "every island belongs to the player who lives there"
+      }
+    },
+    {
+      "id": "scoped-rules-ok",
+      "type": "allow_base_scoped",
+      "params": {
+        "scopes": [
+          "own_base",
+          "pets"
+        ],
+        "lifetimeDays": 7,
+        "renewByPlay": true
+      }
+    },
+    {
+      "id": "short-boosts-modest-gifts",
+      "type": "clamp",
+      "params": {
+        "powerSeconds": 300,
+        "stacksPerKind": 1,
+        "kindsPerWish": 3,
+        "xpLevels": 5
+      }
+    },
+    {
+      "id": "wish-bank",
+      "type": "wish_bank",
+      "params": {
+        "start": 10,
+        "refillMinutes": 30,
+        "cap": 10,
+        "pricePerWish": 1
+      }
+    }
+  ],
+  "_notes": "What Scarcity Isle denies (time, weather, game rules and difficulty, world-wide datapacks and standing rules, recipes and drops, other players' bases, outside your own base, the Nether and the End) and the standing rules it ALLOWS (scoped to his own island or his pets). Schema: the core's WorldRules.parse. The wish bank: 10 to start, +1 every 30 minutes of real time, capped at 10, 1 a wish; a world with no wish_bank rule has no bank. The clamp: a power on him at most 300 s and never forever, a stack of each item and 3 kinds a wish, 5 XP levels a wish; shortened or shrunk and said, never refused."
+}

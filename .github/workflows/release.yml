@@ -1,0 +1,168 @@
+# Release: build a level jar from main and publish it as a GitHub (pre-)release, by hand only
+# (Actions -> Release -> Run workflow). It is the only way a release is made: nothing else here can create one.
+#
+# It builds against the PUBLIC core exactly as <level>/core.lock pins it (never a -PcoreJar override), runs the unit
+# tests, checks the jar holds only the level's own packages, resources and packs (tools/check-level-jar.py), scans
+# the jar's contents and the tree for private work and credentials, and then publishes:
+#   * a workflow artifact with the jar and SHA256SUMS, always;
+#   * a release tagged <level>-<mod_version>-mc<minecraft_version> (e.g. isle-0.1.0-mc1.21.8) carrying the jar and
+#     SHA256SUMS, a PRE-release unless prerelease is unticked. Its notes name the core release and sha256 it was built
+#     against, which is the core a player installs beside it. An existing tag is never overwritten: bump mod_version.
+#
+# Secrets: CORE_READ_TOKEN (Contents: read on the core's repository) while that repository is private;
+# FORBIDDEN_LIST (optional) as in ci.yml.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      level:
+        description: "The world to release: its folder (any top-level folder with a core.lock, e.g. isle)"
+        type: string
+        required: true
+        default: isle
+      prerelease:
+        description: "Publish as a pre-release (untick only for a build a person has played)"
+        type: boolean
+        default: true
+      dry_run:
+        description: "Build, check and upload the artifact, but create no release"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Only from main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::a release is built from main only (this run is on ${GITHUB_REF})"
+          exit 1
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: The world is one of this repository's
+        # The same discovery CI uses (tools/changed-worlds.py): a world is a top-level folder holding core.lock, so a
+        # new world needs no edit here. The input reaches the shell only through env, and is checked before any use.
+        env:
+          LEVEL: ${{ inputs.level }}
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess, sys
+          worlds = json.loads(subprocess.run([sys.executable, "tools/changed-worlds.py", "--all"],
+                                             capture_output=True, text=True, check=True).stdout)
+          if os.environ["LEVEL"] not in worlds:
+              sys.exit(f"::error::'{os.environ['LEVEL']}' is not a world here; the worlds are: {', '.join(worlds)}")
+          print("releasing world:", os.environ["LEVEL"])
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: true
+      - name: The private forbidden list, when configured
+        env:
+          FORBIDDEN_LIST: ${{ secrets.FORBIDDEN_LIST }}
+        run: |
+          if [ -n "$FORBIDDEN_LIST" ]; then
+            umask 077
+            printf '%s\n' "$FORBIDDEN_LIST" > "$RUNNER_TEMP/forbidden.txt"
+            echo "MODDY_FORBIDDEN_FILE=$RUNNER_TEMP/forbidden.txt" >> "$GITHUB_ENV"
+          fi
+      - name: Nothing private or secret in the tree
+        run: |
+          python3 tools/leak-scan.py --tree
+          python3 tools/secret-scan.py --tree
+      - name: The version and the tag
+        id: v
+        env:
+          LEVEL: ${{ inputs.level }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prop() { sed -n "s/^$1=//p" "$LEVEL/gradle.properties" | head -1; }
+          ver="$(prop mod_version)"; mc="$(prop minecraft_version)"; modid="$(prop mod_id)"
+          [ -n "$ver" ] && [ -n "$mc" ] && [ -n "$modid" ] || { echo "::error::$LEVEL/gradle.properties lacks mod_version/minecraft_version/mod_id"; exit 1; }
+          tag="$LEVEL-$ver-mc$mc"
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null || gh release view "$tag" >/dev/null 2>&1; then
+            echo "::error::$tag already exists: bump mod_version in $LEVEL/gradle.properties"; exit 1
+          fi
+          lock="$LEVEL/core.lock"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "modid=$modid" >> "$GITHUB_OUTPUT"
+          echo "core_tag=$(sed -n 's/^core_tag=//p' "$lock")" >> "$GITHUB_OUTPUT"
+          echo "core_repo=$(sed -n 's/^core_repo=//p' "$lock")" >> "$GITHUB_OUTPUT"
+          echo "core_asset=$(sed -n 's/^core_asset=//p' "$lock")" >> "$GITHUB_OUTPUT"
+          echo "core_sha256=$(sed -n 's/^core_sha256=//p' "$lock")" >> "$GITHUB_OUTPUT"
+      - name: The workflow's core pins match the core.lock files
+        run: python3 tools/core-pins.py --check
+      # BEGIN core pins: written by tools/core-pins.py from */core.lock; edit core.lock, then tools/core-pins.py --write
+      - name: The pinned public core moddingfromamod-1.0.3-mc1.21.8 (isle)
+        env:
+          GH_TOKEN: ${{ secrets.CORE_READ_TOKEN }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/core"
+          curl -fsSL -o "$RUNNER_TEMP/core/moddingfromamod-1.0.3+mc1.21.8.jar" "https://github.com/jivinstev/moddy-the-wish-watch/releases/download/moddingfromamod-1.0.3-mc1.21.8/moddingfromamod-1.0.3+mc1.21.8.jar" || gh release download "moddingfromamod-1.0.3-mc1.21.8" -R "jivinstev/moddy-the-wish-watch" -p "moddingfromamod-1.0.3+mc1.21.8.jar" -D "$RUNNER_TEMP/core" --clobber
+          echo "7f4f9e3ab33cbe94c72bce4f4b6319409ee1b8bd7dfecb350205cd3ebc457b70  $RUNNER_TEMP/core/moddingfromamod-1.0.3+mc1.21.8.jar" | sha256sum -c -
+          for w in isle; do mkdir -p "$w/.core"; cp "$RUNNER_TEMP/core/moddingfromamod-1.0.3+mc1.21.8.jar" "$w/.core/"; done
+      # END core pins
+      - name: Unit tests and the jar (against the pinned core only)
+        env:
+          LEVEL: ${{ inputs.level }}
+        run: ./gradlew --no-daemon -p "$LEVEL" clean test jar
+      - name: The jar holds only the level
+        id: jar
+        env:
+          LEVEL: ${{ inputs.level }}
+          MODID: ${{ steps.v.outputs.modid }}
+        run: |
+          set -- "$LEVEL"/build/libs/"$MODID"-*.jar
+          [ "$#" -eq 1 ] && [ -f "$1" ] || { echo "::error::expected exactly one $MODID jar in $LEVEL/build/libs"; exit 1; }
+          python3 tools/check-level-jar.py "$1" --level "$LEVEL"
+          mkdir -p "$RUNNER_TEMP/jar" && unzip -q "$1" -d "$RUNNER_TEMP/jar"
+          # datapacks/ is third-party and unmodified, its bytes pinned by sha1 in datapacks.lock.json: not our text
+          rm -rf "$RUNNER_TEMP/jar/datapacks"
+          python3 tools/leak-scan.py --dir "$RUNNER_TEMP/jar"
+          mkdir -p dist && cp "$1" dist/
+          (cd dist && sha256sum ./*.jar | sed 's# \./# #' > SHA256SUMS && cat SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.v.outputs.tag }}
+          path: dist/
+          retention-days: 30
+      - name: Publish the release
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.v.outputs.tag }}
+          PRE: ${{ inputs.prerelease && '--prerelease' || '' }}
+          CORE_REPO: ${{ steps.v.outputs.core_repo }}
+          CORE_TAG: ${{ steps.v.outputs.core_tag }}
+          CORE_ASSET: ${{ steps.v.outputs.core_asset }}
+          CORE_SHA: ${{ steps.v.outputs.core_sha256 }}
+          LEVEL: ${{ inputs.level }}
+          MODID: ${{ steps.v.outputs.modid }}
+        run: |
+          {
+            echo "Built from $(git rev-parse HEAD) by [this run](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})."
+            echo
+            echo "Install it beside the Moddy core it was built and tested against:"
+            echo
+            echo "- core: \`$CORE_ASSET\` from ${CORE_REPO} release \`$CORE_TAG\`"
+            echo "- core sha256: \`$CORE_SHA\`"
+            echo
+            echo "Then Create World -> World tab -> World Type: $(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["generator.'"$MODID"'.'"$LEVEL"'"])' "$LEVEL/src/level/resources/assets/$MODID/lang/en_us.json")."
+            [ -n "$PRE" ] && { echo; echo "Pre-release until played by a person."; }
+          } > notes.md
+          gh release create "$TAG" dist/*.jar dist/SHA256SUMS --target "$GITHUB_SHA" --title "$TAG" --notes-file notes.md $PRE
+          echo "Released $TAG" >> "$GITHUB_STEP_SUMMARY"

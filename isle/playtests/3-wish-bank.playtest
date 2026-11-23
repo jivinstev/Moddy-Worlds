@@ -1,0 +1,25 @@
+# Scarcity Isle (#2750): the wish bank (bank/, the WishCharge hook the level jar fills). Every wish counts: a new
+# player starts with 10, and a ready-made make costs half of one.
+@intent the Isle's wish bank shows a new player's wishes and charges a ready-made make half a wish
+@world flat seed=1
+
+@step arrive
+@expect chat How to use Moddy within 90s
+@repeat 30 until execute if entity @s[y=60,dy=12]
+@wait 1s
+@end-repeat
+
+@step a full bank
+moddy wishes
+@expect chat Your wishes: 10/10 within 10s
+
+@step a ready-made make costs half a wish
+moddy apprentice a stack of oak logs
+@expect screen Container within 10s
+@click slot 0
+@repeat 20 until execute if items entity @s container.* minecraft:oak_log
+@wait 1s
+@end-repeat
+@wait 2s
+moddy wishes
+@expect chat /Your wishes: 9½\/10/ within 10s

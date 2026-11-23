@@ -1,13 +1,21 @@
-# CI: nothing private and no credential gets into this repository.
+# CI: nothing private and no credential gets into this repository, and every level builds and passes its unit tests
+# against the public core it pins.
 #
 #   no-private-work  tools/leak-scan.py over every tracked file AND every commit in the history (its built-in rules,
 #                    tools/leak-rules.txt, and the maintainers' private forbidden list when the FORBIDDEN_LIST secret is
 #                    set), then tools/secret-scan.py over the tree and the history. A finding never prints what matched.
+#   worlds           which worlds the change touches (tools/changed-worlds.py: a world's own folder builds that world;
+#                    shared/, tools/, .github/ or the Gradle wrapper build them all; a manual run builds them all)
+#   world            for each of them: the pinned core jar (the generated core-pin step, sha256-checked), its unit tests and
+#                    its jar, tools/check-level-jar.py over that jar (only its own packages, resources and packs), and
+#                    the leak scan over the jar's contents.
 #
 # Light on purpose while the repository is private (its Actions minutes are limited): pull requests to main and a manual
 # run (Actions -> CI -> Run workflow), nothing on a push to a feature branch, and a newer push to a PR cancels the older run.
 #
-# Secret (Settings -> Secrets and variables -> Actions), optional:
+# Secrets (Settings -> Secrets and variables -> Actions), both optional:
+#   CORE_READ_TOKEN  a fine-grained token with Contents: read on the core's repository, needed only while that
+#                    repository is private (its release assets are not downloadable without one).
 #   FORBIDDEN_LIST   the maintainers' private forbidden list, as text (the format of tools/leak-scan.py). Absent, the
 #                    scan runs the committed rules only; a pull request from a fork never sees it.
 name: CI
@@ -36,6 +44,11 @@ jobs:
         run: |
           python3 tools/test-leak-scan.py
           python3 tools/test-secret-scan.py
+          python3 tools/check-level-jar.py --self-test
+          python3 tools/changed-worlds.py --self-test
+          python3 tools/core-pins.py --self-test
+      - name: The workflows' core pins match the core.lock files
+        run: python3 tools/core-pins.py --check
       - name: The private forbidden list, when configured
         env:
           FORBIDDEN_LIST: ${{ secrets.FORBIDDEN_LIST }}
@@ -57,3 +70,71 @@ jobs:
           python3 tools/secret-scan.py --tree
           python3 tools/secret-scan.py --history
 
+
+  worlds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      list: ${{ steps.pick.outputs.list }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: pick
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ -n "$BASE" ]; then list="$(python3 tools/changed-worlds.py --base "$BASE")"; else list="$(python3 tools/changed-worlds.py --all)"; fi
+          echo "worlds to build: $list"
+          echo "list=$list" >> "$GITHUB_OUTPUT"
+
+  world:
+    needs: worlds
+    if: ${{ needs.worlds.outputs.list != '[]' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        world: ${{ fromJSON(needs.worlds.outputs.list) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+      # BEGIN core pins: written by tools/core-pins.py from */core.lock; edit core.lock, then tools/core-pins.py --write
+      - name: The pinned public core moddingfromamod-1.0.3-mc1.21.8 (isle)
+        env:
+          GH_TOKEN: ${{ secrets.CORE_READ_TOKEN }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/core"
+          curl -fsSL -o "$RUNNER_TEMP/core/moddingfromamod-1.0.3+mc1.21.8.jar" "https://github.com/jivinstev/moddy-the-wish-watch/releases/download/moddingfromamod-1.0.3-mc1.21.8/moddingfromamod-1.0.3+mc1.21.8.jar" || gh release download "moddingfromamod-1.0.3-mc1.21.8" -R "jivinstev/moddy-the-wish-watch" -p "moddingfromamod-1.0.3+mc1.21.8.jar" -D "$RUNNER_TEMP/core" --clobber
+          echo "7f4f9e3ab33cbe94c72bce4f4b6319409ee1b8bd7dfecb350205cd3ebc457b70  $RUNNER_TEMP/core/moddingfromamod-1.0.3+mc1.21.8.jar" | sha256sum -c -
+          for w in isle; do mkdir -p "$w/.core"; cp "$RUNNER_TEMP/core/moddingfromamod-1.0.3+mc1.21.8.jar" "$w/.core/"; done
+      # END core pins
+      - name: Unit tests and the jar
+        env:
+          WORLD: ${{ matrix.world }}
+        run: ./gradlew --no-daemon -p "$WORLD" test jar
+      - name: The jar holds only the world
+        env:
+          WORLD: ${{ matrix.world }}
+        run: |
+          modid="$(sed -n 's/^mod_id=//p' "$WORLD/gradle.properties")"
+          python3 tools/check-level-jar.py "$WORLD"/build/libs/"$modid"-*.jar --level "$WORLD"
+          mkdir -p "$RUNNER_TEMP/jar" && unzip -q "$WORLD"/build/libs/"$modid"-*.jar -d "$RUNNER_TEMP/jar"
+          # datapacks/ is third-party and unmodified, its bytes pinned by sha1 in datapacks.lock.json: not our text.
+          # leak-scan.py carries every credential shape of tools/secret_patterns.py too.
+          rm -rf "$RUNNER_TEMP/jar/datapacks"
+          python3 tools/leak-scan.py --dir "$RUNNER_TEMP/jar"
+      - name: Test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.world }}-test-reports
+          path: ${{ matrix.world }}/build/reports/tests/
+          retention-days: 7

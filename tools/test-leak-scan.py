@@ -214,7 +214,7 @@ class RepoRules(unittest.TestCase):
            "player-ids": "owner 1b2c3d4e-5f60-4" + "a7b-9c8d-0e1f2a3b4c5d",
            "server-manifest": '{"host' + 'names": ["x"]}',
            "local-paths": "see /home/" + "user/x"}
-    GREEN = ["jivinstev/moddy-worlds and jivinstev/ModdyTheWishWatch", "a lower-case t1.5", "00000000-0000-4000-8000-000000000001",
+    GREEN = ["jivinstev/moddy-worlds and jivinstev/ModdyTheWishWatch", "jivinstev/moddy-the-wish-watch", "a lower-case t1.5", "00000000-0000-4000-8000-000000000001",
              '{"islands": {"spacing": 1024}}']
 
     def cats(self, text):

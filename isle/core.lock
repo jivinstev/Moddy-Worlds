@@ -1,0 +1,8 @@
+# The PUBLIC core jar this level compiles against and is played with: a release asset of the core's public
+# repository, pinned by version AND sha256. The build (shared/level.gradle) refuses any other bytes; tools/play.sh and
+# tools/fetch-core.sh read this file, and tools/core-pins.py --write copies it into the workflows' fetch step (CI checks
+# they agree). Bump it in its own PR: edit this file, run tools/core-pins.py --write, commit both.
+core_repo=jivinstev/moddy-the-wish-watch
+core_tag=moddingfromamod-1.0.3-mc1.21.8
+core_asset=moddingfromamod-1.0.3+mc1.21.8.jar
+core_sha256=7f4f9e3ab33cbe94c72bce4f4b6319409ee1b8bd7dfecb350205cd3ebc457b70

@@ -1,0 +1,19 @@
+# Scarcity Isle (the moddyisle level jar, #2750) on the PUBLIC core: a new player arrives and gets his own island.
+# tools/play.sh passes the Isle's properties (world id, rules file, island spacing), exactly what a server's launcher sets.
+@intent a new player on Scarcity Isle is welcomed and stands on his own island in the sky
+@world flat seed=1
+
+@step he joins
+# the Isle's first-join words (worlds/isle.json "intro", in the level jar; the core reads it through manifestText)
+@expect chat Welcome to Scarcity Isle within 90s
+
+@step his island
+# the island is built a few ticks after the claim, then he is moved onto it: up at Y 63 (the flat world is at -60)
+@wait 5s
+@repeat 30 until execute if entity @s[y=60,dy=12]
+@wait 1s
+@end-repeat
+@assert execute if entity @s[y=60,dy=12]
+# on the island's grass, 120 blocks above the flat world's
+@assert execute at @s if block ~ ~-1 ~ minecraft:grass_block
+@shot his-island

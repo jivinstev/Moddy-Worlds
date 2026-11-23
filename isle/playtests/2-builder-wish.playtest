@@ -1,0 +1,25 @@
+# Scarcity Isle (#2750): one wish that needs no model. The Apprentice reads the words with its local matcher and offers
+# a ready-made make; pressing the top tile grants it at once, with no agent anywhere.
+@intent a player on Scarcity Isle wishes for supplies through the Apprentice and gets them, with no model
+@world flat seed=1
+
+@step arrive
+@expect chat How to use Moddy within 90s
+@repeat 30 until execute if entity @s[y=60,dy=12]
+@wait 1s
+@end-repeat
+@assert execute if entity @s[y=60,dy=12]
+clear @s
+
+@step the Apprentice offers a make
+moddy apprentice a stack of oak logs
+@expect screen Container within 10s
+@shot apprentice-page
+
+@step he presses the top tile
+@click slot 0
+@repeat 20 until execute if items entity @s container.* minecraft:oak_log
+@wait 1s
+@end-repeat
+@assert execute if items entity @s container.* minecraft:oak_log
+@shot granted

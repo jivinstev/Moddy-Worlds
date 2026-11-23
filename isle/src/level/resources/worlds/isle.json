@@ -1,0 +1,225 @@
+{
+  "v": 1,
+  "id": "isle",
+  "name": "Scarcity Isle",
+  "tagline": "Every wish counts.",
+  "creation": {
+    "level_type": "minecraft:normal",
+    "datapacks": [
+      "standard-skyblock",
+      "sky-void-additions",
+      "skyblock-advancements"
+    ]
+  },
+  "datapackDefaults": {
+    "skyvoid_config": {
+      "calcite_from_dead_coral": 0,
+      "deepslate_from_tuff": 0,
+      "more_discs_from_vaults": 0,
+      "sand_from_gravel": 0,
+      "sandstone_from_packing_sand": 0,
+      "sandstone_mason_trade": 0,
+      "tuff_from_magma": 0
+    }
+  },
+  "islands": {
+    "spacing": 1024
+  },
+  "module": "isle",
+  "intro": [
+    "✨ Welcome to Scarcity Isle, where every wish counts!",
+    "This tiny island in the sky is yours. Your goal: grow it from almost nothing into a home. To see your goals, open your wish watch and press 📖 What do I do now?",
+    "First, open the chest. Put the ice down on your island and break it: it melts into water.",
+    "Then pour the lava with two empty blocks between it and the water, and dig a hole in the gap next to the water. Where they meet, cobblestone appears. Mine it, and it comes back!",
+    "Careful: keep lava away from your tree, never pour water on top of the lava, and don't dig away all your dirt. Below the island is the void.",
+    "Break leaves for saplings and plant them on dirt to grow more trees. Your Isle Guide book tells you more.",
+    "Stuck? Open your wish watch and press 📖 What do I do now? for hints. Wishes are scarce here, so choose them well. Type /moddy wishes to see how many you have."
+  ],
+  "guide": {
+    "book": {
+      "title": "Isle Guide",
+      "author": "Moddy",
+      "pages": [
+        "Welcome to\nScarcity Isle!\n\nThis tiny island in the sky is yours.\n\nYour goal: grow it from almost nothing into a home.\n\nTo see your goals, open your wish watch and press 📖 What do I do now?",
+        "Your first steps\n\n1. Open the chest. It has ice and lava.\n\n2. Put the ice on your island and break it. It melts into water!",
+        "3. Leave two empty blocks next to the water, then pour the lava.\n\n4. Dig a hole in the gap, next to the water.\n\nWhere they meet, cobblestone appears.",
+        "Mine the cobblestone and more comes back, again and again. That is your cobblestone generator!\n\nUse the stone for tools, a furnace and more island.",
+        "Be careful\n\nKeep lava away from your tree. It burns wood.\n\nNever pour water on top of the lava. It turns into obsidian and your lava is gone.\n\nDon't fall off the edge!",
+        "Trees and food\n\nPunch the tree for wood. Make planks, sticks, a crafting table and a pickaxe.\n\nBreak leaves for saplings and apples. Plant saplings on dirt.",
+        "Animals\n\nMake a patch of grass, then go 24 to 48 blocks away and wait. Animals can appear on the grass.\n\nKeep your last dirt. Without it, nothing grows.",
+        "Sky island tricks\n\nSand: when a husk (a desert zombie) is beaten while it is on fire, the dirt under it turns into sand.",
+        "Iron: hit a mob wearing an iron chestplate. It can break and drop an iron ingot.\n\nZombies sometimes drop iron too.",
+        "Amethyst: surround a 2x2x2 cube of packed ice with lava, with four lava sources on top. It turns into a geode!",
+        "The Nether\n\nThe Nether has a small island of its own, with obsidian, soul sand and nether wart.\n\nTo get there, build a portal. Your goal list shows how.",
+        "Your wishes\n\nYou start with {bank_start} wishes. One more every {bank_refill_minutes} minutes, up to {bank_cap}. A wish costs {bank_price}; a ready-made one, half.\n\n/moddy wishes",
+        "What Moddy does here\n\nModdy helps on your own island. He keeps gifts small: short flights, short powers, a stack at a time.\n\nWishes don't work in the Nether.",
+        "Wishes that help\n\nWish for what you need, then do the rest yourself:\n\nsome cobblestone\na water wand\nsome raw iron\ntwo cows\na spooky monster cave",
+        "Stuck?\n\nOpen your wish watch and press \"📖 What do I do now?\". It shows your goals and their hints.\n\nWish Magicians can ask Moddy a question, like \"how do I get sand?\" Questions are free!"
+      ]
+    },
+    "goals": {
+      "root": "skyvoid_advancements:overworld/root",
+      "order": [
+        "skyvoid_advancements:overworld/root",
+        "skyvoid_advancements:overworld/wood",
+        "minecraft:story/root",
+        "minecraft:story/mine_stone",
+        "skyvoid_advancements:overworld/cobble_gen",
+        "skyvoid_advancements:overworld/sapling",
+        "skyvoid_advancements:overworld/apple",
+        "skyvoid_advancements:overworld/furnace",
+        "skyvoid_advancements:overworld/charcoal",
+        "skyvoid_advancements:overworld/torch",
+        "minecraft:story/upgrade_tools",
+        "skyvoid_advancements:overworld/farm",
+        "skyvoid_advancements:overworld/mob_farm",
+        "skyvoid_advancements:overworld/zombie_hunter",
+        "minecraft:story/smelt_iron",
+        "skyvoid_advancements:overworld/cauldron",
+        "minecraft:story/lava_bucket",
+        "skyvoid_advancements:overworld/passive_animals"
+      ],
+      "skip": [
+        "skyvoid_advancements:overworld/obsidian"
+      ],
+      "help": {
+        "skyvoid_advancements:overworld/root": {
+          "hint": "Punch your tree until a block of wood pops out.",
+          "wish": "some oak saplings"
+        },
+        "skyvoid_advancements:overworld/wood": {
+          "hint": "Punch your tree until a block of wood pops out. Bone meal grows a sapling into a tree.",
+          "wish": "some bone meal"
+        },
+        "minecraft:story/root": {
+          "hint": "Turn wood into planks, then make a crafting table from four planks.",
+          "wish": "some oak planks"
+        },
+        "minecraft:story/mine_stone": {
+          "hint": "Make sticks from planks, then a wooden pickaxe at your crafting table.",
+          "wish": "some sticks"
+        },
+        "skyvoid_advancements:overworld/cobble_gen": {
+          "hint": "Water and lava with two empty blocks between them, and a hole in the gap next to the water. Mine the cobblestone they make. Lost your water? A water wand puts it back.",
+          "wish": "a water wand"
+        },
+        "skyvoid_advancements:overworld/sapling": {
+          "hint": "Break leaves on your tree until a sapling drops, then plant it on dirt. Bone meal grows more trees.",
+          "wish": "some bone meal"
+        },
+        "skyvoid_advancements:overworld/apple": {
+          "hint": "Oak leaves sometimes drop an apple when you break them. More trees, more leaves.",
+          "wish": "some bone meal"
+        },
+        "skyvoid_advancements:overworld/furnace": {
+          "hint": "Eight cobblestone in a ring at your crafting table make a furnace.",
+          "wish": "some cobblestone"
+        },
+        "skyvoid_advancements:overworld/charcoal": {
+          "hint": "Smelt oak logs in your furnace and they turn into charcoal.",
+          "wish": "some coal"
+        },
+        "skyvoid_advancements:overworld/torch": {
+          "hint": "A stick on top of a piece of coal or charcoal makes four torches.",
+          "wish": "some coal"
+        },
+        "minecraft:story/upgrade_tools": {
+          "hint": "Three cobblestone and two sticks make a stone pickaxe.",
+          "wish": "some cobblestone"
+        },
+        "skyvoid_advancements:overworld/farm": {
+          "hint": "Make a hoe from planks and sticks, then till dirt next to water.",
+          "wish": "a little farm"
+        },
+        "skyvoid_advancements:overworld/mob_farm": {
+          "hint": "Monsters appear in the dark. Beat one!",
+          "wish": "a spooky monster cave"
+        },
+        "skyvoid_advancements:overworld/zombie_hunter": {
+          "hint": "Zombies come out in the dark. Beat one!",
+          "wish": "a lightning sword"
+        },
+        "minecraft:story/smelt_iron": {
+          "hint": "Smelt raw iron in your furnace to make an iron ingot. Zombies sometimes drop iron too.",
+          "wish": "some raw iron"
+        },
+        "skyvoid_advancements:overworld/cauldron": {
+          "hint": "Seven iron ingots in a U at your crafting table make a cauldron.",
+          "wish": "some iron ingots"
+        },
+        "minecraft:story/lava_bucket": {
+          "hint": "Pointed dripstone hanging under a block with lava on top drips lava into a cauldron below.",
+          "wish": "some pointed dripstone"
+        },
+        "skyvoid_advancements:overworld/passive_animals": {
+          "hint": "Two animals and their favourite food: feed them both and a baby appears.",
+          "wish": "two cows"
+        }
+      }
+    }
+  },
+  "people": {
+    "chatSweep": "on",
+    "chat": "self",
+    "islandGuard": true,
+    "pvp": false,
+    "placedText": "sweep"
+  },
+  "crafters": {
+    "builder": {
+      "enabled": true,
+      "ruleScope": "own_island",
+      "kinds": [
+        "creature",
+        "ride",
+        "item",
+        "machine",
+        "magic_block",
+        "building",
+        "picture",
+        "event",
+        "supplies"
+      ],
+      "temperaments": [
+        "friendly",
+        "shy",
+        "wild",
+        "guard",
+        "boss",
+        "pet",
+        "stays"
+      ],
+      "supplies": {
+        "categories": [
+          "wood",
+          "stone",
+          "farming",
+          "light",
+          "metal",
+          "food",
+          "work"
+        ],
+        "most": 64
+      }
+    },
+    "open": true,
+    "islandDays": 14,
+    "ranks": [
+      {
+        "name": "Wish Crafter",
+        "stars": 1
+      },
+      {
+        "name": "Skilled Crafter",
+        "stars": 2,
+        "after": "skyvoid_advancements:overworld/cobble_gen"
+      },
+      {
+        "name": "Master Crafter",
+        "stars": 3,
+        "after": "minecraft:story/smelt_iron"
+      }
+    ]
+  },
+  "_notes": "The Isle's world manifest, as the level jar ships it: what a world made with World Type \"Moddy Isle\" reads (its islands' spacing, its first-join words, its guide book and goal list, its Builder settings, its datapack defaults). islands.spacing turns on one island per player, 1024 blocks apart; it is fixed once the first island exists (islands.json records it). creation.datapacks are the built-in SkyBlock packs the World Type ticks; level_type stays minecraft:normal because Standard SkyBlock overrides the overworld's own worldgen. people.islandGuard sends a player standing in another player's island cell home. crafters.builder: ruleScope own_island because set_rule cannot scope a rule to one island, so the Builder offers no rules here. A server's own launcher may add server settings on top of this file; none of them are needed to play."
+}
