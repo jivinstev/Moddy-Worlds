@@ -15,7 +15,7 @@ place once, around x 0, z 0, standing at y 64:
   a few seconds later reads three lines (`worlds/arena.json`'s `intro`, which the core says once per player per world):
   > Welcome to Moddy Arena! You are in the prep room. The arena is through the glass, past the gate.
   >
-  > Get ready in the prep room. Some wishes can go on your hotbar: open one in My wishes and press Add to hotbar.
+  > Get ready in the prep room: make things, then put them on your hotbar. Open one in My wishes and press Add to hotbar.
   >
   > Press the button beside the gate to start a battle. In a battle, only the wishes on your hotbar work.
 - **The arena**: 31 by 31 inside, a smooth sandstone floor, stone brick walls 4 high with a polished andesite rim on top
@@ -85,13 +85,13 @@ worlds only):
 - **Prep** is whenever no battle is on. **A battle** starts when the button is pressed (the countdown counts as the
   battle: a slow wish made then would land in the middle of a wave) and ends when the arena is tidy again after a win or
   a loss; then every player's Magician count starts again and every rest ends.
-- **The hotbar**: the core puts a thing with a recipe on the hotbar from its page (My wishes, right-click the thing,
-  "Add to hotbar"). Using it makes the thing again, with no typing and no menu: the same replay as "Make another one".
-  In core 1.0.3 a thing has a recipe when it came from one: the starter library's wishes (the watch's ready-made
-  ones, such as the Lightning Sword) and the Magician's wishes he keeps as recipes. **A Builder or Apprentice make has no
-  recipe in 1.0.3, so its page has no "Add to hotbar"** (it has "Change it in the Builder" instead). The core's own
-  one-second sweep shows on the slot; the arena's longer rest is checked when it is used, and a fire during it is
-  refused on the action bar: "That wish is resting. It is ready again in 7 seconds."
+- **The hotbar**: the core puts a thing with a recipe on the hotbar from its page (My wishes, press the thing, "Add to
+  hotbar"; a ready-made wish's page opens on a right click). Using it makes the thing again, with no typing and no menu:
+  the same replay as "Make another one". A thing has a recipe when it came from one: every Builder and Apprentice make
+  he keeps, the starter library's wishes (the watch's ready-made ones, such as the Lightning Sword) and the Magician's
+  wishes he keeps as recipes. A hotbar wish stays his when he is knocked out: it is back in its slot when he comes back
+  in the prep room. The core's own one-second sweep shows on the slot; the arena's longer rest is checked when it is
+  used, and a fire during it is refused on the action bar: "That wish is resting. It is ready again in 7 seconds."
 - **A Magician wish is counted when the Magician picks it up**, not when it is typed: a typed wish the wish library
   answers with no model costs nothing. A counted wish that fails, is stopped, times out or is undone gives its count
   back. A wish refused for the count is never charged: "You have used all 3 Magician wishes for this prep. You get 3
@@ -108,7 +108,9 @@ How the arena tells the kinds apart, at the core's submit hook (`refusesAtSubmit
 `recipe` false is typed words; a recipe whose text starts with the core's Builder prefix (`"Builder: "`) is a new make
 (the Builder's menus, an Apprentice tile, a typed change the Builder carries out); any other recipe is a kept thing made
 again (the hotbar, "Make another one", and a left click on a ready-made wish in My wishes all submit its recipe, so all
-three are instant wishes in a battle). The Magician's pickup (`atPickup`) is the only place a wish reaches a model. The
+three are instant wishes in a battle). A kept Builder or Apprentice make's recipe (`builder:<make id>`) reaches the hook
+with the make's own name as its text and no prefix, so its hotbar wish is a kept thing made again too, while a new make
+of the same thing still carries the prefix and is refused in a battle. The Magician's pickup (`atPickup`) is the only place a wish reaches a model. The
 hook is told the wish's text, not its recipe id: a kept thing's rest is keyed by that text, which is the recipe id from
 the hotbar and "Make another one" but the tile's own words from My wishes, so those two rest separately.
 
@@ -123,7 +125,9 @@ also take in the open sky beside the prep room:
   of the player when he aims at nothing, lands on the arena's floor beyond the gate when he faces the arena;
 - **standing anywhere else** (the arena included): the arena's inside, its floor or the air above it, wall to wall.
 
-Nothing a wish does may reach past the place. A wish aimed anywhere else is refused. The rules also carry a clamp
+Nothing a wish does may reach past the place. A wish aimed anywhere else is refused. A creature from the Builder or the
+Apprentice goes by the same rule: made in the arena it lands there (made in the prep room it lands beside him), and
+made outside the place it is refused. The rules also carry a clamp
 (powers at most 60 seconds, one stack of each item, 2 kinds and 2 XP levels a wish).
 
 ## The rules file
@@ -223,13 +227,14 @@ the carrier's flat world (`playtests/play.props` names the module), where the pl
 make aimed at the arena floor lands), `3-wish-outside-refused` (the same make made standing on the ground outside the
 place is refused),
 `4-battle-won` (the button pressed, five waves cleared, won, the arena tidied: the monsters are killed by command, the
-player kept safe) and `5-battle-lost` (knocked out in wave 1, lost, back in the prep room with his sword, the arena
-tidied) and `6-prep-and-hotbar` (in prep, a make from the prep room lands in the arena ahead of it and one made in the
-arena lands there, and the starter Lightning Sword is made by its recipe; its hotbar wish is used in the battle and
-makes it again, a second fire at once is refused with the seconds left, a new make is refused with the arena's words;
-after the battle the hotbar wish is still there and new makes work; knocked out, the hotbar wish is gone). The
-carrier clicks with the left button only, and a ready-made wish's page opens on a right click, so that script puts the
-hotbar wish in place with the data the core's "Add to hotbar" writes.
+player kept safe), `5-battle-lost` (knocked out in wave 1, lost, back in the prep room with his sword, the arena
+tidied), `6-prep-and-hotbar` (in prep, a make from the prep room lands in the arena ahead of it and one made in the arena
+lands there, and an Apprentice Fire Sword goes on the hotbar from its own page in My wishes, by "Add to hotbar"; its
+hotbar wish is used in the battle and makes it again, a second fire at once is refused with the seconds left, a new make
+is refused with the arena's words; after the battle the hotbar wish is still there and new makes work),
+`7-creature-in-the-arena` (an Apprentice cat made in the arena lands there; made standing outside the place, it is
+refused and nothing is left) and `8-knocked-out-keeps-hotbar` (knocked out in a battle holding a hotbar wish, he comes
+back in the prep room with it in its slot, and it still makes the sword).
 
 **A battle on a server with nobody on** (a test): `-PmoddyProps=arena.allowEmptyBattle=true` (the property
 `moddingfromamod.arena.allowEmptyBattle`) lets `/moddy arena start` start a battle from the console and carry it on with
@@ -282,13 +287,5 @@ What the public core does not let a world do yet (so the arena does not do it ei
   that fixed line whenever the charge refuses a make; the arena's own line is said after it.
 - **The hotbar's sweep shows one second**: a world cannot set the cooldown the slot draws, so the arena's rest is told
   in words when it is pressed.
-- **A Builder or Apprentice make cannot go on the hotbar**: in core 1.0.3 it has no recipe, so the hotbar holds only
-  ready-made and Magician wishes kept as recipes.
-- **A hotbar wish is lost when the player is knocked out**: the core takes it out of what he drops, and nothing puts it
-  back. It is still in My wishes, and goes back on the hotbar from
-  its page.
-- **A creature from the Builder or the Apprentice is refused here** (seen from the prep room: "Pal the Cat didn't work
-  this time"): the core checks that what its `modify_mob` step touches, 64 blocks round the player, stays inside the
-  base's area, and the whole place is smaller than that.
 - **"Give me one"** (a copy of a kept item) is not a wish, and the core's hook for it does not say which thing it is,
   so the arena lets it through in a battle with no rest.
