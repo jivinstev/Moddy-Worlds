@@ -38,7 +38,7 @@ refuses a split package).
 ## Play a world
 
 **By hand:** put the Moddy core jar and the world's jar in a NeoForge 1.21.8 instance (the world's
-release notes name the core release it was built against), then **Create World → World tab →
+[release notes](../../releases) name the core release it was built against), then **Create World → World tab →
 World Type** (for the Isle: **Moddy Isle**). That is all: the world switches itself on in that world and nowhere else.
 
 **A dedicated server** selects it the vanilla way in `server.properties`, read only when the world is first created.
@@ -126,8 +126,8 @@ The rules a world jar keeps:
    field, name the folder in its `Level`, and rewrite `THIRD_PARTY_NOTICES.txt`), its rules, its module. World files
    carry gameplay only: no hostnames, ports, machines, cameras, spend caps or agent briefs (the leak scan refuses those
    keys).
-4. Add a row to the table above. CI picks the new folder up by itself (it finds every folder with a `core.lock`,
-   `tools/changed-worlds.py`).
+4. Add a row to the table above. CI picks the new folder up by itself, and so does the release (both find every folder
+   with a `core.lock`, `tools/changed-worlds.py`).
 
 ## Keeping this repository free of private work
 
@@ -163,3 +163,11 @@ sha256 check is the same either way. Locally, `tools/fetch-core.sh` fetches the 
 whose tag ends `-mc<mc>`. This repository has several worlds on `main`, each tagged `<world>-<version>-mc<mc>`, so with
 two worlds it would pick whichever was released last. The layout stays as it is; until MMVU can select a world (a tag
 prefix), install the core and the worlds' jars by hand ("Play a world" above) in a test instance.
+
+## Releases
+
+Only the **Release** workflow makes a release (Actions → Release → Run workflow, from `main`, typing the world's folder,
+which it checks against the same discovery CI uses): it
+builds that world against its pinned core, runs its unit tests, checks the jar holds only the world's own packages,
+resources and packs, scans its contents, and publishes the jar with `SHA256SUMS` as a pre-release tagged
+`<world>-<version>-mc<minecraft>` whose notes name the core release and sha256 to install beside it.
