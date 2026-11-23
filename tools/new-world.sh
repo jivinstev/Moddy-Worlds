@@ -13,7 +13,7 @@
 #     META-INF/services listing the plugin;
 #   src/level/resources: the world preset (a normal overworld to start from), its World Type tag entry and name,
 #     worlds/<world>.json and worlds/rules/<world>.rules.json (no rules yet);
-#   src/test/java: a unit test of its Level.
+#   src/test/java: a unit test of its Level; playtests/README.md.
 # Nothing is copied from another world's code, so the new one carries none of its specifics. Then: ./gradlew -p <world>
 # test jar, and the steps in README.md "Adding a world". Exit 0 written · 2 bad arguments or the folder exists.
 set -euo pipefail
@@ -256,6 +256,9 @@ class {Cls}LevelTest {{
     }}
 }}
 """)
+w("playtests/README.md", f"# {name} playtests\n\nReal-client playtests for tools/play.sh {world}: one `*.playtest` per thing a "
+  "player should see (MMVU's playtest format). `play.props` (optional) lists launcher properties, `key=value`, "
+  f"`@manifest:a.b` read from worlds/{world}.json.\n")
 print(f"new-world: wrote {world}/ (mod id {modid}, World Type \"{name}\"). Next: ./gradlew -p {world} test jar, then "
-      "README.md \"Adding a world\" (its table row).")
+      "README.md \"Adding a world\" (its table row; its playtests).")
 PY

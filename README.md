@@ -23,11 +23,13 @@ licences (each world's `THIRD_PARTY_NOTICES.txt`).
   src/main/resources     its plug-in list (META-INF/services/...ModdyPlugin) and its structures
   src/level/resources    its world preset, World Type name, worlds/<world>.json and worlds/rules/<world>.rules.json
   src/test/java          its unit tests
+  playtests/             its real-client playtests (tools/play.sh), and play.props
+playtests/               real-client playtests across SEVERAL worlds in one game (tools/play.sh isle,arena)
 shared/                  written once, compiled into EVERY world's jar (never a jar of its own)
   level.gradle           the build every world shares
   src/main/java          the shared level code: Level, LevelPacks, LevelWorldType, LevelClaim
   resources/META-INF     neoforge.mods.toml (templated) and the World Type listener's access transformer
-tools/                   new-world.sh (the scaffold), fetch-core.sh, core-pins.py, check-level-jar.py,
+tools/                   new-world.sh (the scaffold), play.sh, fetch-core.sh, core-pins.py, check-level-jar.py,
                          changed-worlds.py, the leak and secret scans and the git hooks
 ```
 
@@ -50,6 +52,13 @@ initial-enabled-packs=vanilla,mod/moddyisle\:datapacks/standard_skyblock,mod/mod
 ```
 
 Every world's recipe ends with its own `mod/<modid>:datapacks/level_marker`: that pack is what makes the world its.
+
+**Scripted:** `tools/play.sh <world>` installs the newest `<world>-*` pre-release of this repository (or `--build`
+this checkout, or `--jars DIR`) beside the pinned core in a throwaway instance, with
+[MMVU](https://github.com/jivinstev/mc-mod-version-upgrade)'s `tools/real-install.py`, and runs `<world>/playtests/`
+in a real client (macOS, or headless Linux under Xvfb). `tools/play.sh isle,arena --build` installs several worlds in
+one instance and runs the root `playtests/` instead (worlds side by side: each keeps its own mode). See
+`tools/play.sh --help`.
 
 ## Build
 
@@ -116,7 +125,7 @@ The rules a world jar keeps:
    first try: `settings.gradle`, `build.gradle`, `gradle.properties`, `core.lock` (a copy of an existing world's pin),
    an empty `datapacks.lock.json` and notices file, the `@Mod` class with its `Level`, a `ModdyPlugin` whose world module
    claims through `LevelClaim`, the world preset (a normal overworld to start from), its World Type tag entry and name,
-   `worlds/<world>.json`, an empty rules file and a unit test. Nothing is copied from another
+   `worlds/<world>.json`, an empty rules file, a unit test and `playtests/README.md`. Nothing is copied from another
    world's code.
 2. `./gradlew -p <world> test jar`, then `python3 tools/check-level-jar.py <world>/build/libs/*.jar --level <world>`.
    Boot it: put `level-type=<modid>\:<world>` and `initial-enabled-packs=vanilla,mod/<modid>\:datapacks/level_marker`
@@ -128,6 +137,8 @@ The rules a world jar keeps:
    keys).
 4. Add a row to the table above. CI picks the new folder up by itself, and so does the release (both find every folder
    with a `core.lock`, `tools/changed-worlds.py`).
+5. Write `<world>/playtests/*.playtest` (and `play.props` if it needs launcher properties) and run
+   `tools/play.sh <world> --build`; a playtest across worlds goes in the root `playtests/`.
 
 ## Keeping this repository free of private work
 
@@ -147,6 +158,14 @@ no operations tooling, no player ids or players' words, no credentials. Every ch
 
 Never bypass a refusal with `--no-verify`. A real credential that reached any commit is rotated first.
 
+## Releases
+
+Only the **Release** workflow makes a release (Actions → Release → Run workflow, from `main`, typing the world's folder,
+which it checks against the same discovery CI uses): it
+builds that world against its pinned core, runs its unit tests, checks the jar holds only the world's own packages,
+resources and packs, scans its contents, and publishes the jar with `SHA256SUMS` as a pre-release tagged
+`<world>-<version>-mc<minecraft>` whose notes name the core release and sha256 to install beside it.
+
 ## The core pin in the workflows, and MMVU
 
 MMVU's `real-install` finds the jars a mod needs beside it by reading the repository's workflows: a line holding
@@ -162,12 +181,4 @@ sha256 check is the same either way. Locally, `tools/fetch-core.sh` fetches the 
 **Known gap:** `real-install` models ONE mod per repository, on a `neoforge-<mc>` branch, taking the newest release
 whose tag ends `-mc<mc>`. This repository has several worlds on `main`, each tagged `<world>-<version>-mc<mc>`, so with
 two worlds it would pick whichever was released last. The layout stays as it is; until MMVU can select a world (a tag
-prefix), install the core and the worlds' jars by hand ("Play a world" above) in a test instance.
-
-## Releases
-
-Only the **Release** workflow makes a release (Actions → Release → Run workflow, from `main`, typing the world's folder,
-which it checks against the same discovery CI uses): it
-builds that world against its pinned core, runs its unit tests, checks the jar holds only the world's own packages,
-resources and packs, scans its contents, and publishes the jar with `SHA256SUMS` as a pre-release tagged
-`<world>-<version>-mc<minecraft>` whose notes name the core release and sha256 to install beside it.
+prefix), `tools/play.sh` is the supported way to install the core and one or more worlds in a test instance.

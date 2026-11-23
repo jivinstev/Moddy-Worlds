@@ -1,0 +1,3 @@
+# The properties tools/play.sh passes as moddingfromamod.<key> (beside world.id and world.rules), the way a
+# server's launcher switches the Isle on in a world not made with its World Type. @manifest:a.b reads worlds/isle.json.
+islands.spacing=@manifest:islands.spacing
