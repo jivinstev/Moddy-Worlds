@@ -1,0 +1,5 @@
+{
+  "_comment": "This world's built-in third-party DATAPACKS, pinned by version AND sha1 (see another world's lock for a row's fields). Read a pack's LICENSE before adding it, and add it to THIRD_PARTY_NOTICES.txt.",
+  "v": 1,
+  "packs": {}
+}

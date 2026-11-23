@@ -1,0 +1,7 @@
+{
+  "v": 1,
+  "id": "arena",
+  "name": "Moddy Arena",
+  "module": "arena",
+  "_notes": "The world's manifest, as its jar ships it: gameplay only (no hostnames, ports, machines or briefs)."
+}
