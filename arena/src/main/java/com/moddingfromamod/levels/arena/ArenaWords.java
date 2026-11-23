@@ -131,7 +131,8 @@ public final class ArenaWords {
         if (budget <= 0) {
             return "Magician wishes are not used in this arena. Builder and Apprentice wishes are free.";
         }
-        return "You have used all " + magicianWishes(budget) + " for this prep. You get " + budget
+        String used = budget == 1 ? "your Magician wish" : "all " + magicianWishes(budget);
+        return "You have used " + used + " for this prep. You get " + budget
                 + " more after the next battle. Builder and Apprentice wishes are still free.";
     }
 
@@ -157,7 +158,7 @@ public final class ArenaWords {
 
     /** {@code /moddy wishes} in prep, after how many Magician wishes are left. */
     public static String prepWishes() {
-        return "Builder and Apprentice wishes are free. Add your things to your hotbar from My wishes, then fire them"
+        return "Builder and Apprentice wishes are free. A wish with Add to hotbar on its page in My wishes can be fired"
                 + " in a battle.";
     }
 

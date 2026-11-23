@@ -126,7 +126,7 @@ class ArenaChargeTest {
         ArenaCharge c = charge(ArenaWishes.DEFAULT);
         c.atPickup(typed());
         assertEquals(List.of("Magician wishes left before the next battle: 2 of 3.",
-                "Builder and Apprentice wishes are free. Add your things to your hotbar from My wishes, then fire them"
+                "Builder and Apprentice wishes are free. A wish with Add to hotbar on its page in My wishes can be fired"
                         + " in a battle."), c.wishesCommand(HIM));
         assertEquals("Moddy - 2 Magician wishes left", c.panelTitle("Moddy", HIM));
         assertEquals("Wish - 3 Magician wishes left", c.composeTitle("Wish", UUID.randomUUID()));

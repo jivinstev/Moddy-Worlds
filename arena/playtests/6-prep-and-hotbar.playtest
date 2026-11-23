@@ -10,7 +10,7 @@
 
 @step arrive
 @expect chat Welcome to Moddy Arena within 90s
-@expect chat add them to your hotbar within 10s
+@expect chat press Add to hotbar within 10s
 @wait 2s
 difficulty hard
 difficulty normal

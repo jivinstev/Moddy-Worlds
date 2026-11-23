@@ -15,7 +15,7 @@ place once, around x 0, z 0, standing at y 64:
   a few seconds later reads three lines (`worlds/arena.json`'s `intro`, which the core says once per player per world):
   > Welcome to Moddy Arena! You are in the prep room. The arena is through the glass, past the gate.
   >
-  > Make your wishes in the prep room or in the arena, then add them to your hotbar from My wishes.
+  > Get ready in the prep room. Some wishes can go on your hotbar: open one in My wishes and press Add to hotbar.
   >
   > Press the button beside the gate to start a battle. In a battle, only the wishes on your hotbar work.
 - **The arena**: 31 by 31 inside, a smooth sandstone floor, stone brick walls 4 high with a polished andesite rim on top
