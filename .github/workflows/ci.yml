@@ -56,4 +56,3 @@ jobs:
         run: |
           python3 tools/secret-scan.py --tree
           python3 tools/secret-scan.py --history
-
