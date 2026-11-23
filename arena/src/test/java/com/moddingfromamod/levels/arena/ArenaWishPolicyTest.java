@@ -30,6 +30,35 @@ class ArenaWishPolicyTest {
         assertEquals(Kind.REPLAY, ArenaWishPolicy.kindOf(null, true));
     }
 
+    /**
+     * A kept Builder or Apprentice make has a recipe ({@code builder:<make id>}). Its hotbar wish and its "Make another
+     * one" reach the submit hook with the make's own name as the text (the core resolves the recipe to the make's
+     * label, with no "Builder: " in front) and {@code recipe} true, or with the recipe id itself if the make has no
+     * name; the Builder make itself still arrives as "Builder: <name> (<kind>)". So the first two are a kept thing made
+     * again, let through in a battle with a rest, and the third is a new make, refused.
+     */
+    @Test
+    void aBuilderMakeFiredFromItsHotbarWishIsAKeptThingMadeAgain() {
+        String recipe = com.moddingfromamod.wishbuilder.BuilderAgain.recipeId("cozy_house_1");
+        assertTrue(com.moddingfromamod.wishbuilder.BuilderAgain.is(recipe), "the core's own recipe form: " + recipe);
+        assertEquals(Kind.REPLAY, ArenaWishPolicy.kindOf("Cozy House", true), "the make's name: its hotbar wish");
+        assertEquals(Kind.REPLAY, ArenaWishPolicy.kindOf(recipe, true), "the recipe id, when the make has no name");
+        assertEquals(Kind.BUILDER, ArenaWishPolicy.kindOf(
+                com.moddingfromamod.wishbuilder.BuilderMake.TEXT_PREFIX + "Cozy House (building)", true));
+
+        ArenaWishPolicy p = new ArenaWishPolicy();
+        assertTrue(p.atSubmit(HIM, Phase.PREP, ArenaWishPolicy.kindOf("Cozy House", true), "Cozy House", false, 0, W)
+                .allowed(), "in prep: free");
+        assertTrue(p.atSubmit(HIM, Phase.BATTLE, ArenaWishPolicy.kindOf("Cozy House", true), "Cozy House", false, 10, W)
+                .allowed(), "in a battle: its hotbar wish fires");
+        assertEquals(Reason.RESTING, p.atSubmit(HIM, Phase.BATTLE, ArenaWishPolicy.kindOf("Cozy House", true),
+                "Cozy House", false, 50, W).refused(), "and then rests");
+        assertEquals(Reason.BATTLE_INSTANT_ONLY, p.atSubmit(HIM, Phase.BATTLE,
+                ArenaWishPolicy.kindOf("Builder: Cozy House (building)", true), "Builder: Cozy House (building)", false,
+                60, W).refused(), "a new make of the same thing is still refused in a battle");
+        assertEquals(0, p.used(HIM), "none of it is a Magician wish");
+    }
+
     @Test
     void theBuilderPrefixIsTheCoresOwn() {
         assertEquals(com.moddingfromamod.wishbuilder.BuilderMake.TEXT_PREFIX, ArenaWishPolicy.BUILDER_TEXT_PREFIX);
