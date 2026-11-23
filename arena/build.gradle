@@ -6,5 +6,8 @@ plugins {
 }
 
 ext.levelId = 'arena'
+// -Plevel=on also names the arena's module (worlds/arena.json "module"), as a server's launcher does: a dev world not
+// made with the World Type is claimed by nothing else.
+ext.levelRunProps = { manifest -> ['world.module': manifest.module] }
 
 apply from: '../shared/level.gradle'
