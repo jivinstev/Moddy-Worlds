@@ -109,6 +109,74 @@ public final class ArenaWords {
         return "This world is not an arena.";
     }
 
+    // ── wishes in the arena ─────────────────────────────────────────────────────────────────────────────────────────
+
+    static String magicianWishes(int n) {
+        return n == 1 ? "1 Magician wish" : n + " Magician wishes";
+    }
+
+    /** A typed wish or a new make, refused during a battle (chat). */
+    public static String battleInstantOnly() {
+        return "A battle is on, so only the wishes on your hotbar work now. New wishes are made in the prep room"
+                + " before a battle.";
+    }
+
+    /** A kept thing fired again too soon in a battle (the action bar, so pressing again does not fill the chat). */
+    public static String resting(int seconds) {
+        return "That wish is resting. It is ready again in " + seconds(seconds) + ".";
+    }
+
+    /** A typed wish refused in prep: this prep's Magician wishes are used up (chat). */
+    public static String magicianUsedUp(int budget) {
+        if (budget <= 0) {
+            return "Magician wishes are not used in this arena. Builder and Apprentice wishes are free.";
+        }
+        return "You have used all " + magicianWishes(budget) + " for this prep. You get " + budget
+                + " more after the next battle. Builder and Apprentice wishes are still free.";
+    }
+
+    /** How many Magician wishes are left this prep ({@code /moddy wishes}, and after one is used). */
+    public static String magicianLeft(int left, int budget) {
+        return "Magician wishes left before the next battle: " + left + " of " + budget + ".";
+    }
+
+    /** A Magician wish has started and is counted (the action bar). */
+    public static String magicianCounted(int left, int budget) {
+        return "That uses 1 Magician wish. " + magicianLeft(left, budget);
+    }
+
+    /** A counted Magician wish did not happen or was undone, so its count comes back (chat). */
+    public static String magicianGivenBack(int left, int budget) {
+        return "That Magician wish did not happen, so it does not count. " + magicianLeft(left, budget);
+    }
+
+    /** The same, said inside the core's own line when a wish is undone. */
+    public static String magicianUndone(int left, int budget) {
+        return "It does not count. " + magicianLeft(left, budget);
+    }
+
+    /** {@code /moddy wishes} in prep, after how many Magician wishes are left. */
+    public static String prepWishes() {
+        return "Builder and Apprentice wishes are free. Add your things to your hotbar from My wishes, then fire them"
+                + " in a battle.";
+    }
+
+    /** {@code /moddy wishes} during a battle. */
+    public static List<String> battleWishes(int cooldownSeconds) {
+        return List.of("A battle is on: fire your wishes from your hotbar. Each one rests " + seconds(cooldownSeconds)
+                + " after you use it.", "New wishes are made in the prep room before a battle.");
+    }
+
+    /** What the watch's and the wish box's titles add in prep. */
+    public static String titlePrep(int left) {
+        return " - " + left + " Magician " + (left == 1 ? "wish" : "wishes") + " left";
+    }
+
+    /** What the watch's and the wish box's titles add during a battle. */
+    public static String titleBattle() {
+        return " - Battle: use your hotbar";
+    }
+
     /** The sign above the start button, one line each (a sign holds four short lines). */
     public static final List<String> SIGN = List.of("Press the", "button to", "start a", "battle!");
 
@@ -119,6 +187,9 @@ public final class ArenaWords {
                 wonTitle(), wonSubtitle(5), wonSubtitle(1), wonChat(5), wonChat(1), lostTitle(),
                 lostSubtitle(ArenaMatch.Why.TIME_UP), lostSubtitle(ArenaMatch.Why.NOBODY_LEFT),
                 lostChat(ArenaMatch.Why.TIME_UP, 3), lostChat(ArenaMatch.Why.NOBODY_LEFT, 2), ready(), busy(),
-                noWaves(), peaceful(), nobody(), notAnArena(), String.join(" ", SIGN));
+                noWaves(), peaceful(), nobody(), notAnArena(), String.join(" ", SIGN), battleInstantOnly(), resting(7),
+                resting(1), magicianUsedUp(3), magicianUsedUp(1), magicianUsedUp(0), magicianLeft(2, 3),
+                magicianCounted(0, 3), magicianGivenBack(1, 3), magicianUndone(3, 3), prepWishes(),
+                String.join(" ", battleWishes(10)), titlePrep(2), titlePrep(1), titleBattle());
     }
 }
