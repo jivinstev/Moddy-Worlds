@@ -1,8 +1,10 @@
 package com.moddingfromamod.levels.arena;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * <b>The arena's place, as numbers</b>: one square ARENA (a fighting floor ringed by a wall) and one PREP room beside it
@@ -143,7 +145,13 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
         /** air: the insides, and the gate's opening above the gate */
         AIR,
         /** the gate between the prep room and the arena (a fence gate, facing the arena) */
-        GATE
+        GATE,
+        /** the two blocks in the shared wall's window that hold the start button and its sign */
+        CONTROL,
+        /** the start button, on the prep room's side of the shared wall, beside the gate */
+        START_BUTTON,
+        /** the sign above the start button */
+        START_SIGN
     }
 
     /** One box to fill. Later fills overwrite earlier ones where they overlap. */
@@ -287,7 +295,130 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
         out.add(new Fill(new Box(p.x0(), floorY, wz, p.x1(), winTop, wz), Kind.GLASS));
         out.add(new Fill(new Box(0, floorY + 1, wz, 0, floorY + 1, wz), Kind.AIR));
         out.add(new Fill(new Box(0, floorY, wz, 0, floorY, wz), Kind.GATE));
+        out.addAll(controlFills());
         return out;
+    }
+
+    /**
+     * The start control, beside the gate on the prep room's side: two blocks in the shared wall's window (x 2, at the
+     * button's height and the sign's), a stone button on the lower and a sign on the upper. Part of {@link #fills()};
+     * a world built before the control existed gains exactly these ({@link #UPGRADE_START_CONTROL}).
+     */
+    public List<Fill> controlFills() {
+        int[] b = startButton();
+        int wz = sharedWallZ();
+        return List.of(
+                new Fill(new Box(b[0], b[1], wz, b[0], b[1] + 1, wz), Kind.CONTROL),
+                new Fill(new Box(b[0], b[1], b[2], b[0], b[1], b[2]), Kind.START_BUTTON),
+                new Fill(new Box(b[0], b[1] + 1, b[2], b[0], b[1] + 1, b[2]), Kind.START_SIGN));
+    }
+
+    /** The start button's block: in the prep room, against the shared wall, two east of the gate, a block up. */
+    public int[] startButton() {
+        return new int[] {2, floorY + 1, sharedWallZ() + 1};
+    }
+
+    /** The upgrade that gives a place built without one its start control ({@link #controlFills()}). */
+    public static final String UPGRADE_START_CONTROL = "start-control";
+    /** The upgrade that switches natural mob spawning off in an arena world, once. */
+    public static final String UPGRADE_NO_NATURAL_SPAWNS = "no-natural-spawns";
+    /** Every upgrade, in the order a world gets them. A new world gets them all when it is built. */
+    public static final List<String> UPGRADES = List.of(UPGRADE_START_CONTROL, UPGRADE_NO_NATURAL_SPAWNS);
+
+    /** The upgrades a world that has had {@code done} still needs, in order. Pure. */
+    public static List<String> pendingUpgrades(Set<String> done) {
+        return UPGRADES.stream().filter(u -> done == null || !done.contains(u)).toList();
+    }
+
+    /**
+     * True when a wave's mob at (x, y, z) is still in the place: inside its walls' footprint (the prep room counts: a
+     * mob may follow a player through an open gate) and not fallen below the floor. A mob that is not is removed and
+     * counted as cleared, so a battle can always finish.
+     */
+    public boolean keeps(double x, double y, double z) {
+        Box f = footprint();
+        int bx = (int) Math.floor(x);
+        int bz = (int) Math.floor(z);
+        return bx >= f.x0() && bx <= f.x1() && bz >= f.z0() && bz <= f.z1() && y >= floorY - 1;
+    }
+
+    /** The block box an arena's reset looks through: the arena's footprint (shared wall included), floor to {@code maxY}. */
+    public Box resetBox(int maxY) {
+        int a = ah();
+        return new Box(-a - 1, floorY - 1, -a - 1, a + 1, Math.max(maxY, floorY + wallHeight + 1), sharedWallZ());
+    }
+
+    /**
+     * <b>What a reset puts back</b>: the arena's inside, floor, walls, rim, the shared wall's window, gate and start
+     * control, as {@link #fills()} built them, and air everywhere above the arena's floor and walls. Never the prep
+     * room: its floor, roof and lights, where they meet the shared wall, are left as they stand.
+     */
+    public Reset reset() {
+        Map<Long, Kind> m = new HashMap<>();
+        int wz = sharedWallZ();
+        for (Fill f : fills()) {
+            Box b = f.box();
+            for (int x = b.x0(); x <= b.x1(); x++) {
+                for (int y = b.y0(); y <= b.y1(); y++) {
+                    for (int z = b.z0(); z <= b.z1(); z++) {
+                        if (z <= wz) {
+                            m.put(key(x, y, z), f.kind());
+                        }
+                    }
+                }
+            }
+        }
+        m.values().removeIf(k -> k == Kind.PREP_FLOOR || k == Kind.PREP_ROOF || k == Kind.PREP_LIGHT);
+        // the prep room's own blocks over the shared wall are not the arena's: mark them so nothing above clears them
+        Map<Long, Kind> prep = new HashMap<>();
+        for (Fill f : fills()) {
+            if (f.kind() == Kind.PREP_FLOOR || f.kind() == Kind.PREP_ROOF || f.kind() == Kind.PREP_LIGHT) {
+                Box b = f.box();
+                for (int x = b.x0(); x <= b.x1(); x++) {
+                    for (int y = b.y0(); y <= b.y1(); y++) {
+                        for (int z = b.z0(); z <= Math.min(b.z1(), wz); z++) {
+                            prep.put(key(x, y, z), f.kind());
+                        }
+                    }
+                }
+            }
+        }
+        // a later prep fill over an arena block keeps the prep block
+        for (Long k : prep.keySet()) {
+            m.remove(k);
+        }
+        return new Reset(this, m, prep.keySet());
+    }
+
+    static long key(int x, int y, int z) {
+        return ((long) (x & 0x3FFFFFF) << 38) | ((long) (z & 0x3FFFFFF) << 12) | (y & 0xFFF);
+    }
+
+    /** {@link #reset()}'s answer: the kind each block of {@link #resetBox} is put back as, or null for "leave it". */
+    public static final class Reset {
+        private final ArenaPlace place;
+        private final Map<Long, Kind> blocks;
+        private final Set<Long> prep;
+
+        private Reset(ArenaPlace place, Map<Long, Kind> blocks, Set<Long> prep) {
+            this.place = place;
+            this.blocks = blocks;
+            this.prep = Set.copyOf(prep);
+        }
+
+        public Kind kindAt(int x, int y, int z) {
+            long k = key(x, y, z);
+            Kind built = blocks.get(k);
+            if (built != null) {
+                return built;
+            }
+            if (prep.contains(k) || y < place.floorY()) {
+                return null;
+            }
+            int a = place.ah();
+            boolean inArenaColumns = x >= -a - 1 && x <= a + 1 && z >= -a - 1 && z <= place.sharedWallZ();
+            return inArenaColumns ? Kind.AIR : null;
+        }
     }
 
     /** The prep room's floor lights, as (x, z): its four corners' diagonal neighbours and its centre's ring. */

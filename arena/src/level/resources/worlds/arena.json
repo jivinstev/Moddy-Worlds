@@ -5,7 +5,7 @@
   "module": "arena",
   "intro": [
     "Welcome to Moddy Arena! You are in the prep room. The arena is through the glass, past the gate.",
-    "Battles are coming soon. For now, aim your wishes into the arena: that is where they land."
+    "Press the button beside the gate to start a battle. Aim your wishes into the arena: that is where they land."
   ],
   "_notes": "The world's manifest, as its jar ships it: gameplay only (no hostnames, ports, machines or briefs). intro: the first-join words, said once per player per world by the core a few seconds after he arrives in the prep room."
 }
