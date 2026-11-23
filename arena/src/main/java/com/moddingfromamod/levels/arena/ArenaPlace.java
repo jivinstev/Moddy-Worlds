@@ -207,17 +207,49 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
     }
 
     /**
-     * Where a wish may be AIMED: the arena's floor, wall to wall (every height, as the core's reach rule reads a
-     * base). The prep room is not in it: "a wish stays inside the arena".
+     * Where a wish may be AIMED, for a player standing at (x, z). The core's base has one reach rectangle, so it follows
+     * the room he stands in:
+     * <ul>
+     *   <li>in the prep room (its columns, walls included): the prep room's inside AND the arena's floor straight ahead
+     *       of it, through the gate, wall to wall ({@link #prepReach}): a wish aimed at the prep room's floor lands
+     *       there, and a make put in front of him (the core's Builder puts one 12 blocks ahead of a player who aims at
+     *       nothing) lands in the arena;</li>
+     *   <li>anywhere else: the arena's inside, wall to wall ({@link #arenaReach}).</li>
+     * </ul>
+     * Every height, as the core's reach rule reads a base. Never one rectangle round both rooms: that would also take in
+     * the open sky beside the prep room, where a wish would float outside the walls.
      */
-    public Columns reach() {
+    public Columns reachFor(double x, double z) {
+        return inPrepRoom(x, z) ? prepReach() : arenaReach();
+    }
+
+    /** The arena's inside, as columns: where a wish lands for a player in the arena (or anywhere but the prep room). */
+    public Columns arenaReach() {
         Box a = arenaInside();
         return new Columns(a.x0(), a.x1(), a.z0(), a.z1());
     }
 
-    /** True when a wish aimed at the column (x, z) lands ({@link #reach}). */
-    public boolean inReach(int x, int z) {
-        return reach().contains(x, z);
+    /**
+     * Where a wish lands for a player in the prep room: the prep room's inside, and the arena's floor in the prep room's
+     * width from the gate to the arena's far wall (the shared wall between them, glass and the gate, included).
+     */
+    public Columns prepReach() {
+        Box p = prepInside();
+        Box a = arenaInside();
+        return new Columns(p.x0(), p.x1(), a.z0(), p.z1());
+    }
+
+    /** True when (x, z) is in the prep room's columns, its walls included (not the shared wall, which is the arena's). */
+    public boolean inPrepRoom(double x, double z) {
+        Box p = prepInside();
+        int bx = (int) Math.floor(x);
+        int bz = (int) Math.floor(z);
+        return bx >= p.x0() - 1 && bx <= p.x1() + 1 && bz >= p.z0() && bz <= p.z1() + 1;
+    }
+
+    /** True when a wish aimed at the column (tx, tz) by a player standing at (x, z) lands ({@link #reachFor}). */
+    public boolean inReach(double x, double z, int tx, int tz) {
+        return reachFor(x, z).contains(tx, tz);
     }
 
     /**

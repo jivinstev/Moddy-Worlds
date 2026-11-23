@@ -1,17 +1,19 @@
-# Moddy Arena: the same make aimed OUTSIDE the arena (at the prep room's floor behind him) is refused by the reach rule,
-# and nothing is built there.
-@intent a player in Moddy Arena aims a make at the prep room's floor, outside the arena, and it is refused
+# Moddy Arena: a make aimed OUTSIDE the place (at the ground far below it, standing there) is refused by the reach
+# rule: a wish lands only inside the room he stands in, the arena or the prep room, and nothing is built.
+@intent a player outside the arena and its prep room aims a make at the ground there, and it is refused
 @world flat seed=1
 
 @step arrive
 @expect chat Welcome to Moddy Arena within 90s
 @wait 2s
 
-@step aim at the prep room floor
-# from the arrival spot, turned round (south, yaw 0) and looking down at the planks behind him
-@aim look 0 35
-@wait 1s
-@shot aiming-at-the-prep-room
+@step outside the place
+# the flat world's ground, far below and away from the place, looking down at the grass in front of him
+tp @s 40 -60 0 90 0
+@aim look 90 40
+@wait 2s
+@assert execute at @s if block ~ ~-1 ~ minecraft:grass_block
+@shot aiming-outside
 
 @step the Apprentice offers a house
 moddy apprentice a cozy house
@@ -21,8 +23,6 @@ moddy apprentice a cozy house
 @click slot 0
 @expect chat /didn't work this time/ within 90s
 @wait 2s
-# the prep room is as it was: plank floor behind him, clear air above it, the room behind the start button still empty air (compared with the empty sky at y 200)
-@assert execute if block 0 63 24 minecraft:oak_planks
-@assert execute if block 0 64 24 minecraft:air
-@assert execute if blocks -4 64 18 4 67 25 -4 200 18 all
+# nothing stands on the ground round him (compared with the empty sky at y 200)
+@assert execute if blocks 20 -60 -15 39 -50 15 20 200 -15 all
 @shot refused

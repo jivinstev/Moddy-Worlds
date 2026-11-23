@@ -24,7 +24,8 @@ import org.slf4j.LoggerFactory;
  * {@link ArenaPlace}, sized by the world's {@code arena_place} rule), sets the world spawn in the prep room facing the
  * arena, and returns {@link ArenaBases} so the core's {@code base_reach} rule keeps every wish inside the arena. A
  * player's first join puts him in the prep room, facing the arena; the words he reads then are the manifest's
- * {@code intro}, which the core says once per player per world. Its battles are {@link ArenaBattle}, ticked here. Named
+ * {@code intro}, which the core says once per player per world. Its battles are {@link ArenaBattle}, ticked here, and
+ * its wishes {@link ArenaCharge} (prep and battle, {@link ArenaWishPolicy}), handed to the core as this world's charge. Named
  * by {@code worlds/arena.json}'s {@code "module": "arena"}.
  */
 public final class ArenaModule implements WorldModule {
@@ -39,6 +40,8 @@ public final class ArenaModule implements WorldModule {
     private MinecraftServer server;
     private ArenaBases bases;
     private ArenaBattle battle;
+    /** Read by the core from any thread (a Magician pickup comes on an agent thread). */
+    private volatile ArenaCharge charge;
 
     @Override
     public String id() {
@@ -77,7 +80,13 @@ public final class ArenaModule implements WorldModule {
             return p == null ? null : new Bases.Pos(p.level().dimension().location().toString(), p.getX(),
                     p.getY(), p.getZ());
         });
-        battle = new ArenaBattle(server, place, state);
+        ArenaCharge c = ArenaCharge.of(server);
+        battle = new ArenaBattle(server, place, state, c::battleEnded);
+        c.phase(ArenaWishPolicy.phaseOf(battle.match().phase()));
+        charge = c;
+        ArenaWishes w = ArenaWishesRule.wishesOf(rulesAtStart());
+        LOG.info("Moddy Arena: wishes: the arena's wish charge is in force (in prep, {} Magician wishes a player;"
+                + " in a battle, hotbar wishes only, each resting {} s)", w.magicianWishes(), w.cooldownSeconds());
         live = this;
         return bases;
     }
@@ -124,6 +133,7 @@ public final class ArenaModule implements WorldModule {
             live = null;
         }
         battle = null;
+        charge = null;
         bases = null;
         server = null;
     }
@@ -133,7 +143,21 @@ public final class ArenaModule implements WorldModule {
         ArenaBattle b = battle;
         if (b != null) {
             b.tick();
+            ArenaCharge c = charge;
+            if (c != null) {
+                c.phase(ArenaWishPolicy.phaseOf(b.match().phase()));
+            }
         }
+    }
+
+    /**
+     * The arena's own wish charge ({@link ArenaCharge}): in an arena world, the wishes of the prep phase and of a
+     * battle follow {@link ArenaWishPolicy}. Null before the module starts and after it stops (the core then uses its
+     * default, which charges nothing).
+     */
+    @Override
+    public com.moddingfromamod.wish.WishCharge charge() {
+        return charge;
     }
 
     @Override

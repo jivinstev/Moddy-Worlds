@@ -7,7 +7,7 @@ core and the world's jar; nothing else.
 | world | folder | mod id | what it is |
 |---|---|---|---|
 | Scarcity Isle | [`isle/`](isle/) | `moddyisle` | a tiny island in the sky for every player, and a wish bank where every wish counts |
-| Moddy Arena | [`arena/`](arena/) | `moddyarena` | a lit prep room beside a walled arena in the sky, where wishes stay inside the arena and a button starts a battle: five waves of monsters, each harder |
+| Moddy Arena | [`arena/`](arena/) | `moddyarena` | a lit prep room beside a walled arena in the sky, where wishes stay inside the arena and its prep room, and a button starts a battle: five waves of monsters, each harder, fought with the wishes on your hotbar |
 
 Minecraft 1.21.8, NeoForge 21.8.57, Java 21. Licence: [MPL-2.0](LICENSE). Third-party datapacks keep their own
 licences (each world's `THIRD_PARTY_NOTICES.txt`).

@@ -29,6 +29,14 @@
       }
     },
     {
+      "id": "prep-and-battle-wishes",
+      "type": "arena_wishes",
+      "params": {
+        "magicianWishes": 3,
+        "cooldownSeconds": 10
+      }
+    },
+    {
       "id": "wishes-stay-in-the-arena",
       "type": "base_reach",
       "effects": [
@@ -37,8 +45,8 @@
         "other_dimensions"
       ],
       "message": {
-        "rule": "a wish stays inside the arena",
-        "why": "the arena is where the battles happen"
+        "rule": "a wish stays inside the arena and its prep room",
+        "why": "the arena is where the battles happen, and the prep room is where you get ready"
       }
     },
     {
@@ -52,5 +60,5 @@
       }
     }
   ],
-  "_notes": "What Moddy Arena allows. arena_place (the arena's own rule type): the fighting floor's width inside its walls, the prep room's width, and the arena wall's height, in blocks; odd widths, arena 15 to 63, prep room 5 to 15 and smaller than the arena, wall 3 to 8. They are read when the place is first built and kept with it after that. arena_waves (the arena's own rule type): a battle's waves, in order, each a list of {mob, count} spawned at once on the arena floor (1 to 20 waves; a count 1 to 20; at most 40 mobs a wave); countdownSeconds before the first wave (3 to 60), breatherSeconds between waves (3 to 120), waveSeconds a wave may last before the battle is lost (30 to 1800). First values are guesses, to be tuned by playing. Any living mob id is accepted except those that cannot stay in the arena (fliers, climbers, teleporters, creepers, silverfish; the file is refused, saying why). A change applies to the next battle. base_reach: a wish lands only inside the arena, never outside the place and never in the Nether or the End. The clamp: a power at most 60 s and never forever, one stack of each item and 2 kinds a wish, 2 XP levels a wish; shortened or shrunk and said, never refused. Schema: the core's WorldRules.parse."
+  "_notes": "What Moddy Arena allows. arena_place (the arena's own rule type): the fighting floor's width inside its walls, the prep room's width, and the arena wall's height, in blocks; odd widths, arena 15 to 63, prep room 5 to 15 and smaller than the arena, wall 3 to 8. They are read when the place is first built and kept with it after that. arena_waves (the arena's own rule type): a battle's waves, in order, each a list of {mob, count} spawned at once on the arena floor (1 to 20 waves; a count 1 to 20; at most 40 mobs a wave); countdownSeconds before the first wave (3 to 60), breatherSeconds between waves (3 to 120), waveSeconds a wave may last before the battle is lost (30 to 1800). First values are guesses, to be tuned by playing. Any living mob id is accepted except those that cannot stay in the arena (fliers, climbers, teleporters, creepers, silverfish; the file is refused, saying why). A change applies to the next battle. arena_wishes (the arena's own rule type): magicianWishes, how many Magician wishes each player may make between two battles (0 to 20; counted when the Magician starts one, given back when it fails, is stopped or is undone; Builder and Apprentice wishes are always free), and cooldownSeconds, how long a kept thing rests after it is fired from the hotbar in a battle (1 to 120). In a battle only kept things fired again (the hotbar, Make another one) work. First values are guesses. base_reach: a wish lands only inside the arena and its prep room (from the prep room: the prep room, or the arena straight ahead through the gate; from anywhere else: the arena), never outside the place and never in the Nether or the End. The clamp: a power at most 60 s and never forever, one stack of each item and 2 kinds a wish, 2 XP levels a wish; shortened or shrunk and said, never refused. Schema: the core's WorldRules.parse."
 }

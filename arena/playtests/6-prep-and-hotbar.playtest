@@ -1,0 +1,151 @@
+# Moddy Arena: the prep phase and a battle's wishes. In prep, an Apprentice make from the prep room lands in the arena
+# ahead of him and one made standing in the arena lands there; a recipe wish (the starter Lightning Sword, made again
+# by its recipe) is put on his hotbar from its page in My wishes. In the battle the hotbar makes it again with one
+# click, a second click at once is refused with the seconds left, and a new make is refused with the arena's words.
+# After the battle the wish is still on his hotbar and new makes work again. No model anywhere: the Apprentice's local
+# matcher offers the makes, and the hotbar replays a kept recipe.
+@intent in prep a player makes things from the prep room and in the arena and puts a recipe wish on his hotbar; in a battle the hotbar fires it, it rests between fires, and new wishes are refused; after the battle the hotbar wish is still there
+@world flat seed=1
+@continue-on-fail
+
+@step arrive
+@expect chat Welcome to Moddy Arena within 90s
+@expect chat press Add to hotbar within 10s
+@wait 2s
+difficulty hard
+difficulty normal
+effect give @s minecraft:resistance 900 4 true
+effect give @s minecraft:saturation 900 0 true
+
+@step what the arena says about wishes in prep
+moddy wishes
+@expect chat Magician wishes left before the next battle: 3 of 3 within 5s
+@expect chat Builder and Apprentice wishes are free within 5s
+
+@step a make from the prep room lands in the arena ahead of him
+# the core's Builder puts a make 12 blocks ahead of him: from the middle of the prep room, facing the arena, that is
+# through the gate on the arena's floor
+tp @s 0.5 64 21.5 180 0
+@aim look 180 12
+@wait 2s
+moddy apprentice a stone well
+@expect screen Container within 10s
+@shot prep-room-apprentice-page
+@click slot 0
+@expect chat /is ready/ within 90s
+@wait 3s
+# the arena ahead of the gate is no longer empty air (compared with the empty sky at y 200): the well stands in it
+@assert execute unless blocks -4 64 3 4 67 15 -4 200 3 all
+@shot made-from-the-prep-room
+
+@step a recipe wish in the prep room: the starter Lightning Sword
+moddy again starter_lightning_sword
+@expect chat /[Ll]ightning [Ss]word/ within 60s
+@wait 3s
+@shot the-sword
+
+@step a make in the arena lands there
+tp @s 0 64 10 180 0
+@aim look 180 12
+@wait 2s
+moddy apprentice a cozy house
+@expect screen Container within 10s
+@click slot 0
+@expect chat /is ready/ within 90s
+@wait 3s
+@assert execute unless blocks -15 64 -15 15 67 3 -15 200 -15 all
+@shot made-in-the-arena
+
+@step the Lightning Sword wish goes on his hotbar
+# In a real game: My wishes, RIGHT-click the Lightning Sword's tile (a left click makes another one), "Add to hotbar".
+# The carrier clicks with the left button only, so this script makes another one with the left click (a kept thing made
+# again, which the arena lets through), and then puts the proxy where "Add to hotbar" puts it, with the data the core
+# writes (the recipe, its owner, its picture): the core's own use of it is what the battle below exercises.
+moddy library
+@expect screen My wishes within 10s
+@shot my-wishes
+@click item "lightning"
+@expect chat /Lightning Sword is in slot/ within 30s
+@wait 1s
+item replace entity @s hotbar.3 with minecraft:paper[custom_data={mfam_hotbar:"starter_lightning_sword",mfam_hotbar_owner:"00000000-0000-0000-0000-000000000000",mfam_hotbar_icon:"minecraft:diamond_sword"},custom_name="Wish: Lightning Sword",max_stack_size=1]
+@assert execute if items entity @s hotbar.3 minecraft:paper
+@shot on-the-hotbar
+
+@step he starts a battle with the button
+tp @s 1.5 64 19.5 180 0
+@wait 1s
+@aim pos 2.5 65.5 17.1
+@key key.use
+@expect chat A battle is starting within 5s
+moddy wishes
+@expect chat fire your wishes from your hotbar within 5s
+
+@step wave 1, and the hotbar makes the sword again
+@expect title Wave 1 of 5 within 15s
+tp @s 0 64 10 180 0
+@aim look 180 30
+@wait 1s
+@assert execute if entity @e[tag=moddyarena_wave]
+@assert execute if items entity @s hotbar.3 minecraft:paper
+@key key.hotbar.4
+@wait 5t
+@assert execute if items entity @s weapon.mainhand minecraft:paper
+@key key.use
+@expect chat /[Ll]ightning [Ss]word/ within 60s
+@shot fired-from-the-hotbar
+
+@step at once again: it rests, and says how long
+# past the core's own one-second sweep, well inside the arena's ten-second rest
+@wait 2s
+@key key.use
+@expect actionbar /That wish is resting. It is ready again in [0-9]+ seconds?/ within 5s
+@shot resting
+
+@step a new make in the battle is refused
+moddy apprentice a cozy house
+@expect screen Container within 10s
+@click slot 0
+@expect chat only the wishes on your hotbar work now within 10s
+@wait 2s
+@shot new-wish-refused
+
+@step the battle is won
+kill @e[tag=moddyarena_wave]
+@expect chat Wave 1 cleared within 5s
+@expect title Wave 2 of 5 within 20s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title Wave 3 of 5 within 20s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title Wave 4 of 5 within 20s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title Wave 5 of 5 within 20s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect chat You won the battle within 5s
+@expect chat The arena is tidy again within 15s
+
+@step after the battle the hotbar wish is still there, and new makes work again
+@assert execute if items entity @s hotbar.3 minecraft:paper
+moddy wishes
+@expect chat Magician wishes left before the next battle: 3 of 3 within 5s
+tp @s 0 64 10 180 0
+@aim look 180 12
+@wait 2s
+moddy apprentice a cozy house
+@expect screen Container within 10s
+@click slot 0
+@expect chat /is ready/ within 90s
+@wait 2s
+@shot after-the-battle
+
+@step knocked out: what happens to a hotbar wish (the core's own rule)
+kill @s
+@wait 3s
+@shot after-knocked-out
+# back in the prep room: the hotbar wish is not in his inventory, and was not dropped either
+@assert execute if entity @s[x=-4,y=63,z=17,dx=8,dy=3,dz=8]
+@assert execute unless items entity @s container.* minecraft:paper
+@assert execute unless entity @e[type=minecraft:item,nbt={Item:{id:"minecraft:paper"}}]

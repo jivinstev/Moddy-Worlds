@@ -67,13 +67,16 @@ final class ArenaBattle {
     private final List<UUID> waveMobs = new ArrayList<>();
     /** What fighters dropped when they were knocked out: moved to the prep room at the reset, never cleared. */
     private final Set<UUID> fightersDrops = new HashSet<>();
+    /** Told when a battle is over and the arena is ready again (the wishes' counts and cooldowns start again). */
+    private final Runnable onReady;
     private boolean buttonWasDown;
     private long ticks;
 
-    ArenaBattle(MinecraftServer server, ArenaPlace place, ArenaState state) {
+    ArenaBattle(MinecraftServer server, ArenaPlace place, ArenaState state, Runnable onReady) {
         this.server = server;
         this.place = place;
         this.state = state;
+        this.onReady = onReady == null ? () -> { } : onReady;
         if (state.battleOn()) {
             match.endedByRestart();
             LOG.info("Moddy Arena: battle: a battle was on when the server stopped; it is over, and the arena will be"
@@ -242,6 +245,7 @@ final class ArenaBattle {
                 LOG.info("Moddy Arena: battle: IDLE, the arena is ready for the next battle");
                 sayToPlace(ArenaWords.ready());
                 told.clear();
+                onReady.run();
             }
         }
     }

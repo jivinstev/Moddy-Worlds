@@ -9,8 +9,9 @@ import java.util.function.Function;
 
 /**
  * <b>The arena is every player's base</b>, so the core's {@code base_reach} rule keeps a wish inside it: a wish is
- * aimed inside the arena ({@link ArenaPlace#reach}), and nothing it does reaches past the place, prep room included
- * ({@link ArenaPlace#area}). Home (a respawn, a "send him home") is the arrival spot in the prep room.
+ * aimed inside the room the player stands in, the arena or the prep room ({@link ArenaPlace#reachFor}), and nothing it
+ * does reaches past the place ({@link ArenaPlace#area}). Home (a respawn, a "send him home") is the arrival spot in the
+ * prep room.
  *
  * <p>One place, shared: every player gets the same base, and the place itself answers "whose is this spot" with one
  * id of its own ({@link #OWNER}), which the core only uses to find a base for a rule that fires with nobody near.
@@ -45,7 +46,19 @@ final class ArenaBases implements Bases {
         }
         int[] home = place.arrival();
         return new Base(player, OVERWORLD, home[0], home[1], home[2], home[1], region(place.area()),
-                region(place.reach()));
+                region(reachOf(player)));
+    }
+
+    /**
+     * Where this player's wish may be aimed now: the inside of the room he stands in ({@link ArenaPlace#reachFor}); the
+     * arena's when he is not in this world's overworld or not on.
+     */
+    ArenaPlace.Columns reachOf(UUID player) {
+        Pos at = where.apply(player);
+        if (at == null || (at.dimension() != null && !at.dimension().isEmpty() && !OVERWORLD.equals(at.dimension()))) {
+            return place.arenaReach();
+        }
+        return place.reachFor(at.x(), at.z());
     }
 
     @Override
