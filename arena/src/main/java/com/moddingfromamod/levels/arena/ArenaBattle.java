@@ -26,6 +26,7 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.OwnableEntity;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.phys.AABB;
@@ -64,6 +65,8 @@ final class ArenaBattle {
     /** Everyone who fought in this battle, out or not: they are told how it ends, wherever they respawned. */
     private final Set<UUID> told = new HashSet<>();
     private final List<UUID> waveMobs = new ArrayList<>();
+    /** What fighters dropped when they were knocked out: moved to the prep room at the reset, never cleared. */
+    private final Set<UUID> fightersDrops = new HashSet<>();
     private boolean buttonWasDown;
     private long ticks;
 
@@ -270,6 +273,9 @@ final class ArenaBattle {
             } else if (p.level() != level() || p.isSpectator() || !place.keeps(p.getX(), p.getY(), p.getZ())) {
                 out = "left the place";
             }
+            if (p != null && "was knocked out".equals(out)) {
+                keepDropsOf(p);
+            }
             if (out != null) {
                 LOG.info("Moddy Arena: battle: {} {}; out of the battle", p == null ? e.getKey() : p.getScoreboardName(),
                         out);
@@ -277,6 +283,21 @@ final class ArenaBattle {
             }
         }
         return fighters.size();
+    }
+
+    /** The things a knocked-out fighter just dropped where he fell: kept for him, not cleared with the arena. */
+    private void keepDropsOf(ServerPlayer p) {
+        p.getLastDeathLocation().ifPresent(at -> {
+            if (!at.dimension().equals(level().dimension())) {
+                return;
+            }
+            BlockPos b = at.pos();
+            AABB near = new AABB(b).inflate(4);
+            for (ItemEntity item : level().getEntities(EntityTypeTest.forClass(ItemEntity.class), near,
+                    i -> i.tickCount < 200)) {
+                fightersDrops.add(item.getUUID());
+            }
+        });
     }
 
     private static int deaths(ServerPlayer p) {
@@ -369,8 +390,26 @@ final class ArenaBattle {
     private int clearArena(ServerLevel level) {
         ArenaPlace.Box r = place.resetBox(level.getMaxY());
         AABB arena = new AABB(r.x0(), r.y0() - 1, r.z0(), r.x1() + 1, r.y1() + 1, r.z1() + 1);
-        int n = discard(level, arena, e -> !(e instanceof Player) && !owned(e) && !e.hasPassenger(p -> p instanceof Player));
+        // a player's own things (what a fighter dropped when knocked out, what a player threw) go to the prep room
+        int[] home = place.arrival();
+        int moved = 0;
+        for (ItemEntity item : level.getEntities(EntityTypeTest.forClass(ItemEntity.class), arena, this::playersOwn)) {
+            item.teleportTo(home[0] + 0.5, home[1] + 0.2, home[2] + 0.5);
+            item.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+            moved++;
+        }
+        if (moved > 0) {
+            LOG.info("Moddy Arena: battle: {} of the players' own dropped things moved to the prep room", moved);
+        }
+        fightersDrops.clear();
+        int n = discard(level, arena, e -> !(e instanceof Player) && !owned(e) && !playersOwn(e)
+                && !e.hasPassenger(p -> p instanceof Player));
         return n + discard(level, placeBox(level), e -> e.getTags().contains(TAG));
+    }
+
+    /** An item a player threw, or one a fighter dropped when he was knocked out. */
+    private boolean playersOwn(Entity e) {
+        return e instanceof ItemEntity item && (fightersDrops.contains(item.getUUID()) || item.getOwner() instanceof Player);
     }
 
     private static boolean owned(Entity e) {
