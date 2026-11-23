@@ -1,0 +1,39 @@
+# THIS REPOSITORY'S LEAK RULES, always loaded by tools/leak-scan.py on top of its built-in ones (emails, routable
+# IPs, bucket URLs, every credential shape, child's-data file names, the private side's packages and files).
+#
+# PUBLIC: this file is committed, so every rule here is a SHAPE or a marker, never a private name; a name that must
+# not appear here goes in a private forbidden list kept outside the repository (see tools/git-hooks/install.sh and
+# the FORBIDDEN_LIST secret in .github/workflows/ci.yml). Format: the docstring of tools/leak-scan.py.
+
+[self]
+# The rules below name their own shapes in their comments and patterns.
+skip:tools/leak-rules.txt
+
+[other-repos]
+# A link to any other repository of this account whose name starts with "moddy-": this repository (moddy-worlds) and
+# the core (ModdyTheWishWatch) are the only ones public text may point at.
+re:\bjivinstev/moddy-(?!worlds\b)[A-Za-z0-9_.-]+
+
+[plan-ids]
+# A step id from a private plan (a capital T, digits, a dot and digits; or HD, a dash and digits): a comment names what a thing does, not the step that built it.
+# Case-sensitive (a capital T or HD), so a lower-case "t1.5" or an "hd-video" is fine.
+re:(?-i:(?<![\w.-])T\d{1,2}[A-Z]?\.\d{1,2}[a-z]?(?!\w|\.\d))
+re:(?-i:(?<![\w-])HD-\d{1,2}(?![\w]))
+
+[player-ids]
+# A literal player id that looks real (version 3 is an offline-mode player, version 4 an online account). A test makes
+# its own with UUID.randomUUID(), or uses an obviously synthetic one (all zeros but the last digits, and the like).
+re:\b[0-9a-f]{8}-[0-9a-f]{4}-[34][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b
+allow:^(0{8}|1{8}|f{8}|12345678|deadbeef|cafebabe)-
+
+[server-manifest]
+# A world manifest or rules file carrying the half only a hosted server needs: its hostnames, ports, machine,
+# camera pool, spend caps, access policy or the agent's brief. The level's world files hold gameplay only.
+re:"(hostnames|ports|house|camera_vm_pool|camera_host|camera_pool|spend_cap_usd_day|spend_bucket_usd|proxy_online_mode|wish_slots_camera_on_vm|brief)"\s*:
+path:*.env
+
+[local-paths]
+# A home directory or a cloud session's paths in committed text.
+re:/home/user/
+re:/Users/[A-Za-z0-9._-]+/
+re:/tmp/claude-

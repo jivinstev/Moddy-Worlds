@@ -1,0 +1,19 @@
+# Gradle and build output
+.gradle/
+build/
+run/
+logs/
+*/build/
+*/run/
+*/logs/
+*/.gradle/
+# the pinned core jar, downloaded by tools/fetch-core.sh or the build
+*/.core/
+# IDEs
+.idea/
+*.iml
+.vscode/
+out/
+# never commit a local environment or a forbidden list
+.env*
+*forbidden*.txt
