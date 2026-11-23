@@ -207,17 +207,40 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
     }
 
     /**
-     * Where a wish may be AIMED: the arena's floor, wall to wall (every height, as the core's reach rule reads a
-     * base). The prep room is not in it: "a wish stays inside the arena".
+     * Where a wish may be AIMED, for a player standing at (x, z): the inside of the room he is in. In the prep room (its
+     * floor's columns, walls included) that is the prep room's inside; anywhere else, the arena's inside, wall to wall
+     * (every height, as the core's reach rule reads a base). One rectangle at a time, because the core's base has one
+     * reach: a rectangle round both rooms would also take in the open sky beside the prep room, where a wish aimed at
+     * the sky would float outside the walls. From inside either room the other is behind glass or the gate, so an aim
+     * from one cannot land in the other anyway.
      */
-    public Columns reach() {
+    public Columns reachFor(double x, double z) {
+        return inPrepRoom(x, z) ? prepReach() : arenaReach();
+    }
+
+    /** The arena's inside, as columns: where a wish lands for a player in the arena (or anywhere but the prep room). */
+    public Columns arenaReach() {
         Box a = arenaInside();
         return new Columns(a.x0(), a.x1(), a.z0(), a.z1());
     }
 
-    /** True when a wish aimed at the column (x, z) lands ({@link #reach}). */
-    public boolean inReach(int x, int z) {
-        return reach().contains(x, z);
+    /** The prep room's inside, as columns: where a wish lands for a player in the prep room. */
+    public Columns prepReach() {
+        Box p = prepInside();
+        return new Columns(p.x0(), p.x1(), p.z0(), p.z1());
+    }
+
+    /** True when (x, z) is in the prep room's columns, its walls included (not the shared wall, which is the arena's). */
+    public boolean inPrepRoom(double x, double z) {
+        Box p = prepInside();
+        int bx = (int) Math.floor(x);
+        int bz = (int) Math.floor(z);
+        return bx >= p.x0() - 1 && bx <= p.x1() + 1 && bz >= p.z0() && bz <= p.z1() + 1;
+    }
+
+    /** True when a wish aimed at the column (tx, tz) by a player standing at (x, z) lands ({@link #reachFor}). */
+    public boolean inReach(double x, double z, int tx, int tz) {
+        return reachFor(x, z).contains(tx, tz);
     }
 
     /**

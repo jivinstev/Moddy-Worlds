@@ -5,7 +5,8 @@
   "module": "arena",
   "intro": [
     "Welcome to Moddy Arena! You are in the prep room. The arena is through the glass, past the gate.",
-    "Press the button beside the gate to start a battle. Aim your wishes into the arena: that is where they land."
+    "Make your wishes in the prep room or in the arena, then add them to your hotbar from My wishes.",
+    "Press the button beside the gate to start a battle. In a battle, only the wishes on your hotbar work."
   ],
   "_notes": "The world's manifest, as its jar ships it: gameplay only (no hostnames, ports, machines or briefs). intro: the first-join words, said once per player per world by the core a few seconds after he arrives in the prep room."
 }
