@@ -11,15 +11,18 @@
 @wait 2s
 difficulty hard
 difficulty normal
+gamemode survival
 
 @step an Apprentice sword, on his hotbar from its page
-tp @s 0.5 64 21.5 180 0
 moddy apprentice a fire sword
 @expect screen Container within 10s
 @click slot 0
 @expect chat /Fire Sword( [0-9]+)? is in slot 3/ within 60s
 @wait 2s
-moddy library
+@key key.hotbar.1
+@key key.use
+@expect screen /make a wish/ within 10s
+@click button "My wishes"
 @expect screen My wishes within 10s
 @click item "Fire Sword"
 @expect screen Fire Sword within 10s
@@ -30,19 +33,33 @@ moddy library
 @shot on-the-hotbar
 
 @step he starts a battle with the button
-tp @s 1.5 64 19.5 180 0
-@wait 1s
+# every screen closed (the page, and the watch it came from)
+@key key.keyboard.escape
+@wait 10t
+@key key.keyboard.escape
+@wait 10t
+@expect screen none within 3s
+# a couple of steps toward the gate, then the stone button beside it
+@aim look 180 0
+@key key.forward hold 8t
+@wait 10t
 @aim pos 2.5 65.5 17.1
 @key key.use
 @expect chat A battle is starting within 5s
 
 @step wave 1, and he is knocked out in the arena
 @expect title Wave 1 of 5 within 15s
-tp @s 0 64 12 180 10
-@wait 2s
+# he opens the gate in the shared wall and walks into the arena, holding his hotbar wish, and does not fight back:
+# the husks knock him out
+@aim pos 0.5 64.5 16.5
+@key key.use
+@wait 10t
+@aim look 180 0
+@key key.forward hold 30t
+@key key.hotbar.4
+@wait 1s
 @assert execute if entity @e[tag=moddyarena_wave]
-kill @s
-@expect chat knocked out or left within 10s
+@expect chat knocked out or left within 180s
 @wait 2s
 
 @step back in the prep room, with the hotbar wish back in its slot
@@ -59,7 +76,12 @@ kill @s
 @shot back-in-the-prep-room
 
 @step in prep again, the hotbar wish makes the sword
-item replace entity @s hotbar.2 with minecraft:air
+# the sword he made first is put away into his inventory (a shift-click), so the new one is plainly new
+@key key.inventory
+@expect screen InventoryScreen within 3s
+@click slot 38 shift
+@key key.inventory
+@assert execute unless items entity @s hotbar.2 *
 @key key.hotbar.4
 @wait 5t
 @assert execute if items entity @s weapon.mainhand minecraft:paper

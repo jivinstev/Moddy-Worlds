@@ -1,10 +1,14 @@
 # Moddy Arena: the prep phase and a battle's wishes. In prep, an Apprentice make from the prep room lands in the arena
-# ahead of him and one made standing in the arena lands there; an Apprentice item (a Fire Sword, a Builder make) is put
-# on his hotbar from its own page in My wishes, by the page's "Add to hotbar" tile. In the battle the hotbar makes it
-# again with one click, a second click at once is refused with the seconds left, and a new make is refused with the
-# arena's words. After the battle the wish is still on his hotbar and new makes work again. No model anywhere: the
-# Apprentice's local matcher offers the makes, and the hotbar replays the kept make's recipe.
-@intent in prep a player makes things from the prep room and in the arena and puts one of his makes on his hotbar from its page; in a battle the hotbar fires it, it rests between fires, and new wishes are refused; after the battle the hotbar wish is still there
+# ahead of him; an Apprentice item (a Fire Sword, a Builder make) is put
+# on his hotbar from its own page in My wishes (his watch, then the page's "Add to hotbar" tile), and shows there with
+# the Moddy badge. In the battle the hotbar makes it again with one click, a second click at once is refused with the
+# seconds left, and a new make is refused with the arena's words. He wins the battle with that sword. After the battle
+# the wish is still on his hotbar and new makes work again. No model anywhere: the Apprentice's local matcher offers
+# the makes, and the hotbar replays the kept make's recipe.
+# A resistance effect keeps him on his feet (setup: a safety guard); every monster is beaten by his own hits: he turns
+# to it, walks toward it, and clicks the mouse (a click out of reach swings at the air, as it does for a player).
+# play-timeout: 1500
+@intent in prep a player makes a thing from the prep room into the arena and puts one of his makes on his hotbar from its page; in a battle the hotbar fires it, it rests between fires, and new wishes are refused; after the battle the hotbar wish is still there
 @world flat seed=1
 @continue-on-fail
 
@@ -14,8 +18,9 @@
 @wait 2s
 difficulty hard
 difficulty normal
-effect give @s minecraft:resistance 900 4 true
-effect give @s minecraft:saturation 900 0 true
+gamemode survival
+effect give @s minecraft:resistance 1500 4 true
+effect give @s minecraft:saturation 1500 0 true
 
 @step what the arena says about wishes in prep
 moddy wishes
@@ -23,9 +28,8 @@ moddy wishes
 @expect chat Builder and Apprentice wishes are free within 5s
 
 @step a make from the prep room lands in the arena ahead of him
-# the core's Builder puts a make 12 blocks ahead of him: from the middle of the prep room, facing the arena, that is
-# through the gate on the arena's floor
-tp @s 0.5 64 21.5 180 0
+# the core's Builder puts a make 12 blocks ahead of him: from the middle of the prep room, where he arrives, facing
+# the arena, that is through the gate on the arena's floor
 @aim look 180 12
 @wait 2s
 moddy apprentice a stone well
@@ -39,7 +43,6 @@ moddy apprentice a stone well
 @shot made-from-the-prep-room
 
 @step an Apprentice sword in the prep room
-tp @s 0.5 64 21.5 180 0
 moddy apprentice a fire sword
 @expect screen Container within 10s
 @click slot 0
@@ -48,22 +51,29 @@ moddy apprentice a fire sword
 @assert execute if items entity @s hotbar.2 *
 @shot the-sword
 
-@step a make in the arena lands there
-tp @s 0 64 10 180 0
-@aim look 180 12
-@wait 2s
-moddy apprentice a cozy house
-@expect screen Container within 10s
-@click slot 0
-@expect chat /is ready/ within 90s
-@wait 3s
-@assert execute unless blocks -15 64 -15 15 67 3 -15 200 -15 all
-@shot made-in-the-arena
+@step into the arena
+# he opens the gate in the shared wall and walks through it, into the arena, up to the well he made (a couple of steps
+# first, empty-handed, so the gate is in reach and the click is not his watch's). A make in the arena itself is
+# 2-wish-in-the-arena's and 7-creature-in-the-arena's: here the arena keeps one small make, so the battle stays fair.
+@key key.hotbar.9
+@aim look 180 0
+@key key.forward hold 8t
+@aim pos 0.5 64.5 16.5
+@key key.use
+@wait 10t
+@aim look 180 0
+@key key.forward hold 35t
+@wait 10t
+@assert execute if entity @s[z=-15,dz=30]
+@shot in-the-arena
 
 @step the Fire Sword goes on his hotbar from its page
-# My wishes, press the Fire Sword (one of his makes: its page opens), press "Add to hotbar": the core puts its hotbar
+# his watch, My wishes, the Fire Sword (one of his makes: its page opens), "Add to hotbar": the core puts its hotbar
 # wish in the first empty slot (slot 4: the watch, the Wish Bag and the sword are in the first three)
-moddy library
+@key key.hotbar.1
+@key key.use
+@expect screen /make a wish/ within 10s
+@click button "My wishes"
 @expect screen My wishes within 10s
 @shot my-wishes
 @click item "Fire Sword"
@@ -74,15 +84,30 @@ moddy library
 @expect chat On your hotbar, slot 4 within 10s
 @wait 1s
 @assert execute if items entity @s hotbar.3 minecraft:paper
-# the sword he made is put away, so the one the hotbar makes in the battle is plainly a new one
-item replace entity @s hotbar.2 with minecraft:air
+# the Moddy badge: the hotbar wish wears Moddy's own hotbar model
+@assert execute if items entity @s hotbar.3 minecraft:paper[minecraft:item_model="wishpack:hotbar"]
+# every screen closed (the page, and the watch it came from)
+@key key.keyboard.escape
+@wait 10t
+@key key.keyboard.escape
+@wait 10t
+@expect screen none within 3s
+# the sword he made is put away into his inventory (a shift-click), so the one the hotbar makes in the battle is
+# plainly a new one
+@key key.inventory
+@expect screen InventoryScreen within 3s
+@click slot 38 shift
+@key key.inventory
 @assert execute unless items entity @s hotbar.2 *
 @wait 1s
 @shot on-the-hotbar
 
 @step he starts a battle with the button
-tp @s 1.5 64 19.5 180 0
-@wait 1s
+# back through the gate into the prep room, then the stone button beside the gate
+@aim look 0 0
+@key key.forward hold 40t
+@wait 10t
+@assert execute if entity @s[x=-4,y=63,z=17,dx=8,dy=3,dz=8]
 @aim pos 2.5 65.5 17.1
 @key key.use
 @expect chat A battle is starting within 5s
@@ -91,7 +116,6 @@ moddy wishes
 
 @step wave 1, and the hotbar makes the sword again
 @expect title Wave 1 of 5 within 15s
-tp @s 0 64 10 180 0
 @aim look 180 30
 @wait 1s
 @assert execute if entity @e[tag=moddyarena_wave]
@@ -120,29 +144,62 @@ moddy apprentice a cozy house
 @wait 2s
 @shot new-wish-refused
 
-@step the battle is won
-kill @e[tag=moddyarena_wave]
-@expect chat Wave 1 cleared within 5s
+@step he wins the battle with the sword his hotbar made
+# through the gate he left open, into the arena
+@key key.hotbar.3
+@aim look 180 0
+@key key.forward hold 30t
+@repeat each @e[tag=moddyarena_wave] max 60 until execute unless entity {it}
+@aim entity {it}
+@key key.forward hold 6t
+@aim entity {it}
+@key key.mouse.left
+@wait 12t
+@end-repeat
+@expect chat Wave 1 cleared within 10s
 @expect title Wave 2 of 5 within 20s
 @wait 1s
-kill @e[tag=moddyarena_wave]
+@repeat each @e[tag=moddyarena_wave] max 60 until execute unless entity {it}
+@aim entity {it}
+@key key.forward hold 6t
+@aim entity {it}
+@key key.mouse.left
+@wait 12t
+@end-repeat
 @expect title Wave 3 of 5 within 20s
 @wait 1s
-kill @e[tag=moddyarena_wave]
+@repeat each @e[tag=moddyarena_wave] max 60 until execute unless entity {it}
+@aim entity {it}
+@key key.forward hold 6t
+@aim entity {it}
+@key key.mouse.left
+@wait 12t
+@end-repeat
 @expect title Wave 4 of 5 within 20s
 @wait 1s
-kill @e[tag=moddyarena_wave]
+@repeat each @e[tag=moddyarena_wave] max 60 until execute unless entity {it}
+@aim entity {it}
+@key key.forward hold 6t
+@aim entity {it}
+@key key.mouse.left
+@wait 12t
+@end-repeat
 @expect title Wave 5 of 5 within 20s
 @wait 1s
-kill @e[tag=moddyarena_wave]
-@expect chat You won the battle within 5s
+@repeat each @e[tag=moddyarena_wave] max 60 until execute unless entity {it}
+@aim entity {it}
+@key key.forward hold 6t
+@aim entity {it}
+@key key.mouse.left
+@wait 12t
+@end-repeat
+@expect chat You won the battle within 10s
 @expect chat The arena is tidy again within 15s
 
 @step after the battle the hotbar wish is still there, and new makes work again
 @assert execute if items entity @s hotbar.3 minecraft:paper
 moddy wishes
 @expect chat Magician wishes left before the next battle: 3 of 3 within 5s
-tp @s 0 64 10 180 0
 @aim look 180 12
 @wait 2s
 moddy apprentice a cozy house

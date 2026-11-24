@@ -9,6 +9,7 @@
 
 @step outside the place
 # the flat world's ground, far below and away from the place, looking down at the grass in front of him
+# SHORTCUT: he is put on the ground outside the place (getting out of it is not what the step tests)
 tp @s 40 -60 0 90 0
 @aim look 90 40
 @wait 2s

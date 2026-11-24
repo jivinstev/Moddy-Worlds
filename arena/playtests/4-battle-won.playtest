@@ -1,8 +1,11 @@
-# Moddy Arena: a whole battle, won. The player presses the start button in the prep room the Minecraft way, five waves
-# come one after another (the default table in the arena's rules file), each is cleared, the battle is won, and the
-# arena is put back as built: no mobs, no drops, and a wall of planks put in it during the battle gone.
-# The mobs are killed by command (this proves the battle loop, not the player's sword); the player is kept safe.
-@intent a player presses the start button, clears five waves, wins, and the arena is tidied afterwards
+# Moddy Arena: a whole battle, won the way a player wins it. In prep he makes a sword with the Apprentice and a stone well in
+# the arena; he presses the start button beside the gate, walks in, and beats all five waves (the default table in the
+# arena's rules file: husks first, then pillagers, a witch and vindicators) with his sword. The battle is won and the
+# arena is put back as built: no mobs, no drops, and the well he made in prep gone.
+# A resistance effect keeps him on his feet (setup: a safety guard); every monster is beaten by his own hits: he turns
+# to it, walks toward it, and clicks the mouse (a click out of reach swings at the air, as it does for a player).
+# play-timeout: 1500
+@intent a player presses the start button, beats five waves with a sword he made, wins, and the arena is tidied afterwards
 @world flat seed=1
 
 @step arrive
@@ -11,53 +14,115 @@
 # a fresh world's difficulty may be anything but Peaceful's; make sure (each command must change something)
 difficulty hard
 difficulty normal
-effect give @s minecraft:resistance 600 4 true
-effect give @s minecraft:saturation 600 0 true
+gamemode survival
+effect give @s minecraft:resistance 1500 4 true
+effect give @s minecraft:saturation 1500 0 true
+
+@step a sword from the Apprentice, made in the prep room
+moddy apprentice a fire sword
+@expect screen Container within 10s
+@click slot 0
+@expect chat /Fire Sword( [0-9]+)? is in slot 3/ within 60s
+@wait 2s
+@assert execute if items entity @s hotbar.2 *
+
+@step a stone well in the arena, made from the prep room
+# from the middle of the prep room, facing the arena, a make lands through the gate on the arena's floor
+@aim look 180 12
+@wait 1s
+moddy apprentice a stone well
+@expect screen Container within 10s
+@click slot 0
+@expect chat /is ready/ within 90s
+@wait 3s
+@assert execute unless blocks -4 64 3 4 67 15 -4 200 3 all
+@shot well-in-the-arena
 
 @step he presses the start button
-# beside the gate, on the prep room's side of the shared wall, at chest height
-tp @s 1.5 64 19.5 180 0
-@wait 1s
+# a couple of steps toward the gate, then the stone button beside it
+@aim look 180 0
+@key key.forward hold 8t
+@wait 10t
 @aim pos 2.5 65.5 17.1
 @key key.use
 @expect chat A battle is starting within 5s
 @expect bossbar Wave 1 of 5 within 5s
 @shot countdown
 
-@step wave 1 comes
+@step wave 1: husks, and he walks in through the gate
 @expect title Wave 1 of 5 within 15s
-@assert execute if entity @e[tag=moddyarena_wave]
-# into the arena through the gate's place, looking north over the floor at the mobs
-tp @s 0 64 12 180 10
-@wait 2s
+@assert execute if entity @e[type=minecraft:husk,tag=moddyarena_wave]
+@assert execute unless entity @e[tag=moddyarena_wave,type=!minecraft:husk]
+@aim pos 0.5 64.5 16.5
+@key key.use
+@wait 10t
+@aim look 180 0
+@key key.forward hold 30t
+@key key.hotbar.3
 @expect bossbar /Wave 1 of 5: [0-9]+ monsters? left/ within 5s
-@shot wave-1-in-the-arena
-# something put in the arena during the battle, as a wish would: the reset clears it
-fill -3 64 -8 3 66 -8 minecraft:oak_planks
-kill @e[tag=moddyarena_wave]
-@expect chat Wave 1 cleared within 5s
+@shot wave-1
+@repeat each @e[tag=moddyarena_wave] max 60 until execute unless entity {it}
+@aim entity {it}
+@key key.forward hold 6t
+@aim entity {it}
+@key key.mouse.left
+@wait 12t
+@end-repeat
+@expect chat Wave 1 cleared within 10s
 
-@step waves 2 to 4
+@step wave 2: more husks
 @expect title Wave 2 of 5 within 20s
 @wait 1s
-kill @e[tag=moddyarena_wave]
-@expect chat Wave 2 cleared within 5s
+@assert execute if entity @e[type=minecraft:husk,tag=moddyarena_wave]
+@repeat each @e[tag=moddyarena_wave] max 60 until execute unless entity {it}
+@aim entity {it}
+@key key.forward hold 6t
+@aim entity {it}
+@key key.mouse.left
+@wait 12t
+@end-repeat
+@expect chat Wave 2 cleared within 10s
+
+@step wave 3: husks and pillagers
 @expect title Wave 3 of 5 within 20s
 @wait 1s
+@assert execute if entity @e[type=minecraft:pillager,tag=moddyarena_wave]
 @shot wave-3
-kill @e[tag=moddyarena_wave]
-@expect chat Wave 3 cleared within 5s
+@repeat each @e[tag=moddyarena_wave] max 60 until execute unless entity {it}
+@aim entity {it}
+@key key.forward hold 6t
+@aim entity {it}
+@key key.mouse.left
+@wait 12t
+@end-repeat
+@expect chat Wave 3 cleared within 10s
+
+@step wave 4: husks, pillagers, a witch and a vindicator
 @expect title Wave 4 of 5 within 20s
 @wait 1s
-kill @e[tag=moddyarena_wave]
-@expect chat Wave 4 cleared within 5s
+@assert execute if entity @e[type=minecraft:witch,tag=moddyarena_wave]
+@assert execute if entity @e[type=minecraft:vindicator,tag=moddyarena_wave]
+@repeat each @e[tag=moddyarena_wave] max 60 until execute unless entity {it}
+@aim entity {it}
+@key key.forward hold 6t
+@aim entity {it}
+@key key.mouse.left
+@wait 12t
+@end-repeat
+@expect chat Wave 4 cleared within 10s
 
 @step the last wave, and the win
 @expect title Wave 5 of 5 within 20s
-@wait 2s
+@wait 1s
 @shot wave-5
-kill @e[tag=moddyarena_wave]
-@expect title You won within 5s
+@repeat each @e[tag=moddyarena_wave] max 60 until execute unless entity {it}
+@aim entity {it}
+@key key.forward hold 6t
+@aim entity {it}
+@key key.mouse.left
+@wait 12t
+@end-repeat
+@expect title You won within 10s
 @expect chat You won the battle within 5s
 @shot won
 
@@ -65,7 +130,7 @@ kill @e[tag=moddyarena_wave]
 @expect chat The arena is tidy again within 15s
 @wait 1s
 @assert execute unless entity @e[type=!minecraft:player,x=-17,y=60,z=-17,dx=34,dy=40,dz=34]
-# the arena's inside is empty air again (compared with the empty sky at y 200), the planks gone
+# the arena's inside is empty air again (compared with the empty sky at y 200), the well gone
 @assert execute if blocks -15 64 -15 15 67 15 -15 200 -15 all
 @assert execute if block 0 63 0 minecraft:smooth_sandstone
 @assert execute if block -16 65 0 minecraft:stone_bricks

@@ -1,5 +1,5 @@
-# Moddy Arena: a battle lost. The player starts a battle and is knocked out during the first wave; on his own he is
-# every fighter, so the battle is lost at once. He comes back in the prep room (the arena's home), is told in plain
+# Moddy Arena: a battle lost. The player starts a battle, walks into the first wave without fighting back, and the
+# husks knock him out; on his own he is every fighter, so the battle is lost at once. He comes back in the prep room (the arena's home), is told in plain
 # words, and the arena is tidied: the wave's mobs are gone, and what he dropped is carried to the prep room for him.
 @intent a player who is knocked out in a battle loses it, comes back in the prep room, and the arena is tidied
 @world flat seed=1
@@ -9,26 +9,35 @@
 @wait 2s
 difficulty hard
 difficulty normal
+gamemode survival
 # something of his own, to show that being knocked out in a battle loses him nothing
 give @s minecraft:iron_sword
 
 @step he starts a battle with the button
-tp @s 1.5 64 19.5 180 0
-@wait 1s
+# a couple of steps toward the gate, then the stone button beside it
+@aim look 180 0
+@key key.forward hold 8t
+@wait 10t
 @aim pos 2.5 65.5 17.1
 @key key.use
 @expect chat A battle is starting within 5s
 
 @step wave 1 comes and he goes in
 @expect title Wave 1 of 5 within 15s
-tp @s 0 64 12 180 10
-@wait 2s
+# he opens the gate in the shared wall and walks through it, into the arena
+@aim pos 0.5 64.5 16.5
+@key key.use
+@wait 10t
+@aim look 180 0
+@key key.forward hold 30t
+@wait 1s
+@assert execute if entity @s[z=-15,dz=30]
 @assert execute if entity @e[tag=moddyarena_wave]
 @shot in-the-arena
 
-@step he is knocked out
-kill @s
-@expect chat knocked out or left within 10s
+@step the husks knock him out
+# he does not fight back: three husks on Normal take his 20 health in well under a minute
+@expect chat knocked out or left within 180s
 @wait 2s
 @shot lost
 
