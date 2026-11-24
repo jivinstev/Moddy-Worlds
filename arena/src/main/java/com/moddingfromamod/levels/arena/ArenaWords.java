@@ -98,7 +98,7 @@ public final class ArenaWords {
     }
 
     public static String peaceful() {
-        return "Battles need a difficulty above Peaceful: on Peaceful, monsters vanish as soon as they come.";
+        return "Battles need the game's difficulty above Peaceful: on Peaceful, monsters vanish as soon as they come.";
     }
 
     public static String nobody() {
@@ -178,8 +178,116 @@ public final class ArenaWords {
         return " - Battle: use your hotbar";
     }
 
-    /** The sign above the start button, one line each (a sign holds four short lines). */
-    public static final List<String> SIGN = List.of("Press the", "button to", "start a", "battle!");
+    // ── the battle arena control panel ──────────────────────────────────────────────────────────────────────────────
+
+    public static final String PANEL_TITLE = "BATTLE ARENA CONTROL PANEL";
+    public static final String PANEL_SIZE = "WAVE SIZE";
+    public static final String PANEL_DIFFICULTY = "DIFFICULTY";
+    public static final String PANEL_START = "START BATTLE";
+
+    static String monsters(int n) {
+        return n == 1 ? "1 monster" : n + " monsters";
+    }
+
+    /** What the wave size means, under the selectors: the first wave's and the last wave's monsters (one line each). */
+    public static List<String> sizeMeans(ArenaWaves waves) {
+        if (waves == null) {
+            return List.of("No waves in the rules");
+        }
+        int[] fl = waves.firstAndLastSize();
+        if (waves.count() == 1) {
+            return List.of("1 wave: " + monsters(fl[0]));
+        }
+        return List.of("First wave: " + monsters(fl[0]), "Last wave: " + monsters(fl[1]));
+    }
+
+    /** The battle's state, under the start button: what the board shows now. */
+    public static String panelState(ArenaMatch.Phase phase, int wave, int of) {
+        return switch (phase) {
+            case IDLE -> "Ready! Press START.";
+            case COUNTDOWN -> "Battle on: wave 1 next";
+            case WAVE -> "Battle on: wave " + wave + " of " + of;
+            case BREATHER -> "Battle on: wave " + (wave + 1) + " next";
+            case WON -> "You won!";
+            case LOST -> "Battle lost";
+            case RESETTING -> "Tidying the arena...";
+        };
+    }
+
+    /** The lines of words one place on the board shows, for these settings, waves and battle. */
+    public static List<String> panel(ArenaPanel.Words w, ArenaSettings settings, ArenaWaves waves,
+                                     ArenaMatch.Phase phase, int wave, int of) {
+        return switch (w) {
+            case TITLE -> List.of(PANEL_TITLE);
+            case SIZE_LABEL -> List.of(PANEL_SIZE);
+            case SIZE_VALUE -> List.of(String.valueOf(settings.size()));
+            case SIZE_DOWN_SIGN, DIFFICULTY_DOWN_SIGN -> List.of("-");
+            case SIZE_UP_SIGN, DIFFICULTY_UP_SIGN -> List.of("+");
+            case DIFFICULTY_LABEL -> List.of(PANEL_DIFFICULTY);
+            case DIFFICULTY_VALUE -> List.of(settings.difficulty().word());
+            case SIZE_MEANS -> sizeMeans(waves);
+            case START_LABEL -> List.of(PANEL_START);
+            case STATE -> List.of(panelState(phase, wave, of));
+        };
+    }
+
+    /** What a difficulty means, said when it is picked. */
+    public static String difficultyMeans(ArenaDifficulty d) {
+        return switch (d) {
+            case EASY -> "Weaker monsters.";
+            case NORMAL -> "The usual monsters.";
+            case HARD -> "Tougher monsters, and strong ones sooner.";
+            case EXTREME -> "The toughest monsters, and the strongest come early!";
+        };
+    }
+
+    /** The action bar, when the wave size is changed. */
+    public static String sizeChanged(int size, ArenaWaves waves) {
+        if (waves == null) {
+            return "Wave size " + size + ".";
+        }
+        int[] fl = waves.firstAndLastSize();
+        if (waves.count() == 1) {
+            return "Wave size " + size + ": the wave has " + monsters(fl[0]) + ".";
+        }
+        return "Wave size " + size + ": the first wave has " + monsters(fl[0]) + ", the last has " + fl[1] + ".";
+    }
+
+    /** The action bar, when the difficulty is changed. */
+    public static String difficultyChanged(ArenaDifficulty d) {
+        return "Difficulty: " + d.word() + ". " + difficultyMeans(d);
+    }
+
+    /** The action bar, when the wave size cannot go further that way. */
+    public static String sizeAtEnd(boolean up, int max) {
+        if (!up) {
+            return "The wave size is already the smallest.";
+        }
+        return max >= ArenaSettings.MAX_SIZE ? "The wave size is already the biggest."
+                : "This arena's rules let the wave size go up to " + max + ".";
+    }
+
+    /** The action bar, when the difficulty cannot go further that way. */
+    public static String difficultyAtEnd(boolean up, ArenaDifficulty max) {
+        if (!up) {
+            return ArenaDifficulty.EASY.word() + " is already the easiest.";
+        }
+        return max == ArenaDifficulty.EXTREME ? ArenaDifficulty.EXTREME.word() + " is already the hardest."
+                : "This arena's rules let the difficulty go up to " + max.word() + ".";
+    }
+
+    public static String sizeFixed(int size) {
+        return "This arena's rules keep the wave size at " + size + ".";
+    }
+
+    public static String difficultyFixed(ArenaDifficulty d) {
+        return "This arena's rules keep the difficulty at " + d.word() + ".";
+    }
+
+    /** The action bar, when a selector is pressed during a battle. */
+    public static String panelBusy() {
+        return "A battle is on. Change the wave size and difficulty when it is over.";
+    }
 
     /** Every fixed line, for a test that reads them all. */
     static List<String> all() {
@@ -188,9 +296,32 @@ public final class ArenaWords {
                 wonTitle(), wonSubtitle(5), wonSubtitle(1), wonChat(5), wonChat(1), lostTitle(),
                 lostSubtitle(ArenaMatch.Why.TIME_UP), lostSubtitle(ArenaMatch.Why.NOBODY_LEFT),
                 lostChat(ArenaMatch.Why.TIME_UP, 3), lostChat(ArenaMatch.Why.NOBODY_LEFT, 2), ready(), busy(),
-                noWaves(), peaceful(), nobody(), notAnArena(), String.join(" ", SIGN), battleInstantOnly(), resting(7),
+                noWaves(), peaceful(), nobody(), notAnArena(), battleInstantOnly(), resting(7),
                 resting(1), magicianUsedUp(3), magicianUsedUp(1), magicianUsedUp(0), magicianLeft(2, 3),
                 magicianCounted(0, 3), magicianGivenBack(1, 3), magicianUndone(3, 3), prepWishes(),
-                String.join(" ", battleWishes(10)), titlePrep(2), titlePrep(1), titleBattle());
+                String.join(" ", battleWishes(10)), titlePrep(2), titlePrep(1), titleBattle(), PANEL_TITLE, PANEL_SIZE,
+                PANEL_DIFFICULTY, PANEL_START, panelBusy(), sizeFixed(5), sizeAtEnd(true, 10), sizeAtEnd(true, 7),
+                sizeAtEnd(false, 10), difficultyAtEnd(true, ArenaDifficulty.EXTREME),
+                difficultyAtEnd(true, ArenaDifficulty.HARD), difficultyAtEnd(false, ArenaDifficulty.EXTREME));
+    }
+
+    /** Every line the panel and its selectors can say, for a test that reads them all. */
+    static List<String> allPanel(ArenaWaves waves) {
+        List<String> out = new java.util.ArrayList<>();
+        for (ArenaDifficulty d : ArenaDifficulty.values()) {
+            out.add(difficultyChanged(d));
+            out.add(difficultyFixed(d));
+            out.add(d.word());
+        }
+        for (int s = ArenaSettings.MIN_SIZE; s <= ArenaSettings.MAX_SIZE; s++) {
+            ArenaWaves at = new ArenaSettings(s, ArenaDifficulty.NORMAL).apply(waves);
+            out.add(sizeChanged(s, at));
+            out.addAll(sizeMeans(at));
+        }
+        out.addAll(sizeMeans(null));
+        for (ArenaMatch.Phase p : ArenaMatch.Phase.values()) {
+            out.add(panelState(p, 2, 5));
+        }
+        return out;
     }
 }
