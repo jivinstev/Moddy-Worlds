@@ -30,7 +30,7 @@ while read -r _lref lsha _rref rsha; do
         revs=("$rsha..$lsha")
     fi
     python3 "$top/tools/secret-scan.py" --repo "$top" --commits -- "${revs[@]}" >&2 || rc=1
-    python3 "$top/tools/leak-scan.py" "${args[@]}" --repo "$top" --commits -- "${revs[@]}" >&2 || rc=1
+    python3 "$top/tools/leak-scan.py" ${args[@]+"${args[@]}"} --repo "$top" --commits -- "${revs[@]}" >&2 || rc=1
 done
 if [ "$rc" -ne 0 ]; then
     echo "pre-push: REFUSED. A commit above adds a credential or private work (or the scan could not run). Fix that" >&2

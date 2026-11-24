@@ -1,0 +1,433 @@
+# Scarcity Isle: the whole challenge ladder, played the Magician's way. He turns the Magician on from his watch (his
+# Claude subscription), types three broad wishes into the wish box, and plays by hand what no wish does for him:
+# planks, a crafting table, sticks, a wooden pickaxe and hoe at his table, charcoal in his furnace, mining his own
+# cobblestone generator, beating a zombie and breeding the cows. The zombie and the cows are follow-up wishes typed
+# with /wish, the long-wish command. Each goal's advancement is asserted.
+# The Isle's rules keep gifts modest: at most 3 kinds of thing a wish, one stack of each. So each wish names 3 kinds
+# (the 2026-11-14 driver's wishes named up to 6, from before that rule), and what is left out he makes himself.
+# This spends real Magician wishes on the Claude subscription (Claude Code installed and signed in): run it once,
+# never in a loop. It expects a new player's Moddy home (tools/play.sh starts every playtest with an empty one).
+# Commands are setup only, except the lines marked `# SHORTCUT: <why>`.
+# play-timeout: 1500
+# Needs a Gate C carrier with `@click … right|shift` (jivinstev/mc-mod-version-upgrade#246); until a carrier release
+# has it, build one from that branch and pass its folder as CARRIER_DIR (tools/play.sh).
+@intent a Magician climbs all 18 goals of Scarcity Isle with a few broad typed wishes and the play no wish does for him
+@world flat seed=1
+@continue-on-fail
+
+@step arrive on his island
+@expect chat How to use Moddy within 90s
+@repeat 30 until execute if entity @s[y=60,dy=12]
+@wait 1s
+@end-repeat
+@wait 2s
+# the first player's island: its origin at -1024 63 -1024, so its template corner at -1027 63 -1025 (IslandPlacer)
+@assert execute if entity @s[x=-1024,y=66,z=-1024,dx=0,dy=0,dz=0]
+@assert execute if block -1020 66 -1024 minecraft:chest
+# setup: the Isle's goals pack. A world made with the Moddy Isle World Type has it from the start; the carrier makes
+# its own world, switched on by properties, without the world's packs (tools/play.sh)
+datapack enable "mod/moddyisle:datapacks/skyblock_advancements"
+@wait 3s
+# setup: a survival player in daylight, kept safe from a fall into the void, fire and lightning
+gamemode survival
+time set noon
+weather clear
+gamerule doDaylightCycle false
+effect give @s minecraft:resistance 3000 4 true
+effect give @s minecraft:fire_resistance 3000 0 true
+effect give @s minecraft:saturation 3000 0 true
+# SHORTCUT: stands at the middle of his island's long side (walking there is not what the step tests)
+tp @s -1023.5 66 -1022.5 0 0
+@shot arrived
+
+@step the Magician, turned on from his watch
+@key key.hotbar.1
+# looking up at the sky, so the right-click opens his watch and not a block he faces (his crafting table)
+@aim look 0 -60
+@key key.use
+@expect screen /make a wish/ within 10s
+@click button "Turn on the Magician"
+@expect screen Magician setup within 10s
+@click item "Use my Claude subscription"
+@expect chat /setting up the magician with your claude subscription/ within 10s
+@expect chat /the magician is on: opus 5\.5 on your claude subscription/ within 600s
+@wait 2s
+@shot magician-on
+
+@step wish 1: wood, saplings and apples
+@key key.hotbar.1
+# looking up at the sky, so the right-click opens his watch and not a block he faces (his crafting table)
+@aim look 0 -60
+@key key.use
+@expect screen /make a wish/ within 10s
+@type "give me 16 oak logs, 4 oak saplings and 4 apples"
+@shot wish-1
+@click button "Make my wish"
+# the Magician plans and makes it; "It's here" when it is done
+@expect chat /It's here/ within 300s
+@wait 5s
+# what did not fit his hotbar waits in his Wish Bag: everything in it shift-clicked into his inventory (the bag closes
+# up its gaps as each thing leaves, so its first slot is clicked again and again, a moment apart so his screen keeps up
+# with the bag)
+@key key.hotbar.2
+@key key.use
+@expect screen Wish Bag within 5s
+@click slot 0 shift
+@wait 4t
+@click slot 0 shift
+@wait 4t
+@click slot 0 shift
+@wait 4t
+@click slot 0 shift
+@wait 4t
+@click slot 0 shift
+@wait 4t
+@click slot 0 shift
+@wait 4t
+@click slot 0 shift
+@wait 4t
+@click slot 0 shift
+@wait 4t
+@click slot 0 shift
+@wait 4t
+@key key.keyboard.escape
+@expect screen none within 3s
+@shot after-wish-1
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/root=true}]
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/wood=true}]
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/sapling=true}]
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/apple=true}]
+
+@step Benchmarking, Time to Mine and Time to Farm: planks, a crafting table, sticks, a wooden pickaxe and a hoe by hand
+# planks: his logs in the 2x2 grid, the result clicked three times (12 planks carried); closing the screen gives back
+# the carried planks and the logs left in the grid
+@key key.inventory
+@expect screen InventoryScreen within 3s
+@click item "Oak Log"
+@click slot 1
+@click slot 0
+@click slot 0
+@click slot 0
+@key key.inventory
+@expect screen none within 3s
+@assert execute if items entity @s container.* minecraft:oak_planks
+# a crafting table: one plank in each of the four grid slots (the last takes the rest), the result shift-clicked
+@key key.inventory
+@expect screen InventoryScreen within 3s
+@click item "Oak Planks"
+@click slot 2 right
+@click slot 3 right
+@click slot 4 right
+@click slot 1
+@click slot 0 shift
+@key key.inventory
+@expect screen none within 3s
+@assert execute if entity @s[advancements={minecraft:story/root=true}]
+# sticks: two planks, one over the other
+@key key.inventory
+@expect screen InventoryScreen within 3s
+@click item "Oak Planks"
+@click slot 3 right
+@click slot 1
+@click slot 0 shift
+@key key.inventory
+@expect screen none within 3s
+@assert execute if items entity @s container.* minecraft:stick
+# the table down beside him
+@key key.inventory
+@click slot 44 shift
+@click item "Crafting Table"
+@click slot 44
+@key key.inventory
+@key key.hotbar.9
+@aim pos -1024.5 65.9 -1024.5
+@key key.use
+@wait 10t
+@assert execute if block -1025 66 -1025 minecraft:crafting_table
+# a wooden pickaxe at the table (table grid: slots 1-9 row by row, result 0)
+@aim pos -1024.5 66.5 -1024.5
+@key key.use
+@expect screen Crafting within 5s
+@click item "Oak Planks"
+@click slot 2 right
+@click slot 3 right
+@click slot 1
+@click item "Stick"
+@click slot 5 right
+@click slot 8
+@click slot 0 shift
+@key key.keyboard.escape
+@expect screen none within 3s
+@assert execute if entity @s[advancements={minecraft:story/mine_stone=true}]
+# and a wooden hoe
+@aim pos -1024.5 66.5 -1024.5
+@key key.use
+@expect screen Crafting within 5s
+@click item "Oak Planks"
+@click slot 2 right
+@click slot 1
+@click item "Stick"
+@click slot 5 right
+@click slot 8
+@click slot 0 shift
+@key key.keyboard.escape
+@expect screen none within 3s
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/farm=true}]
+@shot crafted-by-hand
+
+@step wish 2: a stone pickaxe, a furnace and torches
+@key key.hotbar.1
+# looking up at the sky, so the right-click opens his watch and not a block he faces (his crafting table)
+@aim look 0 -60
+@key key.use
+@expect screen /make a wish/ within 10s
+@type "give me a stone pickaxe, a furnace and 8 torches"
+@shot wish-2
+@click button "Make my wish"
+# the Magician plans and makes it; "It's here" when it is done
+@expect chat /It's here/ within 300s
+@wait 5s
+# what did not fit his hotbar waits in his Wish Bag: everything in it shift-clicked into his inventory (the bag closes
+# up its gaps as each thing leaves, so its first slot is clicked again and again, a moment apart so his screen keeps up
+# with the bag)
+@key key.hotbar.2
+@key key.use
+@expect screen Wish Bag within 5s
+@click slot 0 shift
+@wait 4t
+@click slot 0 shift
+@wait 4t
+@click slot 0 shift
+@wait 4t
+@click slot 0 shift
+@wait 4t
+@click slot 0 shift
+@wait 4t
+@click slot 0 shift
+@wait 4t
+@click slot 0 shift
+@wait 4t
+@click slot 0 shift
+@wait 4t
+@click slot 0 shift
+@wait 4t
+@key key.keyboard.escape
+@expect screen none within 3s
+@assert execute if entity @s[advancements={minecraft:story/upgrade_tools=true}]
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/furnace=true}]
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/torch=true}]
+
+@step Burnt Logs: charcoal from his own furnace
+@key key.inventory
+@click slot 44 shift
+@click item "Furnace"
+@click slot 44
+@key key.inventory
+@key key.hotbar.9
+@aim pos -1024.5 65.9 -1022.5
+@key key.use
+@wait 10t
+@assert execute if block -1025 66 -1023 minecraft:furnace
+@aim pos -1024.5 66.5 -1022.5
+@key key.use
+@expect screen Furnace within 5s
+# furnace: input 0 (his logs), fuel 1 (his planks), result 2
+@click item "Oak Log"
+@click slot 0
+@click item "Oak Planks"
+@click slot 1
+@repeat 30 until execute if block -1025 66 -1023 minecraft:furnace{Items:[{Slot:2b,id:"minecraft:charcoal"}]}
+@wait 1s
+@end-repeat
+@click slot 2 shift
+@key key.keyboard.escape
+@expect screen none within 3s
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/charcoal=true}]
+@shot charcoal
+
+@step wish 3: iron, a cauldron and lava
+@key key.hotbar.1
+# looking up at the sky, so the right-click opens his watch and not a block he faces (his crafting table)
+@aim look 0 -60
+@key key.use
+@expect screen /make a wish/ within 10s
+@type "give me 8 iron ingots, a cauldron and a lava bucket"
+@shot wish-3
+@click button "Make my wish"
+# the Magician plans and makes it; "It's here" when it is done
+@expect chat /It's here/ within 300s
+@wait 5s
+# what did not fit his hotbar waits in his Wish Bag: everything in it shift-clicked into his inventory (the bag closes
+# up its gaps as each thing leaves, so its first slot is clicked again and again, a moment apart so his screen keeps up
+# with the bag)
+@key key.hotbar.2
+@key key.use
+@expect screen Wish Bag within 5s
+@click slot 0 shift
+@wait 4t
+@click slot 0 shift
+@wait 4t
+@click slot 0 shift
+@wait 4t
+@click slot 0 shift
+@wait 4t
+@click slot 0 shift
+@wait 4t
+@click slot 0 shift
+@wait 4t
+@click slot 0 shift
+@wait 4t
+@click slot 0 shift
+@wait 4t
+@click slot 0 shift
+@wait 4t
+@key key.keyboard.escape
+@expect screen none within 3s
+@assert execute if entity @s[advancements={minecraft:story/smelt_iron=true}]
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/cauldron=true}]
+@shot after-wish-3
+
+@step The Heart of the Grind: the chest's ice and lava, a cobblestone generator he mines
+# the starter chest: shift-click out its lava bucket and ice (with the lava bucket from his wish, two: Hot Stuff)
+@aim pos -1019.5 66.5 -1023.5
+@key key.use
+@expect screen Container within 5s
+@click item "Lava Bucket" shift
+@click item "Ice" shift
+@key key.keyboard.escape
+@expect screen none within 3s
+@wait 2s
+@assert execute if entity @s[advancements={minecraft:story/lava_bucket=true}]
+# the guide: a trench of four in the island's top (row z -1024), a hole under its second block
+@key key.hotbar.3
+@aim pos -1023.5 65.5 -1023.5
+@key key.attack hold 30t
+@aim pos -1022.5 65.5 -1023.5
+@key key.attack hold 30t
+@aim pos -1021.5 65.5 -1023.5
+@key key.attack hold 30t
+@aim pos -1020.5 65.5 -1023.5
+@key key.attack hold 30t
+@aim pos -1022.5 64.5 -1023.5
+@key key.attack hold 30t
+@assert execute if blocks -1024 65 -1024 -1021 65 -1024 -1024 200 -1024 all
+# water: the ice put down at the trench's end and broken
+@key key.inventory
+@click slot 44 shift
+@click item "Ice"
+@click slot 44
+@key key.inventory
+@key key.hotbar.9
+@aim pos -1023.5 64.95 -1023.5
+@key key.use
+@wait 5t
+@aim pos -1023.5 65.5 -1023.5
+@key key.attack hold 30t
+@wait 1s
+@assert execute if block -1024 65 -1024 minecraft:water
+# lava: a bucket poured into the trench's other end
+@key key.inventory
+@click slot 44 shift
+@click item "Lava Bucket"
+@click slot 44
+@key key.inventory
+@key key.hotbar.9
+@aim pos -1020.5 64.95 -1023.5
+@key key.use
+@wait 5t
+@assert execute if block -1021 65 -1024 minecraft:lava
+@repeat 15 until execute if block -1022 65 -1024 minecraft:cobblestone
+@wait 1s
+@end-repeat
+@shot generator
+# mine it with a pickaxe from his wish, again and again
+@key key.inventory
+@click slot 44 shift
+@click item "Pickaxe"
+@click slot 44
+@key key.inventory
+@key key.hotbar.9
+@repeat 14 until execute if entity @s[advancements={skyvoid_advancements:overworld/cobble_gen=true}]
+@wait 2s
+@aim pos -1021.5 65.5 -1023.5
+@key key.attack hold 30t
+@end-repeat
+@wait 3s
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/cobble_gen=true}]
+@shot mined
+
+@step Time to Get Deadly and Zombie Hunter: a wished zombie, beaten by hand
+# setup: night, so the zombie does not burn in the sun before he beats it
+time set midnight
+wish summon a zombie next to me so I can fight it
+@repeat 60 until execute if entity @e[type=minecraft:zombie,distance=..16]
+@wait 1s
+@end-repeat
+@assert execute if entity @e[type=minecraft:zombie,distance=..16]
+@key key.inventory
+@click slot 44 shift
+@click item "Stone Pickaxe"
+@click slot 44
+@key key.inventory
+@key key.hotbar.9
+@shot the-zombie
+# he swings at it with a mouse click until it is beaten; a hit knocks it back and it comes at him again, or off his
+# island, which beats it too (a click out of reach swings at the air, as it does for a player)
+@repeat 80 until execute if entity @s[advancements={skyvoid_advancements:overworld/zombie_hunter=true}]
+@aim entity @e[type=minecraft:zombie,distance=..16,sort=nearest,limit=1] if-present
+@key key.mouse.left
+@wait 15t
+@end-repeat
+@wait 1s
+time set noon
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/mob_farm=true}]
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/zombie_hunter=true}]
+@shot beaten
+
+@step New Friends: two wished cows, fed wheat by hand, and a calf
+# SHORTCUT: back at the middle of his island's long side (the zombie's hits can knock him into his generator's hole)
+tp @s -1023.5 66 -1022.5 0 0
+@wait 10t
+# animals land where he looks: on his island's grass
+@aim pos -1023.5 65.9 -1020.5
+@wait 5t
+wish give me two cows and some wheat to feed them
+@repeat 60 until execute if entity @e[type=minecraft:cow,distance=..12]
+@wait 1s
+@end-repeat
+@wait 5s
+@key key.hotbar.2
+@key key.use
+@expect screen Wish Bag within 5s
+@click slot 0 shift
+@wait 4t
+@click slot 0 shift
+@wait 4t
+@key key.keyboard.escape
+@expect screen none within 3s
+@key key.inventory
+@click slot 44 shift
+@click item "Wheat"
+@click slot 44
+@key key.inventory
+@key key.hotbar.9
+@assert execute if items entity @s weapon.mainhand minecraft:wheat
+@shot two-cows
+# each grown cow not yet in love, nearest first, is fed by hand (a step toward it, so the one already fed does not
+# stand in the way)
+@repeat 20 until execute unless entity @e[type=minecraft:cow,distance=..16,nbt={InLove:0,Age:0}]
+@aim entity @e[type=minecraft:cow,distance=..16,sort=nearest,limit=1,nbt={InLove:0,Age:0}] if-present
+@key key.forward hold 3t
+@aim entity @e[type=minecraft:cow,distance=..16,sort=nearest,limit=1,nbt={InLove:0,Age:0}] if-present
+@key key.use
+@wait 1s
+@end-repeat
+@repeat 20 until execute if entity @s[advancements={skyvoid_advancements:overworld/passive_animals=true}]
+@wait 1s
+@end-repeat
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/passive_animals=true}]
+@shot a-calf
+
+@step all 18 goals
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/root=true,skyvoid_advancements:overworld/wood=true,minecraft:story/root=true,minecraft:story/mine_stone=true,skyvoid_advancements:overworld/cobble_gen=true,skyvoid_advancements:overworld/sapling=true,skyvoid_advancements:overworld/apple=true,skyvoid_advancements:overworld/furnace=true,skyvoid_advancements:overworld/charcoal=true}]
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/torch=true,minecraft:story/upgrade_tools=true,skyvoid_advancements:overworld/farm=true,skyvoid_advancements:overworld/mob_farm=true,skyvoid_advancements:overworld/zombie_hunter=true,minecraft:story/smelt_iron=true,skyvoid_advancements:overworld/cauldron=true,minecraft:story/lava_bucket=true,skyvoid_advancements:overworld/passive_animals=true}]
