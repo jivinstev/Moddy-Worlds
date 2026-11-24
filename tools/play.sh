@@ -204,6 +204,7 @@ for script in "$SUITE"/*.playtest; do
     say "playtest $name"
     # every playtest starts as a new player: an empty Moddy home (settings, the Magician, his wishes and shelf)
     rm -rf "$HOME_DIR"; mkdir -p "$HOME_DIR"
+    rm -rf "$WORK/reports/$name"      # this run's report alone (frames from an earlier run would mix in)
     # a long script names its own time limit in a comment line: `# play-timeout: <seconds>` (default 900)
     TIMEOUT="$(sed -n 's/^# play-timeout: *\([0-9][0-9]*\).*/\1/p' "$script" | head -1)"
     if python3 "$MMVU/tools/playtest.py" run "$script" --plan "$PLAN" --mc "$MC" $VIDEO "${PROPS[@]}" \

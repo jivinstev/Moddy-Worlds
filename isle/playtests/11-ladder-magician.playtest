@@ -67,19 +67,29 @@ tp @s -1023.5 66 -1022.5 0 0
 @expect chat /It's here/ within 300s
 @wait 5s
 # what did not fit his hotbar waits in his Wish Bag: everything in it shift-clicked into his inventory (the bag closes
-# up its gaps as each thing leaves, so its first slot is clicked again and again)
+# up its gaps as each thing leaves, so its first slot is clicked again and again, a moment apart so his screen keeps up
+# with the bag)
 @key key.hotbar.2
 @key key.use
 @expect screen Wish Bag within 5s
 @click slot 0 shift
+@wait 4t
 @click slot 0 shift
+@wait 4t
 @click slot 0 shift
+@wait 4t
 @click slot 0 shift
+@wait 4t
 @click slot 0 shift
+@wait 4t
 @click slot 0 shift
+@wait 4t
 @click slot 0 shift
+@wait 4t
 @click slot 0 shift
+@wait 4t
 @click slot 0 shift
+@wait 4t
 @key key.keyboard.escape
 @expect screen none within 3s
 @shot after-wish-1
@@ -178,19 +188,29 @@ tp @s -1023.5 66 -1022.5 0 0
 @expect chat /It's here/ within 300s
 @wait 5s
 # what did not fit his hotbar waits in his Wish Bag: everything in it shift-clicked into his inventory (the bag closes
-# up its gaps as each thing leaves, so its first slot is clicked again and again)
+# up its gaps as each thing leaves, so its first slot is clicked again and again, a moment apart so his screen keeps up
+# with the bag)
 @key key.hotbar.2
 @key key.use
 @expect screen Wish Bag within 5s
 @click slot 0 shift
+@wait 4t
 @click slot 0 shift
+@wait 4t
 @click slot 0 shift
+@wait 4t
 @click slot 0 shift
+@wait 4t
 @click slot 0 shift
+@wait 4t
 @click slot 0 shift
+@wait 4t
 @click slot 0 shift
+@wait 4t
 @click slot 0 shift
+@wait 4t
 @click slot 0 shift
+@wait 4t
 @key key.keyboard.escape
 @expect screen none within 3s
 @assert execute if entity @s[advancements={minecraft:story/upgrade_tools=true}]
@@ -219,7 +239,7 @@ tp @s -1023.5 66 -1022.5 0 0
 @repeat 30 until execute if block -1025 66 -1023 minecraft:furnace{Items:[{Slot:2b,id:"minecraft:charcoal"}]}
 @wait 1s
 @end-repeat
-@click slot 0 shift
+@click slot 2 shift
 @key key.keyboard.escape
 @expect screen none within 3s
 @assert execute if entity @s[advancements={skyvoid_advancements:overworld/charcoal=true}]
@@ -238,19 +258,29 @@ tp @s -1023.5 66 -1022.5 0 0
 @expect chat /It's here/ within 300s
 @wait 5s
 # what did not fit his hotbar waits in his Wish Bag: everything in it shift-clicked into his inventory (the bag closes
-# up its gaps as each thing leaves, so its first slot is clicked again and again)
+# up its gaps as each thing leaves, so its first slot is clicked again and again, a moment apart so his screen keeps up
+# with the bag)
 @key key.hotbar.2
 @key key.use
 @expect screen Wish Bag within 5s
 @click slot 0 shift
+@wait 4t
 @click slot 0 shift
+@wait 4t
 @click slot 0 shift
+@wait 4t
 @click slot 0 shift
+@wait 4t
 @click slot 0 shift
+@wait 4t
 @click slot 0 shift
+@wait 4t
 @click slot 0 shift
+@wait 4t
 @click slot 0 shift
+@wait 4t
 @click slot 0 shift
+@wait 4t
 @key key.keyboard.escape
 @expect screen none within 3s
 @assert execute if entity @s[advancements={minecraft:story/smelt_iron=true}]
@@ -341,9 +371,11 @@ wish summon a zombie next to me so I can fight it
 @key key.inventory
 @key key.hotbar.9
 @shot the-zombie
-@repeat each @e[type=minecraft:zombie,distance=..16] max 40 until execute unless entity {it}
-@aim entity {it}
-@key key.attack
+# he swings at it with a mouse click until it is beaten; a hit knocks it back and it comes at him again, or off his
+# island, which beats it too (a click out of reach swings at the air, as it does for a player)
+@repeat 80 until execute if entity @s[advancements={skyvoid_advancements:overworld/zombie_hunter=true}]
+@aim entity @e[type=minecraft:zombie,distance=..16,sort=nearest,limit=1] if-present
+@key key.mouse.left
 @wait 15t
 @end-repeat
 @wait 1s
@@ -353,6 +385,9 @@ time set noon
 @shot beaten
 
 @step New Friends: two wished cows, fed wheat by hand, and a calf
+# SHORTCUT: back at the middle of his island's long side (the zombie's hits can knock him into his generator's hole)
+tp @s -1023.5 66 -1022.5 0 0
+@wait 10t
 # animals land where he looks: on his island's grass
 @aim pos -1023.5 65.9 -1020.5
 @wait 5t
@@ -365,7 +400,9 @@ wish give me two cows and some wheat to feed them
 @key key.use
 @expect screen Wish Bag within 5s
 @click slot 0 shift
+@wait 4t
 @click slot 0 shift
+@wait 4t
 @key key.keyboard.escape
 @expect screen none within 3s
 @key key.inventory
@@ -378,10 +415,10 @@ wish give me two cows and some wheat to feed them
 @shot two-cows
 # each grown cow not yet in love, nearest first, is fed by hand (a step toward it, so the one already fed does not
 # stand in the way)
-@repeat 12 until execute unless entity @e[type=minecraft:cow,distance=..8,nbt={InLove:0,Age:0}]
-@aim entity @e[type=minecraft:cow,distance=..8,sort=nearest,limit=1,nbt={InLove:0,Age:0}] if-present
+@repeat 20 until execute unless entity @e[type=minecraft:cow,distance=..16,nbt={InLove:0,Age:0}]
+@aim entity @e[type=minecraft:cow,distance=..16,sort=nearest,limit=1,nbt={InLove:0,Age:0}] if-present
 @key key.forward hold 3t
-@aim entity @e[type=minecraft:cow,distance=..8,sort=nearest,limit=1,nbt={InLove:0,Age:0}] if-present
+@aim entity @e[type=minecraft:cow,distance=..16,sort=nearest,limit=1,nbt={InLove:0,Age:0}] if-present
 @key key.use
 @wait 1s
 @end-repeat
