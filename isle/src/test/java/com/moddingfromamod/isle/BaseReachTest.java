@@ -299,7 +299,7 @@ class BaseReachTest {
                 + "\"message\":{\"rule\":\"a\",\"why\":\"b\"}}," + REACH);
         String r = BaseReach.refusal("run_command", cmd("weather clear", "time set day"), w.a, null, w, noTime);
         assertNotNull(r);
-        assertEquals(WorldEffect.TIME, BaseReach.effectOf("run_command", cmd("time set day"), r),
+        assertEquals(WorldEffect.TIME, BaseReach.judge("run_command", cmd("weather clear", "time set day"), w.a, null, w, noTime).effect(),
                 "a backstop catch is counted against the rule it broke: " + r);
         WorldRules noReach = rules("{\"id\":\"t\",\"type\":\"deny_world_effect\",\"effects\":[\"time\"],"
                 + "\"message\":{\"rule\":\"a\",\"why\":\"b\"}}");
@@ -311,13 +311,13 @@ class BaseReachTest {
     @Test
     void backstopCatchesMapToARule() {
         World w = new World();
-        assertEquals(WorldEffect.WORLDWIDE_DATAPACKS_STANDING_RULES, BaseReach.effectOf("author_datapack",
-                new JsonObject(), BaseReach.refusal("author_datapack", new JsonObject(), w.a, w.onA(), w)));
-        assertEquals(WorldEffect.OUTSIDE_OWN_BASE, BaseReach.effectOf("build_structure", new JsonObject(),
-                BaseReach.refusal("build_structure", new JsonObject(), w.a, w.onB(), w)));
-        assertEquals(WorldEffect.OTHER_DIMENSIONS, BaseReach.effectOf("build_structure", new JsonObject(),
-                BaseReach.refusal("build_structure", new JsonObject(), w.a, new Spot("minecraft:the_nether", 0, 64, 0), w)));
-        assertNull(BaseReach.effectOf("build_structure", new JsonObject(), null));
+        assertEquals(WorldEffect.WORLDWIDE_DATAPACKS_STANDING_RULES, BaseReach.judge("author_datapack",
+                new JsonObject(), w.a, w.onA(), w, null).effect());
+        assertEquals(WorldEffect.OUTSIDE_OWN_BASE, BaseReach.judge("build_structure", new JsonObject(),
+                w.a, w.onB(), w, null).effect());
+        assertEquals(WorldEffect.OTHER_DIMENSIONS, BaseReach.judge("build_structure", new JsonObject(),
+                w.a, new Spot("minecraft:the_nether", 0, 64, 0), w, null).effect());
+        assertNull(BaseReach.judge("build_structure", new JsonObject(), w.a, w.onA(), w, null));
     }
 
     private static List<String> workerTools() throws Exception {

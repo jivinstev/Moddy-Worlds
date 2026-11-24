@@ -107,14 +107,14 @@ jobs:
       - name: The workflow's core pins match the core.lock files
         run: python3 tools/core-pins.py --check
       # BEGIN core pins: written by tools/core-pins.py from */core.lock; edit core.lock, then tools/core-pins.py --write
-      - name: The pinned public core moddingfromamod-1.0.6-mc1.21.8 (arena, isle)
+      - name: The pinned public core moddingfromamod-1.0.9-mc1.21.8 (arena, isle)
         env:
           GH_TOKEN: ${{ secrets.CORE_READ_TOKEN }}
         run: |
           mkdir -p "$RUNNER_TEMP/core"
-          curl -fsSL -o "$RUNNER_TEMP/core/moddingfromamod-1.0.6+mc1.21.8.jar" "https://github.com/jivinstev/ModdyTheWishWatch/releases/download/moddingfromamod-1.0.6-mc1.21.8/moddingfromamod-1.0.6+mc1.21.8.jar" || gh release download "moddingfromamod-1.0.6-mc1.21.8" -R "jivinstev/ModdyTheWishWatch" -p "moddingfromamod-1.0.6+mc1.21.8.jar" -D "$RUNNER_TEMP/core" --clobber
-          echo "188b1be70331d3f05c40ba5d4cc4334ec44932d941ef3cdb4302abee8501762e  $RUNNER_TEMP/core/moddingfromamod-1.0.6+mc1.21.8.jar" | sha256sum -c -
-          for w in arena isle; do mkdir -p "$w/.core"; cp "$RUNNER_TEMP/core/moddingfromamod-1.0.6+mc1.21.8.jar" "$w/.core/"; done
+          curl -fsSL -o "$RUNNER_TEMP/core/moddingfromamod-1.0.9+mc1.21.8.jar" "https://github.com/jivinstev/ModdyTheWishWatch/releases/download/moddingfromamod-1.0.9-mc1.21.8/moddingfromamod-1.0.9+mc1.21.8.jar" || gh release download "moddingfromamod-1.0.9-mc1.21.8" -R "jivinstev/ModdyTheWishWatch" -p "moddingfromamod-1.0.9+mc1.21.8.jar" -D "$RUNNER_TEMP/core" --clobber
+          echo "da58ef4ad90148b93db38d767262be28456374522e3d6fe68a9cb0a9e635f981  $RUNNER_TEMP/core/moddingfromamod-1.0.9+mc1.21.8.jar" | sha256sum -c -
+          for w in arena isle; do mkdir -p "$w/.core"; cp "$RUNNER_TEMP/core/moddingfromamod-1.0.9+mc1.21.8.jar" "$w/.core/"; done
       # END core pins
       - name: Unit tests and the jar (against the pinned core only)
         env:
