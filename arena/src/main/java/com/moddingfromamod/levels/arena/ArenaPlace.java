@@ -146,12 +146,16 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
         AIR,
         /** the gate between the prep room and the arena (a fence gate, facing the arena) */
         GATE,
-        /** the two blocks in the shared wall's window that hold the start button and its sign */
-        CONTROL,
-        /** the start button, on the prep room's side of the shared wall, beside the gate */
-        START_BUTTON,
-        /** the sign above the start button */
-        START_SIGN
+        /** the control panel's board: the shared wall's window, on the prep room's side ({@link ArenaPanel}) */
+        PANEL_BOARD,
+        /** a block of the board that holds a selector button (wave size or difficulty, down or up) */
+        PANEL_SELECT,
+        /** the blocks of the board around the start button, a colour of their own */
+        PANEL_START,
+        /** a selector button, on the prep room's side of the board */
+        SELECT_BUTTON,
+        /** the start button, on the prep room's side of the board */
+        START_BUTTON
     }
 
     /** One box to fill. Later fills overwrite earlier ones where they overlap. */
@@ -331,31 +335,50 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
         return out;
     }
 
+    /** The y of the shared wall's window's top row (the control panel's top row). */
+    public int windowTop() {
+        return Math.min(floorY + wallHeight - 1, floorY + PREP_HEIGHT - 1);
+    }
+
+    /** The battle arena control panel on the shared wall ({@link ArenaPanel}): where its blocks, buttons and words go. */
+    public ArenaPanel panel() {
+        return new ArenaPanel(this);
+    }
+
     /**
-     * The start control, beside the gate on the prep room's side: two blocks in the shared wall's window (x 2, at the
-     * button's height and the sign's), a stone button on the lower and a sign on the upper. Part of {@link #fills()};
-     * a world built before the control existed gains exactly these ({@link #UPGRADE_START_CONTROL}).
+     * The control panel's blocks: its board over the shared wall's window (beside and above the gate), and its buttons
+     * on the prep room's side. Part of {@link #fills()}; a world built before the panel existed gains exactly these
+     * ({@link #UPGRADE_CONTROL_PANEL}).
      */
     public List<Fill> controlFills() {
-        int[] b = startButton();
-        int wz = sharedWallZ();
-        return List.of(
-                new Fill(new Box(b[0], b[1], wz, b[0], b[1] + 1, wz), Kind.CONTROL),
-                new Fill(new Box(b[0], b[1], b[2], b[0], b[1], b[2]), Kind.START_BUTTON),
-                new Fill(new Box(b[0], b[1] + 1, b[2], b[0], b[1] + 1, b[2]), Kind.START_SIGN));
+        return panel().fills();
     }
 
-    /** The start button's block: in the prep room, against the shared wall, two east of the gate, a block up. */
+    /** The start button's block: on the panel, in the prep room against the shared wall ({@link ArenaPanel}). */
     public int[] startButton() {
-        return new int[] {2, floorY + 1, sharedWallZ() + 1};
+        return panel().button(ArenaPanel.Control.START).pos();
     }
 
-    /** The upgrade that gives a place built without one its start control ({@link #controlFills()}). */
+    /**
+     * Where the first start control's button and sign stood (before the control panel): in the prep room against the
+     * shared wall, two east of the gate, a block and two blocks up. A place that had it loses them to the panel.
+     */
+    public List<int[]> firstStartControl() {
+        return List.of(new int[] {2, floorY + 1, sharedWallZ() + 1}, new int[] {2, floorY + 2, sharedWallZ() + 1});
+    }
+
+    /** The upgrade that gave a place built without one its first start control (a button and a sign). */
     public static final String UPGRADE_START_CONTROL = "start-control";
     /** The upgrade that switches natural mob spawning off in an arena world, once. */
     public static final String UPGRADE_NO_NATURAL_SPAWNS = "no-natural-spawns";
+    /**
+     * The upgrade that gives a place its battle arena control panel ({@link #controlFills()}), in place of the first
+     * start control (or of the bare window, in a place that never had one).
+     */
+    public static final String UPGRADE_CONTROL_PANEL = "control-panel";
     /** Every upgrade, in the order a world gets them. A new world gets them all when it is built. */
-    public static final List<String> UPGRADES = List.of(UPGRADE_START_CONTROL, UPGRADE_NO_NATURAL_SPAWNS);
+    public static final List<String> UPGRADES = List.of(UPGRADE_START_CONTROL, UPGRADE_NO_NATURAL_SPAWNS,
+            UPGRADE_CONTROL_PANEL);
 
     /** The upgrades a world that has had {@code done} still needs, in order. Pure. */
     public static List<String> pendingUpgrades(Set<String> done) {
@@ -381,9 +404,10 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
     }
 
     /**
-     * <b>What a reset puts back</b>: the arena's inside, floor, walls, rim, the shared wall's window, gate and start
-     * control, as {@link #fills()} built them, and air everywhere above the arena's floor and walls. Never the prep
-     * room: its floor, roof and lights, where they meet the shared wall, are left as they stand.
+     * <b>What a reset puts back</b>: the arena's inside, floor, walls, rim, the shared wall's gate and the control
+     * panel's board, as {@link #fills()} built them, and air everywhere above the arena's floor and walls. Never the
+     * prep room: its floor, roof and lights, where they meet the shared wall, are left as they stand (and the panel's
+     * buttons, which are in the prep room, are mended by {@link ArenaBuilder#addControl}).
      */
     public Reset reset() {
         Map<Long, Kind> m = new HashMap<>();

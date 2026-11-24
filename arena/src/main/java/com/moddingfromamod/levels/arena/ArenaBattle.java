@@ -24,7 +24,11 @@ import net.minecraft.world.Difficulty;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.OwnableEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
@@ -69,7 +73,10 @@ final class ArenaBattle {
     private final Set<UUID> fightersDrops = new HashSet<>();
     /** Told when a battle is over and the arena is ready again (the wishes' counts and cooldowns start again). */
     private final Runnable onReady;
-    private boolean buttonWasDown;
+    /** The battle arena control panel: its buttons and its words. */
+    private final ArenaBoard board;
+    /** The difficulty of the battle that is on (its mobs' health), fixed when it starts. */
+    private ArenaDifficulty battleDifficulty = ArenaDifficulty.DEFAULT;
     private long ticks;
 
     ArenaBattle(MinecraftServer server, ArenaPlace place, ArenaState state, Runnable onReady) {
@@ -77,6 +84,7 @@ final class ArenaBattle {
         this.place = place;
         this.state = state;
         this.onReady = onReady == null ? () -> { } : onReady;
+        this.board = new ArenaBoard(server, place, state);
         if (state.battleOn()) {
             match.endedByRestart();
             LOG.info("Moddy Arena: battle: a battle was on when the server stopped; it is over, and the arena will be"
@@ -104,8 +112,8 @@ final class ArenaBattle {
         if (match.busy()) {
             return ArenaWords.busy();
         }
-        ArenaWaves waves = ArenaWavesRule.wavesOf(com.moddingfromamod.world.WorldRulesService.current());
-        if (waves == null) {
+        ArenaWaves base = baseWaves();
+        if (base == null) {
             return ArenaWords.noWaves();
         }
         if (level().getDifficulty() == Difficulty.PEACEFUL) {
@@ -114,13 +122,17 @@ final class ArenaBattle {
         if (playersInPlace().isEmpty() && !allowEmpty) {
             return ArenaWords.nobody();
         }
+        ArenaSettings settings = state.settings().within(base.limits());
+        ArenaWaves waves = settings.apply(base);
+        battleDifficulty = settings.difficulty();
         match.start(waves);
         state.battleOn(true);
         fighters.clear();
         told.clear();
         waveMobs.clear();
-        LOG.info("Moddy Arena: battle: COUNTDOWN, started by {}: {} waves, the first in {} s", by, waves.count(),
-                waves.countdownSeconds());
+        LOG.info("Moddy Arena: battle: COUNTDOWN, started by {}: {} waves, the first in {} s (wave size {}, difficulty"
+                + " {}: {} to {} mobs a wave)", by, waves.count(), waves.countdownSeconds(), settings.size(),
+                settings.difficulty().word(), waves.firstAndLastSize()[0], waves.firstAndLastSize()[1]);
         sayToPlace(ArenaWords.started(waves.count(), waves.countdownSeconds()));
         updateBar();
         return null;
@@ -142,11 +154,13 @@ final class ArenaBattle {
     void tick() {
         ticks++;
         ServerLevel level = level();
-        boolean down = ArenaBuilder.buttonDown(level, place);
-        if (down && !buttonWasDown) {
-            pressed(level);
+        for (ArenaPanel.Control c : board.pressed(level)) {
+            if (c == ArenaPanel.Control.START) {
+                pressed(level);
+            } else {
+                board.select(level, c, match.busy(), baseWaves());
+            }
         }
-        buttonWasDown = down;
 
         int fightersIn = switch (match.phase()) {
             case COUNTDOWN -> playersInPlace().size();
@@ -164,6 +178,7 @@ final class ArenaBattle {
         if (ev != null || ticks % 10 == 0) {
             updateBar();
         }
+        board.refresh(level, match, ArenaBattle::baseWaves, ev != null);
         if (match.phase() == ArenaMatch.Phase.IDLE && ticks % 100 == 0) {
             int swept = discard(level, placeBox(level), e -> e.entityTags().contains(TAG));
             if (swept > 0) {
@@ -210,7 +225,7 @@ final class ArenaBattle {
                     }
                     LOG.info("Moddy Arena: battle: the fighters are {}", names(fighters.keySet()));
                 }
-                int n = spawnWave(level, match.table().wave(ev.wave()));
+                int n = spawnWave(level, match.table().wave(ev.wave()), battleDifficulty.health());
                 match.spawned(n);
                 LOG.info("Moddy Arena: battle: WAVE {} of {} begins: {} mobs", ev.wave(), of, n);
                 titleToPlace(ArenaWords.waveTitle(ev.wave(), of), ArenaWords.waveSubtitle());
@@ -234,6 +249,10 @@ final class ArenaBattle {
             case RESET -> {
                 long t0 = System.nanoTime();
                 int blocks = ArenaBuilder.reset(level, place);
+                int panelBlocks = ArenaBuilder.addControl(level, place);   // a button knocked off its board, put back
+                if (panelBlocks > 0) {
+                    blocks += panelBlocks;
+                }
                 int entities = clearArena(level);
                 fighters.clear();
                 waveMobs.clear();
@@ -319,7 +338,7 @@ final class ArenaBattle {
 
     // ── the mobs ────────────────────────────────────────────────────────────────────────────────────────────────────
 
-    private int spawnWave(ServerLevel level, ArenaWaves.Wave wave) {
+    private int spawnWave(ServerLevel level, ArenaWaves.Wave wave, double health) {
         waveMobs.clear();
         List<double[]> players = new ArrayList<>();
         for (ServerPlayer p : level.players()) {
@@ -334,7 +353,7 @@ final class ArenaBattle {
                 if (type == null) {
                     continue;
                 }
-                Entity e = spawnOne(level, type, new BlockPos(s[0], place.floorY(), s[1]));
+                Entity e = spawnOne(level, type, new BlockPos(s[0], place.floorY(), s[1]), health);
                 if (e != null) {
                     waveMobs.add(e.getUUID());
                 }
@@ -346,14 +365,32 @@ final class ArenaBattle {
         return waveMobs.size();
     }
 
-    private static <T extends Entity> T spawnOne(ServerLevel level, EntityType<T> type, BlockPos at) {
+    /** The id of the difficulty's change to a wave mob's most health. */
+    private static final net.minecraft.resources.Identifier HEALTH_ID =
+            net.minecraft.resources.Identifier.fromNamespaceAndPath(ArenaMod.MODID, "difficulty_health");
+
+    private static <T extends Entity> T spawnOne(ServerLevel level, EntityType<T> type, BlockPos at, double health) {
         Consumer<T> mark = e -> {
             e.addTag(TAG);
             if (e instanceof Mob m) {
                 m.setPersistenceRequired();   // never despawned while the fighters stand far off
             }
         };
-        return type.spawn(level, mark, at, EntitySpawnReason.EVENT, false, false);
+        T e = type.spawn(level, mark, at, EntitySpawnReason.EVENT, false, false);
+        if (e instanceof LivingEntity living && health != 1.0) {
+            AttributeInstance max = living.getAttribute(Attributes.MAX_HEALTH);
+            if (max != null) {
+                max.addOrReplacePermanentModifier(new AttributeModifier(HEALTH_ID, health - 1.0,
+                        AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+                living.setHealth(living.getMaxHealth());
+            }
+        }
+        return e;
+    }
+
+    /** The wave table the world's rules name now (the panel's settings are applied on top), or null. */
+    private static ArenaWaves baseWaves() {
+        return ArenaWavesRule.wavesOf(com.moddingfromamod.world.WorldRulesService.current());
     }
 
     /** How many of the wave's mobs are left; one that has left the place is removed and counts as cleared. */
@@ -407,7 +444,7 @@ final class ArenaBattle {
         }
         fightersDrops.clear();
         int n = discard(level, arena, e -> !(e instanceof Player) && !owned(e) && !playersOwn(e)
-                && !e.hasPassenger(p -> p instanceof Player));
+                && !e.hasPassenger(p -> p instanceof Player) && !e.entityTags().contains(ArenaBoard.TAG));
         return n + discard(level, placeBox(level), e -> e.entityTags().contains(TAG));
     }
 

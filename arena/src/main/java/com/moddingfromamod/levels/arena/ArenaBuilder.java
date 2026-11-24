@@ -5,15 +5,11 @@ import com.moddingfromamod.levels.arena.ArenaPlace.Fill;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ButtonBlock;
 import net.minecraft.world.level.block.FenceGateBlock;
-import net.minecraft.world.level.block.WallSignBlock;
-import net.minecraft.world.level.block.entity.SignBlockEntity;
-import net.minecraft.world.level.block.entity.SignText;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.AttachFace;
 
@@ -39,73 +35,79 @@ final class ArenaBuilder {
             case AIR -> Blocks.AIR.defaultBlockState();
             // opens toward the arena; a player opens it, a mob cannot
             case GATE -> Blocks.OAK_FENCE_GATE.defaultBlockState().setValue(FenceGateBlock.FACING, Direction.NORTH);
-            case CONTROL -> Blocks.CHISELED_STONE_BRICKS.defaultBlockState();
-            // on the wall to its north, facing into the prep room
-            case START_BUTTON -> Blocks.STONE_BUTTON.defaultBlockState().setValue(ButtonBlock.FACE, AttachFace.WALL)
-                    .setValue(ButtonBlock.FACING, Direction.SOUTH);
-            case START_SIGN -> Blocks.OAK_WALL_SIGN.defaultBlockState().setValue(WallSignBlock.FACING, Direction.SOUTH);
+            // the battle arena control panel: a black board, blue selector blocks, green blocks round the start button
+            case PANEL_BOARD -> Blocks.BLACK_CONCRETE.defaultBlockState();
+            case PANEL_SELECT -> Blocks.LIGHT_BLUE_CONCRETE.defaultBlockState();
+            case PANEL_START -> Blocks.LIME_CONCRETE.defaultBlockState();
+            // on the board to its north, facing into the prep room
+            case SELECT_BUTTON, START_BUTTON -> Blocks.STONE_BUTTON.defaultBlockState()
+                    .setValue(ButtonBlock.FACE, AttachFace.WALL).setValue(ButtonBlock.FACING, Direction.SOUTH);
         };
     }
 
-    /** Puts one block of a kind, writing the sign's words when it is the start sign; true when it changed. */
+    /** Puts one block of a kind; true when it changed. */
     private static boolean put(ServerLevel level, BlockPos at, ArenaPlace.Kind kind, int flags) {
         BlockState state = blockOf(kind);
         if (level.getBlockState(at).equals(state)) {
             return false;
         }
         level.setBlock(at, state, flags);
-        if (kind == ArenaPlace.Kind.START_SIGN && level.getBlockEntity(at) instanceof SignBlockEntity sign) {
-            SignText text = new SignText();
-            List<String> lines = ArenaWords.SIGN;
-            for (int i = 0; i < Math.min(lines.size(), SignText.LINES); i++) {
-                text = text.setMessage(i, Component.literal(lines.get(i)));
-            }
-            sign.setText(text, true);
-            sign.setWaxed(true);
-            sign.setChanged();
-            level.sendBlockUpdated(at, state, state, Block.UPDATE_CLIENTS);
-        }
         return true;
     }
 
+    /** True when a block is one the panel's board may be built over: the window's glass, or the panel's own blocks. */
+    private static boolean boardMayReplace(BlockState now) {
+        return now.is(Blocks.GLASS) || now.is(Blocks.CHISELED_STONE_BRICKS) || now.is(Blocks.BLACK_CONCRETE)
+                || now.is(Blocks.LIGHT_BLUE_CONCRETE) || now.is(Blocks.LIME_CONCRETE);
+    }
+
     /**
-     * Gives a place built without one its start control ({@link ArenaPlace#controlFills()}): only where the block is
-     * still what was built there (the window's glass, the prep room's air), so nothing a player put there is replaced.
-     * Returns how many blocks were set, or -1 when something stood in the way (then nothing is placed).
+     * Gives a place built without one its battle arena control panel ({@link ArenaPlace#controlFills()}), in place of
+     * the first start control (a button and a sign beside the gate, on a chiseled stone brick block) or of the bare
+     * window: only where the blocks are still as built (the window's glass or the first control's block, the prep
+     * room's air), so nothing a player put there is replaced. The first control's button and sign go, if they are
+     * still there. Returns how many blocks were set, or -1 when something stood in the way (then nothing is placed).
+     * Running it again on a place that has its panel sets nothing.
      */
-    static int addStartControl(ServerLevel level, ArenaPlace place) {
-        BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
-        for (Fill f : place.controlFills()) {
-            Box b = f.box();
-            for (int x = b.x0(); x <= b.x1(); x++) {
-                for (int y = b.y0(); y <= b.y1(); y++) {
-                    for (int z = b.z0(); z <= b.z1(); z++) {
-                        BlockState now = level.getBlockState(at.set(x, y, z));
-                        boolean asBuilt = f.kind() == ArenaPlace.Kind.CONTROL ? now.is(Blocks.GLASS) : now.isAir();
-                        if (!asBuilt && !now.equals(blockOf(f.kind()))) {
-                            return -1;
-                        }
-                    }
-                }
+    static int addControl(ServerLevel level, ArenaPlace place) {
+        List<ArenaPanel.Placed> blocks = place.panel().blocks();
+        int wz = place.sharedWallZ();
+        for (ArenaPanel.Placed p : blocks) {
+            BlockState now = level.getBlockState(new BlockPos(p.x(), p.y(), p.z()));
+            boolean asBuilt = p.z() == wz ? boardMayReplace(now) : now.isAir() || now.is(Blocks.STONE_BUTTON);
+            if (!asBuilt) {
+                return -1;
             }
         }
         int set = 0;
-        for (Fill f : place.controlFills()) {
-            Box b = f.box();
-            for (int x = b.x0(); x <= b.x1(); x++) {
-                for (int y = b.y0(); y <= b.y1(); y++) {
-                    for (int z = b.z0(); z <= b.z1(); z++) {
-                        set += put(level, new BlockPos(x, y, z), f.kind(), Block.UPDATE_ALL) ? 1 : 0;
-                    }
-                }
+        // the first start control's button and sign, before the block they hang on is changed
+        for (int[] old : place.firstStartControl()) {
+            BlockPos at = new BlockPos(old[0], old[1], old[2]);
+            BlockState now = level.getBlockState(at);
+            boolean panelsOwn = blocks.stream().anyMatch(p -> p.x() == old[0] && p.y() == old[1] && p.z() == old[2]);
+            if (!panelsOwn && (now.is(Blocks.STONE_BUTTON) || now.is(Blocks.OAK_WALL_SIGN))) {
+                level.setBlock(at, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+                set++;
+            }
+        }
+        for (ArenaPanel.Placed p : blocks) {
+            BlockPos at = new BlockPos(p.x(), p.y(), p.z());
+            BlockState now = level.getBlockState(at);
+            BlockState want = blockOf(p.kind());
+            boolean same = now.getBlock() instanceof ButtonBlock && want.getBlock() == now.getBlock()
+                    ? now.getValue(ButtonBlock.FACING) == want.getValue(ButtonBlock.FACING)
+                            && now.getValue(ButtonBlock.FACE) == want.getValue(ButtonBlock.FACE)
+                    : now.equals(want);
+            if (!same) {
+                level.setBlock(at, want, Block.UPDATE_ALL);
+                set++;
             }
         }
         return set;
     }
 
-    /** True when the start button is pressed right now (its chunk loaded and the button down). Server thread. */
-    static boolean buttonDown(ServerLevel level, ArenaPlace place) {
-        int[] b = place.startButton();
+    /** True when the button at {@code b} is pressed right now (its chunk loaded and the button down). Server thread. */
+    static boolean buttonDown(ServerLevel level, int[] b) {
         BlockPos at = new BlockPos(b[0], b[1], b[2]);
         if (!level.isLoaded(at)) {
             return false;
@@ -116,7 +118,7 @@ final class ArenaBuilder {
 
     /**
      * Puts the arena back as built ({@link ArenaPlace#reset()}): its inside cleared to the sky, its floor, walls, rim,
-     * window, gate and start control. The gate is left as it stands if it is still an oak fence gate (open or shut).
+     * window, gate and the control panel's board. The gate is left as it stands if it is still an oak fence gate (open or shut).
      * Nothing drops from what is cleared. Returns how many blocks were set. Server thread.
      */
     static int reset(ServerLevel level, ArenaPlace place) {

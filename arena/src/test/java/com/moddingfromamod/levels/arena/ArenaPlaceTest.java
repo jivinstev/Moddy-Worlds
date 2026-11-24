@@ -115,7 +115,7 @@ class ArenaPlaceTest {
         }
         long lights = m.values().stream().filter(k -> k == Kind.PREP_LIGHT).count();
         assertEquals(4, lights);
-        assertEquals(Kind.GLASS, m.get(List.of(-3, 65, 16)), "a window onto the arena");
+        assertEquals(Kind.PANEL_BOARD, m.get(List.of(-3, 64, 16)), "the control panel's board, where the window was");
     }
 
     @Test
@@ -220,27 +220,31 @@ class ArenaPlaceTest {
         }
     }
     @Test
-    void theStartButtonIsInThePrepRoomBesideTheGateOnTheSharedWall() {
+    void theStartButtonIsOnTheControlPanelInThePrepRoom() {
         Map<List<Integer>, Kind> m = built(P);
         int[] b = P.startButton();
-        assertEquals(List.of(2, 65, 17), List.of(b[0], b[1], b[2]));
+        assertEquals(List.of(3, 65, 17), List.of(b[0], b[1], b[2]));
         assertTrue(P.prepInside().contains(b[0], b[1], b[2]), "a player in the prep room reaches it");
         assertEquals(Kind.START_BUTTON, m.get(List.of(b[0], b[1], b[2])));
-        assertEquals(Kind.CONTROL, m.get(List.of(b[0], b[1], b[2] - 1)), "it is fixed to the wall north of it");
-        assertEquals(Kind.START_SIGN, m.get(List.of(b[0], b[1] + 1, b[2])));
-        assertEquals(Kind.CONTROL, m.get(List.of(b[0], b[1] + 1, b[2] - 1)));
+        assertEquals(Kind.PANEL_START, m.get(List.of(b[0], b[1], b[2] - 1)), "it is fixed to the board north of it");
         for (ArenaPlace p : List.of(new ArenaPlace(15, 5, 3, 64), new ArenaPlace(63, 15, 8, 64))) {
             int[] c = p.startButton();
             assertTrue(p.prepInside().contains(c[0], c[1], c[2]));
-            assertTrue(c[1] + 1 <= p.floorY() + p.wallHeight() - 1, "the sign's block is in the wall's window");
+            assertEquals(Kind.START_BUTTON, built(p).get(List.of(c[0], c[1], c[2])));
         }
+        assertEquals(List.of(List.of(2, 65, 17), List.of(2, 66, 17)),
+                P.firstStartControl().stream().map(a -> List.of(a[0], a[1], a[2])).toList(),
+                "where the first start button and its sign stood");
     }
 
     @Test
     void upgradesAreGivenOnceInOrder() {
         assertEquals(ArenaPlace.UPGRADES, ArenaPlace.pendingUpgrades(java.util.Set.of()));
-        assertEquals(List.of(ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS),
+        assertEquals(List.of(ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS, ArenaPlace.UPGRADE_CONTROL_PANEL),
                 ArenaPlace.pendingUpgrades(java.util.Set.of(ArenaPlace.UPGRADE_START_CONTROL)));
+        assertEquals(List.of(ArenaPlace.UPGRADE_CONTROL_PANEL), ArenaPlace.pendingUpgrades(java.util.Set.of(
+                ArenaPlace.UPGRADE_START_CONTROL, ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS)),
+                "a world from before the panel gets it once");
         assertTrue(ArenaPlace.pendingUpgrades(java.util.Set.copyOf(ArenaPlace.UPGRADES)).isEmpty());
     }
 
@@ -277,7 +281,9 @@ class ArenaPlaceTest {
         assertEquals(Kind.ARENA_FLOOR, r.kindAt(0, 63, 0));
         assertEquals(Kind.GATE, r.kindAt(0, 64, 16));
         assertEquals(null, r.kindAt(0, 64, 21), "never inside the prep room");
-        assertEquals(null, r.kindAt(2, 65, 17), "the button is the prep room's");
+        assertEquals(null, r.kindAt(3, 65, 17), "the start button is the prep room's");
+        assertEquals(Kind.PANEL_START, r.kindAt(3, 65, 16), "the board is put back as built");
+        assertEquals(Kind.PANEL_BOARD, r.kindAt(0, 66, 16));
         assertEquals(null, r.kindAt(0, 62, 0), "never below the floor");
     }
 }
