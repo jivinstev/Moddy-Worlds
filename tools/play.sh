@@ -12,7 +12,8 @@
 #    fetched by tools/fetch-core.sh and checked against its sha256 (a core jar in --jars DIR is used as it is).
 # 2. a test instance with MMVU's tools/real-install.py (Minecraft and the NeoForge in WORLD/gradle.properties, the two
 #    jars and the Gate C carrier). It never touches your own mods folder or Launcher profiles.
-# 3. every WORLD/playtests/*.playtest (or --only NAME) with MMVU's tools/playtest.py, in the real client. MMVU's carrier
+# 3. every WORLD/playtests/*.playtest (or --only NAME) with MMVU's tools/playtest.py, in the real client, each as a new
+#    player (an empty Moddy home) and within 900 s, or what its `# play-timeout: <seconds>` line says. MMVU's carrier
 #    makes its own world (no Create World screen, so no World Type and none of the world's packs), so the world is
 #    switched on the way a server's launcher does it: its world id and rules file (read out of the jar) as -D
 #    properties, plus WORLD/playtests/play.props: one `key=value` per line, passed as moddingfromamod.<key>; a value
@@ -201,8 +202,12 @@ for script in "$SUITE"/*.playtest; do
     if [ -n "$ONLY" ]; then case "$name" in *"$ONLY"*) ;; *) continue ;; esac; fi
     RAN=$((RAN + 1))
     say "playtest $name"
+    # every playtest starts as a new player: an empty Moddy home (settings, the Magician, his wishes and shelf)
+    rm -rf "$HOME_DIR"; mkdir -p "$HOME_DIR"
+    # a long script names its own time limit in a comment line: `# play-timeout: <seconds>` (default 900)
+    TIMEOUT="$(sed -n 's/^# play-timeout: *\([0-9][0-9]*\).*/\1/p' "$script" | head -1)"
     if python3 "$MMVU/tools/playtest.py" run "$script" --plan "$PLAN" --mc "$MC" $VIDEO "${PROPS[@]}" \
-            --report "$WORK/reports/$name"; then
+            --timeout "${TIMEOUT:-900}" --report "$WORK/reports/$name"; then
         say "PASS $name ($WORK/reports/$name/report.html)"
     else
         say "FAIL $name ($WORK/reports/$name/report.html)"

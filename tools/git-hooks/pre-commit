@@ -28,7 +28,7 @@ listed="$(git config --get moddy.forbidden || true)"
 staged=()
 while IFS= read -r -d '' p; do staged+=("$p"); done < <(git -C "$top" diff --cached --name-only --diff-filter=ACMR -z)
 if [ "${#staged[@]}" -gt 0 ]; then
-    if ! (cd "$top" && python3 tools/leak-scan.py "${args[@]}" "${staged[@]}") >&2; then
+    if ! (cd "$top" && python3 tools/leak-scan.py ${args[@]+"${args[@]}"} "${staged[@]}") >&2; then
         echo "pre-commit: REFUSED. A staged file carries private work (or the scan could not run). This repository is" >&2
         echo "pre-commit: public: take it out of the file, never only out of a later commit." >&2
         rc=1

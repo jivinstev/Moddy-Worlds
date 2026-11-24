@@ -1,0 +1,817 @@
+# Scarcity Isle: the whole challenge ladder, played the Crafter's way. For each of the 18 goals of the guide's order
+# (worlds/isle.json guide.goals.order) he asks the Apprentice the guidebook's own words, presses the top tile, then
+# plays the goal with real inputs: chopping, crafting in the grid, building the cobblestone generator from the chest's
+# ice and lava, mining, smelting, fighting, feeding. After each goal its advancement is asserted.
+# Crafting first merges his stacks of an ingredient (a shift-click in his inventory), then puts one in each grid slot
+# but the last, which takes the rest of the stack (a closed grid gives back what is left), and shift-clicks the
+# result: exactly one craft.
+# Every command that does part of what a goal is about is marked `# SHORTCUT: <why>`. Moving him to a spot on his own
+# island with tp is marked once per spot ("walking there is not what the step tests").
+# play-timeout: 1800
+# Needs a Gate C carrier with `@click … right|shift` (jivinstev/mc-mod-version-upgrade#246); until a carrier release
+# has it, build one from that branch and pass its folder as CARRIER_DIR (tools/play.sh).
+@intent a player climbs all 18 goals of Scarcity Isle with the Apprentice's ready-made makes and his own hands
+@world flat seed=1
+
+@step arrive on his island
+@expect chat How to use Moddy within 90s
+@repeat 30 until execute if entity @s[y=60,dy=12]
+@wait 1s
+@end-repeat
+@wait 2s
+# the first player's island: its origin at -1024 63 -1024, so its template corner at -1027 63 -1025 (IslandPlacer)
+@assert execute if entity @s[x=-1024,y=66,z=-1024,dx=0,dy=0,dz=0]
+@assert execute if block -1020 66 -1024 minecraft:chest
+@assert execute if block -1025 66 -1020 minecraft:oak_log
+# setup: the Isle's goals pack. A world made with the Moddy Isle World Type has it from the start; the carrier makes
+# its own world, switched on by properties, without the world's packs (tools/play.sh)
+datapack enable "mod/moddyisle:datapacks/skyblock_advancements"
+@wait 3s
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/root=false}]
+# setup: a survival player in daylight, kept safe from a fall into the void, fire and lightning
+gamemode survival
+time set noon
+weather clear
+gamerule doDaylightCycle false
+effect give @s minecraft:resistance 3000 4 true
+effect give @s minecraft:fire_resistance 3000 0 true
+effect give @s minecraft:saturation 3000 0 true
+@shot arrived
+
+@step 1 Minecraft: oak saplings
+moddy apprentice some oak saplings
+@expect screen Container within 10s
+@click slot 0
+# a make is finished when Moddy counts the wish ("… wishes left"); a make asked sooner hears "still on its way"
+@expect chat /wishes left/ within 90s
+@repeat 30 until execute if items entity @s container.* minecraft:oak_sapling
+@wait 1s
+@end-repeat
+@assert execute if items entity @s container.* minecraft:oak_sapling
+# Please Drop... (goal 6) is earned by the sapling in his inventory
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/sapling=true}]
+
+@step 2 Getting Wood: bone meal, and he chops his tree by hand
+moddy apprentice some bone meal
+@expect screen Container within 10s
+@click slot 0
+@expect chat /wishes left/ within 90s
+@repeat 30 until execute if items entity @s container.* minecraft:bone_meal
+@wait 1s
+@end-repeat
+# SHORTCUT: stands at the middle of his tree corner (walking there is not what the step tests)
+tp @s -1023.5 66 -1020.5 0 0
+@key key.hotbar.9
+@aim pos -1024.5 66.5 -1019.5
+@key key.attack hold 80t
+@aim pos -1024.5 67.5 -1019.5
+@key key.attack hold 80t
+# SHORTCUT: stands where the trunk stood (walking there is not what the step tests), to chop the rest looking up
+tp @s -1024.5 66 -1019.5 0 0
+@aim pos -1024.5 68.5 -1019.5
+@key key.attack hold 80t
+@aim pos -1024.5 69.5 -1019.5
+@key key.attack hold 80t
+@repeat 10 until execute if items entity @s container.* minecraft:oak_log
+@wait 1s
+@end-repeat
+@assert execute if items entity @s container.* minecraft:oak_log
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/root=true,skyvoid_advancements:overworld/wood=true}]
+@shot chopped
+
+@step 3 Benchmarking: oak planks, a crafting table in his own 2x2 grid
+moddy apprentice some oak planks
+@expect screen Container within 10s
+@click slot 0
+@expect chat /wishes left/ within 90s
+@repeat 30 until execute if items entity @s container.* minecraft:oak_planks
+@wait 1s
+@end-repeat
+@key key.inventory
+@expect screen InventoryScreen within 3s
+@click item "Oak Planks" shift
+@click item "Oak Planks"
+@click slot 2 right
+@click slot 3 right
+@click slot 4 right
+@click slot 1
+@click slot 0 shift
+@wait 5t
+# the table to his hand (hotbar 9), and his hotbar tidied: Moddy puts each new make in the first free hotbar slot
+@click slot 39 shift
+@click slot 40 shift
+@click slot 41 shift
+@click slot 42 shift
+@click slot 43 shift
+@click slot 44 shift
+@click item "Crafting Table"
+@click slot 44
+@key key.inventory
+@expect screen none within 3s
+@assert execute if entity @s[advancements={minecraft:story/root=true}]
+# SHORTCUT: stands at the middle of his island's long side (walking there is not what the step tests)
+tp @s -1023.5 66 -1022.5 0 0
+@key key.hotbar.9
+@aim pos -1024.5 65.9 -1024.5
+@key key.use
+@wait 10t
+@assert execute if block -1025 66 -1025 minecraft:crafting_table
+@shot table
+
+@step 4 Time to Mine: sticks, a wooden pickaxe at his table
+moddy apprentice some sticks
+@expect screen Container within 10s
+@click slot 0
+@expect chat /wishes left/ within 90s
+@repeat 30 until execute if items entity @s container.* minecraft:stick
+@wait 1s
+@end-repeat
+# his stacks of each ingredient merged first (a shift-click from his inventory to his hotbar), so the next pick
+# takes the big one
+@key key.inventory
+@expect screen InventoryScreen within 3s
+@click item "Oak Planks" shift
+@click item "Stick" shift
+@key key.inventory
+@expect screen none within 3s
+@aim pos -1024.5 66.5 -1024.5
+@key key.use
+@expect screen Crafting within 5s
+# table grid: slots 1-9 (row by row), result 0, his inventory from 10
+@click item "Oak Planks"
+@click slot 2 right
+@click slot 3 right
+@click slot 1
+@click item "Stick"
+@click slot 5 right
+@click slot 8
+@click slot 0 shift
+@wait 5t
+@key key.keyboard.escape
+@expect screen none within 3s
+@assert execute if items entity @s container.* minecraft:wooden_pickaxe
+@assert execute if entity @s[advancements={minecraft:story/mine_stone=true}]
+@shot pickaxe
+
+@step 5 The Heart of the Grind: a water wand, the chest's ice and lava, a cobblestone generator
+# his hotbar into his inventory, so the make lands in a free hotbar slot (a full hotbar sends it to the Wish Bag)
+@key key.inventory
+@expect screen InventoryScreen within 3s
+@click slot 39 shift
+@click slot 40 shift
+@click slot 41 shift
+@click slot 42 shift
+@click slot 43 shift
+@click slot 44 shift
+@key key.inventory
+@expect screen none within 3s
+moddy apprentice a water wand
+@expect screen Container within 10s
+@click slot 0
+@expect chat /wishes left/ within 90s
+@expect chat /water wand/ within 30s
+@wait 2s
+# the starter chest: shift-click out its lava bucket and ice
+@aim pos -1019.5 66.5 -1023.5
+@key key.use
+@expect screen Container within 5s
+@shot the-chest
+@click item "Lava Bucket" shift
+@click item "Ice" shift
+@key key.keyboard.escape
+@expect screen none within 3s
+@assert execute if items entity @s container.* minecraft:lava_bucket
+@assert execute if items entity @s container.* minecraft:ice
+# the guide: a trench of four in the island's top (row z -1024), a hole under its second block
+@aim pos -1023.5 65.5 -1023.5
+@key key.attack hold 30t
+@aim pos -1022.5 65.5 -1023.5
+@key key.attack hold 30t
+@aim pos -1021.5 65.5 -1023.5
+@key key.attack hold 30t
+@aim pos -1020.5 65.5 -1023.5
+@key key.attack hold 30t
+@aim pos -1022.5 64.5 -1023.5
+@key key.attack hold 30t
+@assert execute if blocks -1024 65 -1024 -1021 65 -1024 -1024 200 -1024 all
+@assert execute if block -1023 64 -1024 minecraft:air
+# water: the ice put down at the trench's end and broken
+@key key.inventory
+@click slot 44 shift
+@click item "Ice"
+@click slot 44
+@key key.inventory
+@key key.hotbar.9
+@aim pos -1023.5 64.95 -1023.5
+@key key.use
+@wait 5t
+@assert execute if block -1024 65 -1024 minecraft:ice
+@aim pos -1023.5 65.5 -1023.5
+@key key.attack hold 30t
+@wait 1s
+@assert execute if block -1024 65 -1024 minecraft:water
+# lava: the bucket poured into the trench's other end
+@key key.inventory
+@click slot 44 shift
+@click item "Lava Bucket"
+@click slot 44
+@key key.inventory
+@key key.hotbar.9
+@aim pos -1020.5 64.95 -1023.5
+@key key.use
+@wait 5t
+@assert execute if block -1021 65 -1024 minecraft:lava
+@repeat 15 until execute if block -1022 65 -1024 minecraft:cobblestone
+@wait 1s
+@end-repeat
+@assert execute if block -1022 65 -1024 minecraft:cobblestone
+@shot generator
+# mine it with the wooden pickaxe, again and again: the pack counts each one and checks the lava is still there
+@key key.inventory
+@click slot 44 shift
+@click item "Wooden Pickaxe"
+@click slot 44
+@key key.inventory
+@key key.hotbar.9
+@repeat 14 until execute if entity @s[advancements={skyvoid_advancements:overworld/cobble_gen=true}]
+@wait 2s
+@aim pos -1021.5 65.5 -1023.5
+@key key.attack hold 30t
+@end-repeat
+@wait 3s
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/cobble_gen=true}]
+@shot mined
+
+@step 6 Please Drop: earned by the saplings (goal 1)
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/sapling=true}]
+
+@step 7 Now That's Some Good Food: bone meal, leaves broken for an apple
+# SHORTCUT: stands at the middle of his tree corner (walking there is not what the step tests)
+tp @s -1023.5 66 -1020.5 0 0
+@key key.hotbar.3
+# the starter tree's leaves over his island (what falls on the island he picks up standing here)
+@aim pos -1024.5 69.5 -1020.5
+@key key.attack hold 10t
+@aim pos -1023.5 69.5 -1020.5
+@key key.attack hold 10t
+@aim pos -1022.5 69.5 -1020.5
+@key key.attack hold 10t
+@aim pos -1023.5 69.5 -1019.5
+@key key.attack hold 10t
+@aim pos -1022.5 69.5 -1019.5
+@key key.attack hold 10t
+@aim pos -1024.5 69.5 -1021.5
+@key key.attack hold 10t
+@aim pos -1023.5 69.5 -1021.5
+@key key.attack hold 10t
+@aim pos -1022.5 69.5 -1021.5
+@key key.attack hold 10t
+# a new tree: a sapling on the grass of his island's free corner, grown with the bone meal
+@key key.inventory
+@click slot 44 shift
+@click item "Oak Sapling"
+@click slot 44
+@key key.inventory
+@key key.hotbar.9
+@aim pos -1022.5 65.95 -1019.5
+@key key.use
+@wait 5t
+@assert execute if block -1023 66 -1020 minecraft:oak_sapling
+@key key.inventory
+@click slot 44 shift
+@click item "Bone Meal"
+@click slot 44
+@key key.inventory
+@key key.hotbar.9
+@repeat 12 until execute if block -1023 66 -1020 minecraft:oak_log
+@aim pos -1022.5 66.3 -1019.5
+@key key.use
+@wait 10t
+@end-repeat
+@assert execute if block -1023 66 -1020 minecraft:oak_log
+@shot new-tree
+@key key.hotbar.3
+@aim pos -1024.5 69.5 -1020.5
+@key key.attack hold 10t
+@aim pos -1023.5 69.5 -1020.5
+@key key.attack hold 10t
+@aim pos -1023.5 69.5 -1019.5
+@key key.attack hold 10t
+@aim pos -1024.5 70.5 -1020.5
+@key key.attack hold 10t
+@aim pos -1023.5 70.5 -1020.5
+@key key.attack hold 10t
+@aim pos -1023.5 70.5 -1019.5
+@key key.attack hold 10t
+@wait 2s
+# SHORTCUT: an oak leaf drops an apple 1 time in 200; when none dropped from the leaves he could reach, he is given one
+execute unless items entity @s container.* minecraft:apple run give @s minecraft:apple
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/apple=true}]
+
+@step 8 Hot Topic: cobblestone, a furnace at his table
+# his hotbar into his inventory, so the make lands in a free hotbar slot (a full hotbar sends it to the Wish Bag)
+@key key.inventory
+@expect screen InventoryScreen within 3s
+@click slot 39 shift
+@click slot 40 shift
+@click slot 41 shift
+@click slot 42 shift
+@click slot 43 shift
+@click slot 44 shift
+@key key.inventory
+@expect screen none within 3s
+moddy apprentice some cobblestone
+@expect screen Container within 10s
+@click slot 0
+@expect chat /wishes left/ within 90s
+@repeat 30 until execute if items entity @s container.* minecraft:cobblestone[count=32]
+@wait 1s
+@end-repeat
+# SHORTCUT: stands at the middle of his island's long side (walking there is not what the step tests)
+tp @s -1023.5 66 -1022.5 0 0
+# his stacks of each ingredient merged first (a shift-click from his inventory to his hotbar), so the next pick
+# takes the big one
+@key key.inventory
+@expect screen InventoryScreen within 3s
+@click item "Cobblestone" shift
+@key key.inventory
+@expect screen none within 3s
+@aim pos -1024.5 66.5 -1024.5
+@key key.use
+@expect screen Crafting within 5s
+@click item "Cobblestone"
+@click slot 2 right
+@click slot 3 right
+@click slot 4 right
+@click slot 6 right
+@click slot 7 right
+@click slot 8 right
+@click slot 9 right
+@click slot 1
+@click slot 0 shift
+@wait 5t
+@key key.keyboard.escape
+@expect screen none within 3s
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/furnace=true}]
+
+@step 9 Burnt Logs: coal, an oak log smelted in his furnace
+# his hotbar into his inventory, so the make lands in a free hotbar slot (a full hotbar sends it to the Wish Bag)
+@key key.inventory
+@expect screen InventoryScreen within 3s
+@click slot 39 shift
+@click slot 40 shift
+@click slot 41 shift
+@click slot 42 shift
+@click slot 43 shift
+@click slot 44 shift
+@key key.inventory
+@expect screen none within 3s
+moddy apprentice some coal
+@expect screen Container within 10s
+@click slot 0
+@expect chat /wishes left/ within 90s
+@repeat 30 until execute if items entity @s container.* minecraft:coal
+@wait 1s
+@end-repeat
+# the furnace down beside his table
+@key key.inventory
+@click slot 44 shift
+@click item "Furnace"
+@click slot 44
+@key key.inventory
+@key key.hotbar.9
+@aim pos -1024.5 65.9 -1022.5
+@key key.use
+@wait 10t
+@assert execute if block -1025 66 -1023 minecraft:furnace
+@aim pos -1024.5 66.5 -1022.5
+@key key.use
+@expect screen Furnace within 5s
+# furnace: input 0, fuel 1, result 2
+@click item "Oak Log"
+@click slot 0
+@click item "Coal"
+@click slot 1
+@repeat 30 until execute if block -1025 66 -1023 minecraft:furnace{Items:[{Slot:2b,id:"minecraft:charcoal"}]}
+@wait 1s
+@end-repeat
+@click slot 2 shift
+@key key.keyboard.escape
+@expect screen none within 3s
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/charcoal=true}]
+@shot charcoal
+
+@step 10 Let There Be Light: four torches from charcoal and a stick
+@key key.inventory
+@expect screen InventoryScreen within 3s
+@click item "Charcoal"
+@click slot 1
+@click item "Stick" shift
+@click item "Stick"
+@click slot 3
+@click slot 0 shift
+@wait 5t
+@key key.inventory
+@assert execute if items entity @s container.* minecraft:torch
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/torch=true}]
+
+@step 11 Getting an Upgrade: a stone pickaxe at his table
+# his stacks of each ingredient merged first (a shift-click from his inventory to his hotbar), so the next pick
+# takes the big one
+@key key.inventory
+@expect screen InventoryScreen within 3s
+@click item "Cobblestone" shift
+@click item "Stick" shift
+@key key.inventory
+@expect screen none within 3s
+@aim pos -1024.5 66.5 -1024.5
+@key key.use
+@expect screen Crafting within 5s
+@click item "Cobblestone"
+@click slot 2 right
+@click slot 3 right
+@click slot 1
+@click item "Stick"
+@click slot 5 right
+@click slot 8
+@click slot 0 shift
+@wait 5t
+@key key.keyboard.escape
+@expect screen none within 3s
+@assert execute if entity @s[advancements={minecraft:story/upgrade_tools=true}]
+
+@step 12 Time to Farm: a little farm, and a wooden hoe at his table
+# a building goes up where he looks: from his island's south corner, out over the void
+# SHORTCUT: stands at his island's south corner (walking there is not what the step tests)
+tp @s -1022.5 66 -1019.5 0 0
+@aim look 0 0
+@wait 10t
+# his hotbar into his inventory, so the make lands in a free hotbar slot (a full hotbar sends it to the Wish Bag)
+@key key.inventory
+@expect screen InventoryScreen within 3s
+@click slot 39 shift
+@click slot 40 shift
+@click slot 41 shift
+@click slot 42 shift
+@click slot 43 shift
+@click slot 44 shift
+@key key.inventory
+@expect screen none within 3s
+moddy apprentice a little farm
+@expect screen Container within 10s
+@click slot 0
+@expect chat /wishes left/ within 90s
+@wait 3s
+@shot the-farm
+# SHORTCUT: stands at the middle of his island's long side (walking there is not what the step tests)
+tp @s -1023.5 66 -1022.5 0 0
+# his stacks of each ingredient merged first (a shift-click from his inventory to his hotbar), so the next pick
+# takes the big one
+@key key.inventory
+@expect screen InventoryScreen within 3s
+@click item "Oak Planks" shift
+@click item "Stick" shift
+@key key.inventory
+@expect screen none within 3s
+@aim pos -1024.5 66.5 -1024.5
+@key key.use
+@expect screen Crafting within 5s
+@click item "Oak Planks"
+@click slot 2 right
+@click slot 1
+@click item "Stick"
+@click slot 5 right
+@click slot 8
+@click slot 0 shift
+@wait 5t
+@key key.keyboard.escape
+@expect screen none within 3s
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/farm=true}]
+
+@step 13 Time to Get Deadly: a spooky monster cave, and a monster beaten with his stone pickaxe
+# a building goes up where he looks: from his island's east end, out over the void
+# SHORTCUT: stands at his island's east end (walking there is not what the step tests)
+tp @s -1019.5 66 -1024.5 -90 0
+@aim look -90 0
+@wait 10t
+# his hotbar into his inventory, so the make lands in a free hotbar slot (a full hotbar sends it to the Wish Bag)
+@key key.inventory
+@expect screen InventoryScreen within 3s
+@click slot 39 shift
+@click slot 40 shift
+@click slot 41 shift
+@click slot 42 shift
+@click slot 43 shift
+@click slot 44 shift
+@key key.inventory
+@expect screen none within 3s
+moddy apprentice a spooky monster cave
+@expect screen Container within 10s
+@click slot 0
+@expect chat /wishes left/ within 90s
+@wait 3s
+@shot the-cave
+# SHORTCUT: stands at the middle of his island's long side (walking there is not what the step tests)
+tp @s -1023.5 66 -1022.5 0 0
+@key key.inventory
+@click slot 44 shift
+@click item "Stone Pickaxe"
+@click slot 44
+@key key.inventory
+@key key.hotbar.9
+# SHORTCUT: monsters appear in the dark only with a player 24 or more blocks away, which on a tiny island means
+# standing in the void; a zombie (a helmet against the sun, held still) is summoned beside him instead
+summon minecraft:zombie -1021.5 66 -1022.5 {NoAI:1b,Tags:["ladder_mob"],equipment:{head:{id:"minecraft:leather_helmet",count:1}}}
+@repeat each @e[tag=ladder_mob] max 30 until execute unless entity {it}
+@aim entity {it}
+@key key.attack
+@wait 15t
+@end-repeat
+@wait 1s
+@assert execute unless entity @e[tag=ladder_mob]
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/mob_farm=true}]
+@shot beaten
+
+@step 14 Zombie Hunter: a lightning sword, and a zombie beaten with it
+# his hotbar into his inventory, so the make lands in a free hotbar slot (a full hotbar sends it to the Wish Bag)
+@key key.inventory
+@expect screen InventoryScreen within 3s
+@click slot 39 shift
+@click slot 40 shift
+@click slot 41 shift
+@click slot 42 shift
+@click slot 43 shift
+@click slot 44 shift
+@key key.inventory
+@expect screen none within 3s
+moddy apprentice a lightning sword
+@expect screen Container within 10s
+@click slot 0
+@expect chat /wishes left/ within 90s
+@wait 2s
+@key key.inventory
+@click slot 44 shift
+@click item "Lightning Sword"
+@click slot 44
+@key key.inventory
+@key key.hotbar.9
+# SHORTCUT: as in goal 13, the zombie is summoned beside him
+summon minecraft:zombie -1021.5 66 -1022.5 {NoAI:1b,Tags:["ladder_mob"],equipment:{head:{id:"minecraft:leather_helmet",count:1}}}
+@repeat each @e[tag=ladder_mob] max 30 until execute unless entity {it}
+@aim entity {it}
+@key key.attack
+@wait 15t
+@end-repeat
+@wait 1s
+@assert execute unless entity @e[tag=ladder_mob]
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/zombie_hunter=true}]
+@shot zombie-beaten
+
+@step 15 Acquire Hardware: raw iron smelted in his furnace
+# his hotbar into his inventory, so the make lands in a free hotbar slot (a full hotbar sends it to the Wish Bag)
+@key key.inventory
+@expect screen InventoryScreen within 3s
+@click slot 39 shift
+@click slot 40 shift
+@click slot 41 shift
+@click slot 42 shift
+@click slot 43 shift
+@click slot 44 shift
+@key key.inventory
+@expect screen none within 3s
+moddy apprentice some raw iron
+@expect screen Container within 10s
+@click slot 0
+@expect chat /wishes left/ within 90s
+@repeat 30 until execute if items entity @s container.* minecraft:raw_iron
+@wait 1s
+@end-repeat
+@aim pos -1024.5 66.5 -1022.5
+@key key.use
+@expect screen Furnace within 5s
+# what the furnace made from the logs comes out first, then the iron goes in (the coal is still in its fuel slot)
+@click slot 2 shift
+@click item "Raw Iron"
+@click slot 0
+@repeat 120 until execute if block -1025 66 -1023 minecraft:furnace{Items:[{Slot:2b,id:"minecraft:iron_ingot",count:8}]}
+@wait 1s
+@end-repeat
+@click slot 2 shift
+@key key.keyboard.escape
+@expect screen none within 3s
+@assert execute if items entity @s container.* minecraft:iron_ingot
+@assert execute if entity @s[advancements={minecraft:story/smelt_iron=true}]
+@shot iron
+
+@step 16 Toil and Trouble: iron ingots, a cauldron at his table
+# his hotbar into his inventory, so the make lands in a free hotbar slot (a full hotbar sends it to the Wish Bag)
+@key key.inventory
+@expect screen InventoryScreen within 3s
+@click slot 39 shift
+@click slot 40 shift
+@click slot 41 shift
+@click slot 42 shift
+@click slot 43 shift
+@click slot 44 shift
+@key key.inventory
+@expect screen none within 3s
+moddy apprentice some iron ingots
+@expect screen Container within 10s
+@click slot 0
+@expect chat /wishes left/ within 90s
+@wait 2s
+# his stacks of each ingredient merged first (a shift-click from his inventory to his hotbar), so the next pick
+# takes the big one
+@key key.inventory
+@expect screen InventoryScreen within 3s
+@click item "Iron Ingot" shift
+@key key.inventory
+@expect screen none within 3s
+@aim pos -1024.5 66.5 -1024.5
+@key key.use
+@expect screen Crafting within 5s
+@click item "Iron Ingot"
+@click slot 3 right
+@click slot 4 right
+@click slot 6 right
+@click slot 7 right
+@click slot 8 right
+@click slot 9 right
+@click slot 1
+@click slot 0 shift
+@wait 5t
+@key key.keyboard.escape
+@expect screen none within 3s
+@assert execute if items entity @s container.* minecraft:cauldron
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/cauldron=true}]
+
+@step 17 Hot Stuff: pointed dripstone, a lava cauldron under his generator, and two lava buckets
+# his hotbar into his inventory, so the make lands in a free hotbar slot (a full hotbar sends it to the Wish Bag)
+@key key.inventory
+@expect screen InventoryScreen within 3s
+@click slot 39 shift
+@click slot 40 shift
+@click slot 41 shift
+@click slot 42 shift
+@click slot 43 shift
+@click slot 44 shift
+@key key.inventory
+@expect screen none within 3s
+moddy apprentice some pointed dripstone
+@expect screen Container within 10s
+@click slot 0
+@expect chat /wishes left/ within 90s
+@repeat 30 until execute if items entity @s container.* minecraft:pointed_dripstone
+@wait 1s
+@end-repeat
+# a bucket at his table (the chest's lava bucket, poured, is his other one): it stacks with that one
+# his stacks of each ingredient merged first (a shift-click from his inventory to his hotbar), so the next pick
+# takes the big one
+@key key.inventory
+@expect screen InventoryScreen within 3s
+@click item "Iron Ingot" shift
+@key key.inventory
+@expect screen none within 3s
+@aim pos -1024.5 66.5 -1024.5
+@key key.use
+@expect screen Crafting within 5s
+@click item "Iron Ingot"
+@click slot 3 right
+@click slot 5 right
+@click slot 1
+@click slot 0 shift
+@wait 5t
+@key key.keyboard.escape
+@expect screen none within 3s
+@assert execute if items entity @s container.* minecraft:bucket[count=2]
+# under the generator's lava: the dripstone hangs from the block the lava sits on, the cauldron below its tip
+# SHORTCUT: a ledge under his island, which a player would build out over the void from its edge
+fill -1022 60 -1024 -1020 60 -1022 minecraft:cobblestone
+# SHORTCUT: stands on that ledge, right under the generator's lava (getting down there is not what the step tests)
+tp @s -1020.5 61 -1023.5 0 -90
+@wait 10t
+@key key.hotbar.3
+@aim pos -1020.5 63.5 -1023.5
+@key key.attack hold 30t
+@assert execute if block -1021 63 -1024 minecraft:air
+@key key.inventory
+@click slot 44 shift
+@click item "Pointed Dripstone"
+@click slot 44
+@key key.inventory
+@key key.hotbar.9
+@aim pos -1020.5 64.02 -1023.5
+@key key.use
+@wait 5t
+@assert execute if block -1021 63 -1024 minecraft:pointed_dripstone[vertical_direction=down]
+# SHORTCUT: steps aside on the ledge (walking there is not what the step tests), to put the cauldron where he stood
+tp @s -1019.5 61 -1023.5 90 45
+@wait 5t
+@key key.inventory
+@click slot 44 shift
+@click item "Cauldron"
+@click slot 44
+@key key.inventory
+@key key.hotbar.9
+@aim pos -1020.5 60.98 -1023.5
+@key key.use
+@wait 5t
+@assert execute if block -1021 61 -1024 minecraft:cauldron
+@shot dripstone-and-cauldron
+# SHORTCUT: lava drips into the cauldron on random ticks, about 20 minutes on average; the game's tick speed is raised
+# until it fills, then put back
+gamerule randomTickSpeed 400
+@repeat 120 until execute if block -1021 61 -1024 minecraft:lava_cauldron
+@wait 1s
+@end-repeat
+gamerule randomTickSpeed 3
+@assert execute if block -1021 61 -1024 minecraft:lava_cauldron
+@key key.inventory
+@click slot 44 shift
+@click item "Bucket"
+@click slot 44
+@key key.inventory
+@key key.hotbar.9
+@aim pos -1020.5 61.6 -1023.5
+@key key.use
+@wait 10t
+@assert execute if items entity @s container.* minecraft:lava_bucket
+# and the generator's lava, scooped with his other bucket
+# SHORTCUT: stands beside the generator's lava on his island again (climbing back is not what the step tests)
+tp @s -1020.5 66 -1022.5 180 60
+@aim pos -1020.5 65.9 -1023.5
+@key key.use
+@wait 2s
+@assert execute if items entity @s container.* minecraft:lava_bucket[count=1]
+@assert execute if entity @s[advancements={minecraft:story/lava_bucket=true}]
+@shot two-lava-buckets
+
+@step 18 New Friends: two cows, fed wheat from his farm plot, and a calf
+# his hotbar into his inventory, so the make lands in a free hotbar slot (a full hotbar sends it to the Wish Bag)
+@key key.inventory
+@expect screen InventoryScreen within 3s
+@click slot 39 shift
+@click slot 40 shift
+@click slot 41 shift
+@click slot 42 shift
+@click slot 43 shift
+@click slot 44 shift
+@key key.inventory
+@expect screen none within 3s
+# animals land where he looks: on his island's grass
+@aim pos -1023.5 65.9 -1020.5
+@wait 5t
+moddy apprentice two cows
+@expect screen Container within 10s
+@click slot 0
+@expect chat /wishes left/ within 90s
+@repeat 20 until execute if entity @e[type=minecraft:cow,distance=..12,limit=2]
+@wait 1s
+@end-repeat
+@assert execute if entity @e[type=minecraft:cow,distance=..12]
+@shot two-cows
+# wheat from his farm plot: in this test world it went up on the flat ground far below his island, 12 blocks ahead of
+# where he looked (goal 12)
+# SHORTCUT: stands on his farm plot (getting there is not what the step tests)
+tp @s -1021.5 -60 -1006.5 0 30
+@wait 1s
+@aim pos -1020.5 -59.8 -1006.5
+@key key.attack hold 5t
+@aim pos -1021.5 -59.8 -1005.5
+@key key.attack hold 5t
+@aim pos -1020.5 -59.8 -1005.5
+@key key.attack hold 5t
+@repeat 10 until execute if items entity @s container.* minecraft:wheat
+@wait 10t
+@end-repeat
+@assert execute if items entity @s container.* minecraft:wheat
+@shot wheat
+# SHORTCUT: back on his island (getting there is not what the step tests)
+tp @s -1023.5 66 -1022.5 0 20
+@wait 1s
+# the wheat to his hand: "Wheat" also matches his wheat seeds, so the seeds go to hotbar 9 first (the last slot a pick
+# looks at), then the wheat takes their place and the seeds go back into his inventory as the screen closes
+@key key.inventory
+@click slot 44 shift
+@click item "Wheat Seeds"
+@click slot 44
+@click item "Wheat"
+@click slot 44
+@key key.inventory
+@key key.hotbar.9
+@assert execute if items entity @s weapon.mainhand minecraft:wheat
+# each grown cow not yet in love, nearest first, is fed by hand
+# (a step toward the one he aims at, so the cow already fed does not stand in the way)
+@repeat 12 until execute unless entity @e[type=minecraft:cow,distance=..8,nbt={InLove:0,Age:0}]
+@aim entity @e[type=minecraft:cow,distance=..8,sort=nearest,limit=1,nbt={InLove:0,Age:0}] if-present
+@key key.forward hold 3t
+@aim entity @e[type=minecraft:cow,distance=..8,sort=nearest,limit=1,nbt={InLove:0,Age:0}] if-present
+@key key.use
+@wait 1s
+@end-repeat
+@repeat 20 until execute if entity @s[advancements={skyvoid_advancements:overworld/passive_animals=true}]
+@wait 1s
+@end-repeat
+@assert execute if entity @e[type=minecraft:cow,nbt=!{Age:0}]
+@assert execute if entity @s[advancements={skyvoid_advancements:overworld/passive_animals=true}]
+@shot a-calf
