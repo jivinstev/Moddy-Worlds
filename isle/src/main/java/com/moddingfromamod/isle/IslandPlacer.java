@@ -64,7 +64,7 @@ public final class IslandPlacer {
      * player who reached it anyway would find nothing worth the trip.
      */
     public static boolean place(ServerLevel level, BlockPos origin, boolean bare) {
-        StructureTemplate template = level.getStructureManager().get(TEMPLATE).orElse(null);
+        StructureTemplate template = level.getStructureTemplateManager().get(TEMPLATE).orElse(null);
         if (template == null) {
             return false;
         }
@@ -116,18 +116,19 @@ public final class IslandPlacer {
         level.setBlock(at, Blocks.OAK_SIGN.defaultBlockState()
                 .setValue(net.minecraft.world.level.block.StandingSignBlock.ROTATION, StarterSign.ROTATION), 2);
         if (level.getBlockEntity(at) instanceof net.minecraft.world.level.block.entity.SignBlockEntity sign) {
-            net.minecraft.world.level.block.entity.SignText text = new net.minecraft.world.level.block.entity.SignText();
+            // 26.3: SignText is built through its Mutable, and a side is a SignTextSlot
+            var text = net.minecraft.world.level.block.entity.SignText.EMPTY.asMutable();
             for (int i = 0; i < StarterSign.LINES.size(); i++) {
-                text = text.setMessage(i, net.minecraft.network.chat.Component.literal(StarterSign.LINES.get(i)));
+                text.setLine(i, net.minecraft.network.chat.Component.literal(StarterSign.LINES.get(i)));
             }
-            sign.setText(text, true);
+            sign.setText(text.asImmutable(), net.minecraft.world.level.block.entity.SignTextSlot.FRONT);
             sign.setWaxed(true);
         }
     }
 
     /** The template's size, for a test that compares two islands block for block. */
     public static net.minecraft.core.Vec3i size(ServerLevel level) {
-        return level.getStructureManager().get(TEMPLATE).map(StructureTemplate::getSize).orElse(null);
+        return level.getStructureTemplateManager().get(TEMPLATE).map(StructureTemplate::getSize).orElse(null);
     }
 
     /** The template's corner for an origin. */

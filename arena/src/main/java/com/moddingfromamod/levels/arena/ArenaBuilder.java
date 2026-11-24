@@ -55,12 +55,13 @@ final class ArenaBuilder {
         }
         level.setBlock(at, state, flags);
         if (kind == ArenaPlace.Kind.START_SIGN && level.getBlockEntity(at) instanceof SignBlockEntity sign) {
-            SignText text = new SignText();
+            // 26.3: SignText is built through its Mutable, and a side is a SignTextSlot
+            SignText.Mutable text = SignText.EMPTY.asMutable();
             List<String> lines = ArenaWords.SIGN;
             for (int i = 0; i < Math.min(lines.size(), SignText.LINES); i++) {
-                text = text.setMessage(i, Component.literal(lines.get(i)));
+                text.setLine(i, Component.literal(lines.get(i)));
             }
-            sign.setText(text, true);
+            sign.setText(text.asImmutable(), net.minecraft.world.level.block.entity.SignTextSlot.FRONT);
             sign.setWaxed(true);
             sign.setChanged();
             level.sendBlockUpdated(at, state, state, Block.UPDATE_CLIENTS);

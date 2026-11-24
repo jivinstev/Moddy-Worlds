@@ -255,7 +255,7 @@ public final class IslandService implements Bases {
             // Load (and DataFixer-upgrade) the template now: measured ~1.1 s the first time, which
             // would otherwise be paid on the server thread by the first child to arrive.
             long t0 = System.nanoTime();
-            boolean ok = server.overworld().getStructureManager().get(IslandPlacer.TEMPLATE).isPresent();
+            boolean ok = server.overworld().getStructureTemplateManager().get(IslandPlacer.TEMPLATE).isPresent();
             LOGGER.info("starter island template {} in {} ms", ok ? "loaded" : "MISSING",
                     (System.nanoTime() - t0) / 1_000_000);
             LOGGER.info("islands ON: {} island(s), {} blocks apart{}", live.registry.childCount(),
