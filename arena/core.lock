@@ -3,6 +3,6 @@
 # tools/fetch-core.sh read this file, and tools/core-pins.py --write copies it into the workflows' fetch step (CI checks
 # they agree). Bump it in its own PR: edit this file, run tools/core-pins.py --write, commit both.
 core_repo=jivinstev/ModdyTheWishWatch
-core_tag=moddingfromamod-1.0.5-mc1.21.8
-core_asset=moddingfromamod-1.0.5+mc1.21.8.jar
-core_sha256=595b58a5a95495e1e1e9676884ad7bd724f5663bc51b7c377b561d32d8dfba90
+core_tag=moddingfromamod-1.0.6-mc1.21.8
+core_asset=moddingfromamod-1.0.6+mc1.21.8.jar
+core_sha256=188b1be70331d3f05c40ba5d4cc4334ec44932d941ef3cdb4302abee8501762e
