@@ -104,6 +104,7 @@ def unpackLevelPacks = tasks.register('unpackLevelPacks') {
     inputs.file('datapacks.lock.json')
     inputs.file('THIRD_PARTY_NOTICES.txt')
     inputs.property('mod_name', mod_name)
+    inputs.property('level_pack_format', (project.findProperty('level_pack_format') ?: '81').toString())
     outputs.dir(levelPacks)
     doLast {
         def packs = new groovy.json.JsonSlurper().parse(file('datapacks.lock.json')).packs
@@ -130,8 +131,14 @@ def unpackLevelPacks = tasks.register('unpackLevelPacks') {
         // Type and named in a server's initial-enabled-packs; its presence is what claims a world for the level.
         def marker = new File(dir, 'datapacks/level_marker')
         marker.mkdirs()
-        new File(marker, 'pack.mcmeta').text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(
-                [pack: [pack_format: 81, description: "${mod_name}: marks a world made as this level (empty)".toString()]])) + '\n'
+        // Its format is this Minecraft's data-pack format (gradle.properties level_pack_format, 81 for 1.21.8 when
+        // unset). From 1.21.9 (format 82 up) a pack names the formats it supports as min_format/max_format, a major
+        // number covering its minor ones (94 is 94.x); pack_format alone is the older form.
+        def fmt = (project.findProperty('level_pack_format') ?: '81').toString()
+        def major = fmt.tokenize('.')[0] as int
+        def desc = "${mod_name}: marks a world made as this level (empty)".toString()
+        def pack = major <= 81 ? [pack_format: major, description: desc] : [min_format: major, max_format: major, description: desc]
+        new File(marker, 'pack.mcmeta').text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson([pack: pack])) + '\n'
     }
 }
 

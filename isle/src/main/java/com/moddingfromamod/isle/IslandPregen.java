@@ -70,7 +70,7 @@ public final class IslandPregen {
      * is never saved. A plain record needs no registry id unless persisted (1.21.5+, as {@code IslandService}'s).
      */
     private static final class Ticket {      // a holder: the knob's parse is a Gate A test with no Minecraft booted
-        static final TicketType PREGEN = new TicketType(TICKET_LIFESPAN_TICKS, false, TicketType.TicketUse.LOADING);
+        static final TicketType PREGEN = new TicketType(TICKET_LIFESPAN_TICKS, TicketType.FLAG_LOADING);
     }
 
     /** What the throttle reads; the live server's, or a GameTest's. */

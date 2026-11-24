@@ -34,7 +34,7 @@ public final class IsleMod {
                 ModList.get().getModContainerById(ModdingFromAModMod.MODID)
                         .map(c -> c.getModInfo().getVersion().toString()).orElse("MISSING"));
         LevelPacks.register(modBus, IsleWorld.LEVEL);
-        if (FMLEnvironment.dist.isClient()) {
+        if (FMLEnvironment.getDist().isClient()) {
             LevelWorldType.register(IsleWorld.LEVEL);
         }
     }

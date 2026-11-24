@@ -63,8 +63,8 @@ public final class IslandService implements Bases {
      * record that needs no registry id unless it is persisted (#1786; mc-mod-version-upgrade's Tickets).
      */
     private static final net.minecraft.server.level.TicketType ISLAND_TICKET =
-            new net.minecraft.server.level.TicketType(IslandWait.TICKET_LIFESPAN_TICKS, false,
-                    net.minecraft.server.level.TicketType.TicketUse.LOADING_AND_SIMULATION);
+            new net.minecraft.server.level.TicketType(IslandWait.TICKET_LIFESPAN_TICKS,
+                    net.minecraft.server.level.TicketType.FLAG_LOADING | net.minecraft.server.level.TicketType.FLAG_SIMULATION);
     private static final ResourceLocation PACK_LOAD =
             ResourceLocation.fromNamespaceAndPath("skyvoid_worldgen", "v2.0/load");
 
@@ -127,7 +127,7 @@ public final class IslandService implements Bases {
             return "absent";
         }
         var list = server.getPlayerList();
-        var profile = new com.mojang.authlib.GameProfile(owner, "");
+        var profile = new net.minecraft.server.players.NameAndId(owner, "");
         if (list.getPlayer(owner) != null) {
             return "refused: that player is online";
         }
@@ -681,7 +681,7 @@ public final class IslandService implements Bases {
             if (home != null && !IslandRegistry.isService(home) && built(p.getUUID())) {
                 moveHome(p, home);
             } else {
-                BlockPos spawn = server.overworld().getSharedSpawnPos();
+                BlockPos spawn = server.overworld().getRespawnData().pos();
                 com.moddingfromamod.compat.Teleports.player(p, server.overworld(), spawn.getX() + 0.5,
                         spawn.getY(), spawn.getZ() + 0.5, p.getYRot(), p.getXRot());
                 p.fallDistance = 0;
@@ -731,7 +731,7 @@ public final class IslandService implements Bases {
             if (home != null && !IslandRegistry.isService(home) && built(p.getUUID())) {
                 moveHome(p, home);
             } else {
-                BlockPos spawn = server.overworld().getSharedSpawnPos();
+                BlockPos spawn = server.overworld().getRespawnData().pos();
                 com.moddingfromamod.compat.Teleports.player(p, server.overworld(), spawn.getX() + 0.5,
                         spawn.getY(), spawn.getZ() + 0.5, p.getYRot(), p.getXRot());
                 p.fallDistance = 0;
@@ -770,7 +770,7 @@ public final class IslandService implements Bases {
         }
         var list = server.getPlayerList();
         java.util.function.Predicate<UUID> keep = id -> {
-            var profile = new com.mojang.authlib.GameProfile(id, "");
+            var profile = new net.minecraft.server.players.NameAndId(id, "");
             return list.getPlayer(id) != null || list.getWhiteList().isWhiteListed(profile) || list.isOp(profile);
         };
         int n = 0;

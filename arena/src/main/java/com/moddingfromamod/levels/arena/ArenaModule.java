@@ -71,8 +71,10 @@ public final class ArenaModule implements WorldModule {
         }
         int[] a = place.arrival();
         BlockPos spawn = new BlockPos(a[0], a[1], a[2]);
-        if (!level.getSharedSpawnPos().equals(spawn) || level.getSharedSpawnAngle() != ArenaPlace.ARRIVAL_YAW) {
-            level.setDefaultSpawnPos(spawn, ArenaPlace.ARRIVAL_YAW);
+        var respawn = level.getRespawnData();
+        if (!respawn.pos().equals(spawn) || respawn.yaw() != ArenaPlace.ARRIVAL_YAW) {
+            level.setRespawnData(net.minecraft.world.level.storage.LevelData.RespawnData.of(level.dimension(), spawn,
+                    ArenaPlace.ARRIVAL_YAW, 0.0f));
             LOG.info("Moddy Arena: world spawn set to the prep room, {} {} {}", a[0], a[1], a[2]);
         }
         bases = new ArenaBases(place, id -> {

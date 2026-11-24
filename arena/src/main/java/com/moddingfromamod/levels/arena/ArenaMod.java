@@ -19,7 +19,7 @@ public final class ArenaMod {
 
     public ArenaMod(IEventBus modBus) {
         LevelPacks.register(modBus, LEVEL);
-        if (FMLEnvironment.dist.isClient()) {
+        if (FMLEnvironment.getDist().isClient()) {
             LevelWorldType.register(LEVEL);
         }
     }

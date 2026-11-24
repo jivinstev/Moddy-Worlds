@@ -120,7 +120,7 @@ public final class IslandFresh {
 
     /** Every advancement he has made progress on, taken back. Returns how many. */
     static int clearGoals(ServerPlayer p) {
-        var server = p.getServer();
+        var server = p.level().getServer();
         if (server == null) {
             return 0;
         }

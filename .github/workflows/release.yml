@@ -1,4 +1,4 @@
-# Release: build a level jar from main and publish it as a GitHub (pre-)release, by hand only
+# Release: build a level jar from main (or a version branch neoforge-<mc>) and publish it as a GitHub (pre-)release, by hand only
 # (Actions -> Release -> Run workflow). It is the only way a release is made: nothing else here can create one.
 #
 # It builds against the PUBLIC core exactly as <level>/core.lock pins it (never a -PcoreJar override), runs the unit
@@ -42,14 +42,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - name: Only from main
-        if: github.ref != 'refs/heads/main'
-        run: |
-          echo "::error::a release is built from main only (this run is on ${GITHUB_REF})"
-          exit 1
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Only from main or this Minecraft's version branch
+        # A version branch neoforge-<mc> (.port/<mc>/branch.properties) releases its own Minecraft version; main
+        # releases the base one. Anything else is refused.
+        env:
+          LEVEL: ${{ inputs.level }}
+        run: |
+          mc="$(sed -n 's/^minecraft_version=//p' "$LEVEL/gradle.properties" 2>/dev/null | head -1)"
+          case "$GITHUB_REF" in
+            refs/heads/main) ;;
+            "refs/heads/neoforge-$mc") [ -f ".port/$mc/branch.properties" ] || { echo "::error::neoforge-$mc has no .port/$mc/branch.properties"; exit 1; } ;;
+            *) echo "::error::a release is built from main or neoforge-$mc only (this run is on ${GITHUB_REF})"; exit 1 ;;
+          esac
       - name: The world is one of this repository's
         # The same discovery CI uses (tools/changed-worlds.py): a world is a top-level folder holding core.lock, so a
         # new world needs no edit here. The input reaches the shell only through env, and is checked before any use.
@@ -107,14 +114,14 @@ jobs:
       - name: The workflow's core pins match the core.lock files
         run: python3 tools/core-pins.py --check
       # BEGIN core pins: written by tools/core-pins.py from */core.lock; edit core.lock, then tools/core-pins.py --write
-      - name: The pinned public core moddingfromamod-1.0.6-mc1.21.8 (arena, isle)
+      - name: The pinned public core moddingfromamod-1.0.8-mc1.21.10 (arena, isle)
         env:
           GH_TOKEN: ${{ secrets.CORE_READ_TOKEN }}
         run: |
           mkdir -p "$RUNNER_TEMP/core"
-          curl -fsSL -o "$RUNNER_TEMP/core/moddingfromamod-1.0.6+mc1.21.8.jar" "https://github.com/jivinstev/ModdyTheWishWatch/releases/download/moddingfromamod-1.0.6-mc1.21.8/moddingfromamod-1.0.6+mc1.21.8.jar" || gh release download "moddingfromamod-1.0.6-mc1.21.8" -R "jivinstev/ModdyTheWishWatch" -p "moddingfromamod-1.0.6+mc1.21.8.jar" -D "$RUNNER_TEMP/core" --clobber
-          echo "188b1be70331d3f05c40ba5d4cc4334ec44932d941ef3cdb4302abee8501762e  $RUNNER_TEMP/core/moddingfromamod-1.0.6+mc1.21.8.jar" | sha256sum -c -
-          for w in arena isle; do mkdir -p "$w/.core"; cp "$RUNNER_TEMP/core/moddingfromamod-1.0.6+mc1.21.8.jar" "$w/.core/"; done
+          curl -fsSL -o "$RUNNER_TEMP/core/moddingfromamod-1.0.8+mc1.21.10.jar" "https://github.com/jivinstev/ModdyTheWishWatch/releases/download/moddingfromamod-1.0.8-mc1.21.10/moddingfromamod-1.0.8+mc1.21.10.jar" || gh release download "moddingfromamod-1.0.8-mc1.21.10" -R "jivinstev/ModdyTheWishWatch" -p "moddingfromamod-1.0.8+mc1.21.10.jar" -D "$RUNNER_TEMP/core" --clobber
+          echo "0d439e28b919a58d91220456f37a670ab106d9180900cc3efd3648906fbda54d  $RUNNER_TEMP/core/moddingfromamod-1.0.8+mc1.21.10.jar" | sha256sum -c -
+          for w in arena isle; do mkdir -p "$w/.core"; cp "$RUNNER_TEMP/core/moddingfromamod-1.0.8+mc1.21.10.jar" "$w/.core/"; done
       # END core pins
       - name: Unit tests and the jar (against the pinned core only)
         env:

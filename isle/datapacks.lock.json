@@ -10,20 +10,19 @@
       "copyright": "Copyright (c) 2024 BPR02",
       "project": "https://modrinth.com/datapack/standard-skyblock",
       "source": "https://github.com/BPR02/SkyBlock_Collection",
-      "version": "2.1.1",
+      "version": "2.1.3",
       "mc": [
-        "1.21.6",
-        "1.21.7",
-        "1.21.8"
+        "1.21.9",
+        "1.21.10"
       ],
       "packFormats": [
-        80,
-        81
+        "88.0",
+        "88.0"
       ],
-      "file": "skyvoid_standard_skyblock_v2_1_1-MC_1_21_6-1_21_8.zip",
-      "url": "https://cdn.modrinth.com/data/bbtyQ1Po/versions/67unTDLm/skyvoid_standard_skyblock_v2_1_1-MC_1_21_6-1_21_8.zip",
-      "sha1": "22de68b50930c2d2b17a5d06c6705597ca3258c9",
-      "bytes": 1410264,
+      "file": "skyvoid_standard_skyblock_v2_1_3-MC_1_21_9-1_21_10.zip",
+      "url": "https://cdn.modrinth.com/data/bbtyQ1Po/versions/5WeNiOhb/skyvoid_standard_skyblock_v2_1_3-MC_1_21_9-1_21_10.zip",
+      "sha1": "35ba5bf98d6c15071a9edf4120d2925532c81b27",
+      "bytes": 1411680,
       "does": "void world generation (every structure's bounding box, no blocks) and the starter island at world spawn, placed when the first player joins (skyvoid_worldgen:v2.0/load_wait waits for @a)",
       "folder": "standard_skyblock"
     },
@@ -35,20 +34,19 @@
       "copyright": "Copyright (c) 2024 BPR02",
       "project": "https://modrinth.com/datapack/sky-void-additions",
       "source": "https://github.com/BPR02/SkyBlock_Collection",
-      "version": "1.4.1",
+      "version": "1.4.3",
       "mc": [
-        "1.21.6",
-        "1.21.7",
-        "1.21.8"
+        "1.21.9",
+        "1.21.10"
       ],
       "packFormats": [
-        80,
-        81
+        "88.0",
+        "88.0"
       ],
-      "file": "skyvoid_additions_v1_4_1-MC_1_21_6-1_21_8.zip",
-      "url": "https://cdn.modrinth.com/data/HlddKKKU/versions/AmvS9rez/skyvoid_additions_v1_4_1-MC_1_21_6-1_21_8.zip",
-      "sha1": "061564138b11d69a531c8a204cc061eb04c3d652",
-      "bytes": 234191,
+      "file": "skyvoid_additions_v1_4_3-MC_1_21_9-1_21_10.zip",
+      "url": "https://cdn.modrinth.com/data/HlddKKKU/versions/2QR1Lyuc/skyvoid_additions_v1_4_3-MC_1_21_9-1_21_10.zip",
+      "sha1": "4510eb1ebbedf923a456b474acf359851694bba8",
+      "bytes": 236247,
       "does": "vanilla-like mechanics that make every item, mob and advancement obtainable in SkyBlock; each toggleable (/function skyvoid_additions:customize/update_config/open_menu)",
       "folder": "sky_void_additions"
     },
@@ -60,20 +58,19 @@
       "copyright": "Copyright (c) 2024 BPR02",
       "project": "https://modrinth.com/datapack/skyblock-advancements",
       "source": "https://github.com/BPR02/SkyBlock_Collection",
-      "version": "1.0.9",
+      "version": "1.0.10",
       "mc": [
-        "1.21.6",
-        "1.21.7",
-        "1.21.8"
+        "1.21.9",
+        "1.21.10"
       ],
       "packFormats": [
-        80,
-        81
+        "88.0",
+        "88.0"
       ],
-      "file": "skyvoid_advancements_v1_0_9-MC_1_21_6-1_21_8.zip",
-      "url": "https://cdn.modrinth.com/data/xuhPkHjq/versions/ryUJsg8g/skyvoid_advancements_v1_0_9-MC_1_21_6-1_21_8.zip",
-      "sha1": "225aead84d4d1f1f3301a0be3de195526331a7ed",
-      "bytes": 344325,
+      "file": "skyvoid_advancements_v1_0_10-MC_1_21_9-1_21_10.zip",
+      "url": "https://cdn.modrinth.com/data/xuhPkHjq/versions/W5gZxHV4/skyvoid_advancements_v1_0_10-MC_1_21_9-1_21_10.zip",
+      "sha1": "c7443a92b42b233dab4626f950911eaf00a8da30",
+      "bytes": 343557,
       "does": "the story and nether advancement tabs rearranged for SkyBlock progression, plus new ones (skyvoid_advancements:overworld/*). Its optional RESOURCE pack (rp_skyvoid_advancements_*.zip) is deliberately not fetched: the level offers no resource pack",
       "folder": "skyblock_advancements"
     }
