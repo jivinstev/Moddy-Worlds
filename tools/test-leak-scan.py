@@ -82,6 +82,10 @@ class BuiltInRules(unittest.TestCase):
 
     def test_a_routable_ip_is_found_and_a_private_or_version_one_is_not(self):
         self.assertEqual(self.cats("door at " + IP + " today"), ["ip"])
+        for line in ("neo_version=26.1.2.130", "prop.neo_version=26.3.0.117", "Minecraft 26.1.2, NeoForge 26.1.2.130",
+                     "net.neoforged:neoforge:26.2.0.95"):
+            self.assertEqual(self.cats(line), [], line)
+        self.assertEqual(self.cats("neo_version=21.10.64 at " + IP), ["ip"], "a real address beside a version")
         for benign in ("127.0.0.1", "10.0.0.4", "192.168.1.20", "1.2.3.4", "198.51.100.3", "100.64.0.1",
                        "neoforge 21.8.57", "version 1.21.8.0.1"):
             self.assertEqual(self.cats(benign), [], benign)
