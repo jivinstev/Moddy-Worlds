@@ -5,7 +5,7 @@ empty sky. The battle arena control panel on the prep room's wall sets how many 
 are and how many waves there are (5, 10, 15, 20 or Endless), and its button starts a battle: waves of monsters that
 start easy and get harder, a boss every 5th wave, never player against player. Each player has 3 lives in a battle.
 The Champions board on the prep room's back wall shows the best runs at the settings on the panel. Wishes are made in the prep room (or the arena) before a battle and put on the hotbar; in a battle only
-the hotbar's wishes work, one click each, with a rest between fires. What is not built yet is listed at the end.
+the hotbar's wishes work, one click each, with a rest between fires and 5 fires a wave. What is not built yet is listed at the end.
 
 ## What a player gets
 
@@ -239,40 +239,62 @@ worlds only):
 | | **prep** (no battle on) | **battle** (from the button to the tidy) |
 |---|---|---|
 | a Builder make, or an Apprentice tile | free, unlimited | refused |
-| a kept thing made again (its hotbar wish, or "Make another one") | free, unlimited | **allowed**, then it rests `cooldownSeconds` (10) for that player |
+| a kept thing made again (its hotbar wish, or "Make another one") | free, unlimited | **allowed** while he has some of this wave's `wishesPerWave` (5) left: each fire costs one, then that thing rests `cooldownSeconds` (10) for that player |
 | a typed wish for the Magician | allowed while he has some of this prep's `magicianWishes` (3) left | refused |
 
 - **Prep** is whenever no battle is on. **A battle** starts when the button is pressed (the countdown counts as the
   battle: a slow wish made then would land in the middle of a wave) and ends when the arena is tidy again after a win or
   a loss; then every player's Magician count starts again and every rest ends.
+- **Hotbar wishes a wave**: in a battle each player may fire `wishesPerWave` (5) hotbar wishes in each wave, whichever
+  wishes they are; every fire costs one (a real item he holds, such as the sword a wish made, is not a fire). The count
+  starts again when a wave is cleared ("Your 5 hotbar wishes for the next wave are ready."), so the breather before a
+  wave and the wave share one count. **His own bar** at the top of the screen, under the wave's, says how many he has
+  left ("Your wishes this wave: 3 of 5", green, emptying as he fires; white at 0), from the countdown to the battle's
+  last wave; a boss bar is what a stock client draws, always in sight, so it never fights the action bar's lines. Out of
+  wishes, a fire is refused with one line in chat, once per try: "You have used your 5 hotbar wishes for this wave. You
+  get 5 more when the next wave comes." The wish stays on his hotbar for the next wave. The control panel says the
+  number under the start button ("Hotbar wishes: 5 a wave").
 - **The hotbar**: the core puts a thing with a recipe on the hotbar from its page (My wishes, press the thing, "Add to
   hotbar"; a ready-made wish's page opens on a right click). Using it makes the thing again, with no typing and no menu:
   the same replay as "Make another one". A thing has a recipe when it came from one: every Builder and Apprentice make
   he keeps, the starter library's wishes (the watch's ready-made ones, such as the Lightning Sword) and the Magician's
   wishes he keeps as recipes. A hotbar wish stays his when he is knocked out: it is back in its slot when he comes back
-  in the prep room. The core's own one-second sweep shows on the slot; the arena's longer rest is checked when it is
-  used, and a fire during it is refused on the action bar: "That wish is resting. It is ready again in 7 seconds."
+  in the prep room. **The slot's sweep lasts the arena's rest**: the arena tells the core how long each hotbar wish still
+  rests (`restLeft`), so after a fire in a battle the slot sweeps for the whole 10 seconds, and a click while it sweeps
+  makes nothing; after a knock-out or a re-add it sweeps for what is left. In prep the core's own one-second sweep
+  stands. "Make another one" pressed while its thing rests is refused in chat: "That wish is resting. It is ready again
+  in 7 seconds."
 - **A Magician wish is counted when the Magician picks it up**, not when it is typed: a typed wish the wish library
   answers with no model costs nothing. A counted wish that fails, is stopped, times out or is undone gives its count
   back. A wish refused for the count is never charged: "You have used all 3 Magician wishes for this prep. You get 3
   more after the next battle. Builder and Apprentice wishes are still free."
 - **In a battle** a typed wish or a new make is refused: "A battle is on, so only the wishes on your hotbar work now.
-  New wishes are made in the prep room before a battle." With the Magician off (single player's default), typed words go
-  to the Apprentice, and the core asks the arena before its page opens, so in a battle the page does not open.
+  New wishes are made in the prep room before a battle." It is the one line he reads (a refused Builder make says no
+  other line with it), and typed words that would go to the Apprentice are refused before its page opens.
 - **A child in distress** (the core's safety layer passes the flag) is never refused and never counted.
 - `/moddy wishes` says, in prep, "Magician wishes left before the next battle: 2 of 3." and that Builder and Apprentice
-  wishes are free; in a battle, that wishes are fired from the hotbar and how long each rests. The watch's and the wish
+  wishes are free and how many hotbar wishes a wave allows; in a battle, how many he has left this wave and how long
+  each rests. The watch's and the wish
   box's titles add " - 2 Magician wishes left", or " - Battle: use your hotbar".
 
-How the arena tells the kinds apart, at the core's submit hook (`refusesAtSubmit(player, distress, text, recipe)`):
-`recipe` false is typed words; a recipe whose text starts with the core's Builder prefix (`"Builder: "`) is a new make
-(the Builder's menus, an Apprentice tile, a typed change the Builder carries out); any other recipe is a kept thing made
-again (the hotbar, "Make another one", and a left click on a ready-made wish in My wishes all submit its recipe, so all
-three are instant wishes in a battle). A kept Builder or Apprentice make's recipe (`builder:<make id>`) reaches the hook
-with the make's own name as its text and no prefix, so its hotbar wish is a kept thing made again too, while a new make
-of the same thing still carries the prefix and is refused in a battle. The Magician's pickup (`atPickup`) is the only place a wish reaches a model. The
-hook is told the wish's text, not its recipe id: a kept thing's rest is keyed by that text, which is the recipe id from
-the hotbar and "Make another one" but the tile's own words from My wishes, so those two rest separately.
+How the arena tells the kinds apart, at the core's charge hooks, each told the core's `WishAsk` (whose wish, its kind
+of magic, its recipe id, its words, distress): a **REPLAY** whose recipe its start named (a hotbar fire, "Make another
+one", a recipe button, a left click on a ready-made wish in My wishes) is a kept thing made again, an instant wish in a
+battle; a **Builder** or **Apprentice** make (the Builder's menus, an Apprentice tile, the Apprentice's page for typed
+words, a typed change the Builder carries out) and typed words a kept recipe answers are new wishes with no model,
+refused in a battle; typed words for the **Magician** are his wishes. A kept Builder or Apprentice make's hotbar wish
+is a REPLAY of its recipe (`builder:<make id>`), so it fires in a battle, while a new make of the same thing is still
+refused. Three hooks carry it out:
+
+- `refuses(ask)`, asked as any wish starts, before anything runs or opens: let it through, or refuse it with the one
+  line the core then says. Asking changes nothing (the core may ask again, and a menu asks while it draws).
+- `charge(ask, wishId)`, once a wish served with no model really starts (after the core's rate limiter): a fire in a
+  battle costs one of the wave's hotbar wishes and starts that thing's rest.
+- `restLeft(ask)`, asked by the core's hotbar after every fire and whenever a hotbar wish is put in his inventory: how
+  long that wish still rests, so its sweep shows the arena's rest.
+
+A kept thing's rest is keyed by its recipe id, which a hotbar fire and "Make another one" share. The Magician's pickup
+(`atPickup`) is the only place a wish reaches a model, and where a Magician wish is counted.
 
 **Wishes stay in the arena and its prep room.** The arena is every player's base (`ArenaBases`), and the world's rules
 turn on the core's `base_reach` rule ("a wish stays inside the arena and its prep room"). Where a wish may be aimed
@@ -370,12 +392,15 @@ they make an easy wave by day.
 ### `arena_wishes`, the wishes of the two phases
 
 ```json
-{"id": "prep-and-battle-wishes", "type": "arena_wishes", "params": {"magicianWishes": 3, "cooldownSeconds": 10}}
+{"id": "prep-and-battle-wishes", "type": "arena_wishes", "params": {"magicianWishes": 3, "cooldownSeconds": 10, "wishesPerWave": 5}}
 ```
 
 `magicianWishes`: the Magician wishes each player may make between two battles (0 to 20; 0 means none in this arena).
-`cooldownSeconds`: how long a kept thing rests, for that player, after it is fired in a battle (1 to 120). Both are
-optional, and **both first values are guesses** to be tuned by playing. A wrong value refuses the file whole, in words;
+`cooldownSeconds`: how long a kept thing rests, for that player, after it is fired in a battle (1 to 120).
+`wishesPerWave`: how many hotbar wishes each player may fire in one wave of a battle (1 to 50); every fire costs one,
+and the count starts again when a wave is cleared. Its first value, 5, is a little under what firing one wish whenever
+it is ready would give in a wave of about a minute (6, at a 10-second rest), so a player picks his moments and which
+wish to fire. All three are optional, and **all three first values are guesses** to be tuned by playing. A wrong value refuses the file whole, in words;
 a file with no `arena_wishes` rule gets these values.
 
 ### Where the file comes from
@@ -415,8 +440,8 @@ the player kept safe), `5-battle-lost` (knocked out in wave 1 with lives left, b
 on, then out of lives: lost, back in the prep room with his sword, the arena tidied), `6-prep-and-hotbar` (in prep, a
 make from the prep room lands in the arena ahead of it and one made in the arena lands there, and an Apprentice Fire
 Sword goes on the hotbar from its own page in My wishes, by "Add to hotbar"; its hotbar wish is used in the battle and
-makes it again, a second fire at once is refused with the seconds left, a new make is refused with the arena's words
-before the Apprentice's page opens;
+makes it again, a click while its slot sweeps makes nothing, a new make is refused with the arena's words before the
+Apprentice's page opens;
 after the battle the hotbar wish is still there and new makes work), `7-creature-in-the-arena` (an Apprentice cat made
 in the arena lands there; made standing outside the place, it is refused and nothing is left),
 `8-knocked-out-keeps-hotbar` (knocked out in a battle holding a hotbar wish, with lives left, he comes back in the prep
@@ -427,8 +452,11 @@ press on the board and his action bar; at monsters 10 and Extreme the battle's w
 10 pillagers, and the last a boss wave with Rumble the Ravager; in a battle a selector is refused and the board says
 "Battle on: wave 1 of 5"; after it the board keeps his settings), `10-boss-waves` (WAVES 10: boss waves at 5 and 10,
 each with its named boss, its health on the boss bar and the BOSS WAVE title, generated waves between, and the win)
-and `11-champions` (a run lost on wave 3 puts his face, name, wave and time on the Champions board; a better run
-replaces it and a worse one does not; changing the difficulty switches the board). A playtest cannot restart its game,
+`11-champions` (a run lost on wave 3 puts his face, name, wave and time on the Champions board; a better run
+replaces it and a worse one does not; changing the difficulty switches the board) and `12-wishes-per-wave` (the panel
+and `/moddy wishes` say 5 hotbar wishes a wave; in the battle his own bar says 5 of 5 and empties with each fire, the
+slot sweeps for the arena's 10 seconds and a click while it sweeps makes nothing, the sixth fire is refused in one line
+with the wish still on his hotbar, and when the wave is cleared the count is 5 again and the next fire costs one). A playtest cannot restart its game,
 so the settings and the champions surviving a restart are `ArenaStateTest` (the saved record) and a dedicated
 server's restart.
 
@@ -467,7 +495,7 @@ All of it in `com.moddingfromamod.levels.arena`:
 | `ArenaModule` | the world module: builds once, gives a built place its upgrades, sets the spawn, the first arrival, the bases, the fallback rules, ticks the battle |
 | `ArenaBuilder` | each kind of box as a block, placed; the control panel added to (or mended in) a place; the reset |
 | `ArenaBases` | the arena as the core's `Bases`: every player's base, home in the prep room |
-| `ArenaWishPolicy` | **pure**: the two phases, which kinds of wish each lets through, the Magician count, the cooldowns |
+| `ArenaWishPolicy` | **pure**: the two phases, which kinds of wish each lets through, the Magician count, the cooldowns, the hotbar wishes a wave |
 | `ArenaWishes` | **pure**: the wish tunables and their checks |
 | `ArenaWishesRule` | `arena_wishes` as a `WorldRuleType`, and reading it back from a world's rules |
 | `ArenaCharge` | the core's `WishCharge` for arena worlds: sorts each wish, refuses or counts it, gives counts back, says what is left |
@@ -495,12 +523,6 @@ champions) and keeps everything else.
 - **Spectators**: watching a battle without being in it (today a player in the prep room during the countdown is a
   fighter).
 - **More than one arena**, or more than one battle at a time.
-
-What the public core does not let a world do yet (so the arena does not do it either):
-
-- **A refused Builder make also reads "Your wish bank is empty. It fills up again soon."** The core's Builder menus say
-  that fixed line whenever the charge refuses a make; the arena's own line is said after it.
-- **The hotbar's sweep shows one second**: a world cannot set the cooldown the slot draws, so the arena's rest is told
-  in words when it is pressed.
-- **"Give me one"** (a copy of a kept item) is not a wish, and the core's hook for it does not say which thing it is,
-  so the arena lets it through in a battle with no rest.
+- **"Give me one"** (a copy of a kept item) is not a wish: the arena lets it through in a battle with no rest and no
+  count. (The core now tells a world which thing it is, `chargeAgain(player, kind, ask)`, so a later change can.)
+- **A stronger wish costing more than one** of a wave's hotbar wishes, if play shows it is needed.

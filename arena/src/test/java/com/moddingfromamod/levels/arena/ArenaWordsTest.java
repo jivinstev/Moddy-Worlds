@@ -29,6 +29,8 @@ class ArenaWordsTest {
         }
         ArenaRun def = ArenaSettings.DEFAULT.run(base);
         assertEquals(java.util.List.of("First wave: 3 monsters", "Boss wave: 5"), ArenaWords.sizeMeans(def));
+        assertEquals(java.util.List.of("First wave: 3 monsters", "Boss wave: 5", "Hotbar wishes: 5 a wave"),
+                ArenaWords.sizeMeans(def, 5), "the panel says the hotbar wishes a wave");
         assertEquals(java.util.List.of("First wave: 3 monsters", "Boss waves: 5, 10, 15, 20"),
                 ArenaWords.sizeMeans(new ArenaSettings(5, ArenaDifficulty.NORMAL, 20).run(base)));
         assertEquals(java.util.List.of("First wave: 3 monsters", "A boss every 5 waves"),

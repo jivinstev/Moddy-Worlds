@@ -96,7 +96,7 @@ public final class ArenaModule implements WorldModule {
                     p.getY(), p.getZ());
         });
         ArenaCharge c = ArenaCharge.of(server);
-        battle = new ArenaBattle(server, place, state, c::battleEnded);
+        battle = new ArenaBattle(server, place, state, c);
         c.phase(ArenaWishPolicy.phaseOf(battle.match().phase()));
         charge = c;
         ArenaWishes w = ArenaWishesRule.wishesOf(rulesAtStart());

@@ -1,0 +1,133 @@
+# Moddy Arena: a limited number of hotbar wishes in each wave. In prep he makes a Fire Sword with the Apprentice and puts
+# it on his hotbar from its page. In the battle his own bar at the top says how many hotbar wishes he has left this
+# wave (5 by default) and empties as he fires. The slot's sweep lasts the arena's 10-second rest, not the core's one
+# second: a click while it sweeps makes nothing. When the five are used, a sixth fire is refused with one short line
+# and the wish stays on his hotbar. When the wave is cleared the count starts again, and the next fire costs one of the
+# new five. The control panel says the number a wave. No model anywhere: the Apprentice's local matcher offers the
+# make, and the hotbar replays its recipe.
+# He stays in the prep room behind the closed gate (husks cannot open it) and a resistance effect keeps him on his
+# feet: the monsters are not what this tests, so the wave is ended by command once the count has been shown.
+# play-timeout: 1200
+@intent in a battle each hotbar fire costs one of the wave's wishes, shown on his own bar; its sweep lasts the arena's rest; out of wishes a fire is refused in one line and the wish stays; the count starts again at the next wave
+@world flat seed=1
+@continue-on-fail
+
+@step arrive
+@expect chat Welcome to Moddy Arena within 90s
+@wait 2s
+difficulty hard
+difficulty normal
+gamemode survival
+effect give @s minecraft:resistance 1200 4 true
+effect give @s minecraft:saturation 1200 0 true
+
+@step the panel and /moddy wishes say the hotbar wishes a wave
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_means,nbt={text:{text:"First wave: 3 monsters\nBoss wave: 5\nHotbar wishes: 5 a wave"}}]
+# the picture: the board straight ahead once the chat has faded
+@aim pos 3.5 64.6 17.1
+@wait 11s
+@shot the-panel
+moddy wishes
+@expect chat /can be fired in a battle, 5 each wave/ within 5s
+
+@step an Apprentice sword, on his hotbar from its page
+moddy apprentice a fire sword
+@expect screen Container within 10s
+@click slot 0
+@expect chat /Fire Sword( [0-9]+)? is in slot 3/ within 60s
+@wait 2s
+@key key.hotbar.1
+@key key.use
+@expect screen /make a wish/ within 10s
+@click button "My wishes"
+@expect screen My wishes within 10s
+@click item "Fire Sword"
+@expect screen Fire Sword within 10s
+@click item "Add to hotbar"
+@expect chat On your hotbar, slot 4 within 10s
+@wait 1s
+@assert execute if items entity @s hotbar.3 minecraft:paper
+@key key.keyboard.escape
+@wait 10t
+@key key.keyboard.escape
+@wait 10t
+@expect screen none within 3s
+
+@step he starts a battle, and his bar says 5 of 5
+@aim look 180 0
+@key key.forward hold 8t
+@wait 10t
+@aim pos 3.5 65.5 17.1
+@key key.use
+@expect chat A battle is starting within 5s
+@expect bossbar Your wishes this wave: 5 of 5 within 5s
+@expect title Wave 1 of 5 within 15s
+@wait 1s
+@assert execute if entity @e[tag=moddyarena_wave]
+@aim look 180 10
+@shot five-of-five
+
+@step the first fire costs one, and clicks while its slot sweeps make nothing
+# the rest starts at the click: 3 s and 7 s after it are past the core's one second and inside the arena's ten, so
+# those clicks make nothing (the sword takes a few seconds to be made, so its line comes after them)
+@key key.hotbar.4
+@wait 5t
+@key key.use
+@wait 3s
+@key key.use
+@wait 1s
+@shot still-sweeping
+@wait 3s
+@key key.use
+@expect chat /Fire Sword( [0-9]+)? is in slot 5/ within 30s
+@expect bossbar Your wishes this wave: 4 of 5 within 3s
+@wait 3s
+@assert execute if items entity @s hotbar.4 *
+@assert execute unless items entity @s hotbar.5 *
+@expect bossbar Your wishes this wave: 4 of 5 within 2s
+@shot four-of-five
+
+@step rested, it fires again, and again, until the wave's five are used
+@wait 5s
+@key key.use
+@expect chat /Fire Sword( [0-9]+)? is in slot 6/ within 30s
+@expect bossbar Your wishes this wave: 3 of 5 within 3s
+@wait 11s
+@key key.use
+@expect chat /Fire Sword( [0-9]+)? is in slot 7/ within 30s
+@expect bossbar Your wishes this wave: 2 of 5 within 3s
+@wait 11s
+@key key.use
+@expect chat /Fire Sword( [0-9]+)? is in slot 8/ within 30s
+@expect bossbar Your wishes this wave: 1 of 5 within 3s
+@wait 11s
+@key key.use
+@expect chat /Fire Sword( [0-9]+)? is in slot 9/ within 30s
+@expect bossbar Your wishes this wave: 0 of 5 within 3s
+@wait 1s
+@shot none-left
+
+@step out of wishes: a fire is refused in one line, and the wish stays on his hotbar
+@wait 11s
+@assert execute if items entity @s weapon.mainhand minecraft:paper
+@key key.use
+@expect chat You have used your 5 hotbar wishes for this wave. You get 5 more when the next wave comes. within 5s
+@wait 2s
+@assert execute if items entity @s hotbar.3 minecraft:paper
+@expect bossbar Your wishes this wave: 0 of 5 within 2s
+@shot out-of-wishes
+
+@step the wave is cleared, and the count starts again
+kill @e[tag=moddyarena_wave]
+@expect chat Wave 1 cleared within 10s
+@expect chat Your 5 hotbar wishes for the next wave are ready. within 5s
+@expect bossbar Your wishes this wave: 5 of 5 within 3s
+@wait 1s
+@shot five-again
+@key key.use
+@expect chat /Fire Sword( [0-9]+)? is in/ within 30s
+@expect bossbar Your wishes this wave: 4 of 5 within 3s
+@expect title Wave 2 of 5 within 20s
+@expect bossbar Your wishes this wave: 4 of 5 within 3s
+@wait 1s
+@shot the-next-wave

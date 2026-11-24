@@ -133,7 +133,7 @@ class ArenaPanelTest {
             w = Math.max(w, ArenaPanel.width(l) * s.scale());
         }
         if (s.words() == Words.SIZE_MEANS) {
-            lines = 2;
+            lines = 3;   // the first wave, the boss waves, the hotbar wishes a wave
         }
         return new double[] {s.x() - w / 2, s.x() + w / 2, s.y(), s.y() + lines * ArenaPanel.LINE * s.scale()};
     }
