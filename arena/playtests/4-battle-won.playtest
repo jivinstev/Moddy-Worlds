@@ -1,4 +1,4 @@
-# Moddy Arena: a whole battle, won the way a player wins it. In prep he makes a sword with the Apprentice and a stone well in
+# Moddy Arena: a whole battle, won the way a player wins it (the fifth wave is a boss wave: a ravager boss and a small escort). In prep he makes a sword with the Apprentice and a stone well in
 # the arena; he presses the start button beside the gate, walks in, and beats all five waves (the default table in the
 # arena's rules file: husks first, then pillagers, a witch and vindicators) with his sword. The battle is won and the
 # arena is put back as built: no mobs, no drops, and the well he made in prep gone.
@@ -111,11 +111,13 @@ moddy apprentice a stone well
 @end-repeat
 @expect chat Wave 4 cleared within 10s
 
-@step the last wave, and the win
-@expect title Wave 5 of 5 within 20s
+@step the last wave: a boss, Rumble the Ravager, and its escort; and the win
+@expect title BOSS WAVE within 20s
 @wait 1s
+@assert execute if entity @e[type=minecraft:ravager,tag=moddyarena_wave,name="Rumble the Ravager"]
+@expect bossbar BOSS: Rumble the Ravager within 3s
 @shot wave-5
-@repeat each @e[tag=moddyarena_wave] max 60 until execute unless entity {it}
+@repeat each @e[tag=moddyarena_wave] max 150 until execute unless entity {it}
 @aim entity {it}
 @key key.forward hold 6t
 @aim entity {it}
@@ -129,7 +131,7 @@ moddy apprentice a stone well
 @step the arena is tidied
 @expect chat The arena is tidy again within 15s
 @wait 1s
-@assert execute unless entity @e[type=!minecraft:player,tag=!moddyarena_panel,x=-17,y=60,z=-17,dx=34,dy=40,dz=34]
+@assert execute unless entity @e[type=!minecraft:player,tag=!moddyarena_panel,tag=!moddyarena_champions,x=-17,y=60,z=-17,dx=34,dy=40,dz=34]
 # the arena's inside is empty air again (compared with the empty sky at y 200), the well gone
 @assert execute if blocks -15 64 -15 15 67 15 -15 200 -15 all
 @assert execute if block 0 63 0 minecraft:smooth_sandstone

@@ -63,7 +63,8 @@ class ArenaPanelTest {
         assertEquals(Kind.PANEL_BOARD, m.get(List.of(0, 66, 16)), "the title runs over the gate");
         assertEquals(List.of(Kind.PANEL_START, Kind.PANEL_START, Kind.PANEL_START),
                 List.of(m.get(List.of(2, 65, 16)), m.get(List.of(3, 65, 16)), m.get(List.of(4, 65, 16))));
-        assertEquals(Kind.PANEL_START, m.get(List.of(3, 64, 16)), "the start button's green is 3 wide and 2 high");
+        assertEquals(Kind.PANEL_BOARD, m.get(List.of(3, 64, 16)), "the start button's green is 3 wide and 1 high");
+        assertEquals(Kind.PANEL_SELECT, m.get(List.of(-4, 64, 16)), "the WAVES selector on the lowest row");
         assertEquals(Kind.PANEL_BOARD, m.get(List.of(1, 65, 16)), "a black margin by the gate");
     }
 
@@ -77,6 +78,8 @@ class ArenaPanelTest {
         assertEquals(List.of(-1, 66, 17), at.get(Control.SIZE_UP));
         assertEquals(List.of(-4, 65, 17), at.get(Control.DIFFICULTY_DOWN));
         assertEquals(List.of(-1, 65, 17), at.get(Control.DIFFICULTY_UP));
+        assertEquals(List.of(-4, 64, 17), at.get(Control.WAVES_DOWN));
+        assertEquals(List.of(-1, 64, 17), at.get(Control.WAVES_UP));
         assertEquals(List.of(3, 65, 17), at.get(Control.START));
         // the start button at a child's eye height (he stands at 64, his eyes at 65.6), the selectors beside it
         assertEquals(65, P.startButton()[1]);
@@ -173,7 +176,13 @@ class ArenaPanelTest {
             }
             assertEquals(p.windowTop() - p.floorY() + 1 >= 4,
                     slots.stream().anyMatch(s -> s.words() == Words.SIZE_MEANS),
-                    "what the size means is shown when the board has a fourth row");
+                    "what the settings mean is shown when the board has a fourth row");
+            assertEquals(p.panel().hasTitleRow(), slots.stream().anyMatch(s -> s.words() == Words.TITLE));
+            assertEquals(p.panel().hasTitleRow(), slots.stream().anyMatch(s -> s.words() == Words.BEST));
+            for (Words w : List.of(Words.SIZE_VALUE, Words.DIFFICULTY_VALUE, Words.WAVES_VALUE, Words.START_LABEL,
+                    Words.STATE)) {
+                assertTrue(slots.stream().anyMatch(s -> s.words() == w), w + " on every board");
+            }
         }
     }
 
@@ -186,6 +195,9 @@ class ArenaPanelTest {
         assertTrue(s.get(Words.TITLE).scale() >= 2.0f, "the title is the biggest");
         assertTrue(s.get(Words.SIZE_VALUE).scale() >= 2.0f, "the size is a big number");
         assertTrue(s.get(Words.DIFFICULTY_VALUE).scale() >= 1.5f, "the difficulty is a big word");
+        assertTrue(s.get(Words.WAVES_VALUE).scale() >= 1.5f, "the number of waves is a big word");
+        assertTrue(s.get(Words.BEST).scale() >= 0.8f, "the best line reads from the room");
+        assertTrue(s.get(Words.SIZE_MEANS).scale() >= 0.8f, "what the settings mean reads from the room");
         assertTrue(s.get(Words.START_LABEL).scale() >= 1.3f);
         assertNotNull(s.get(Words.SIZE_MEANS));
         assertTrue(ArenaPanel.width(ArenaWords.PANEL_TITLE) * s.get(Words.TITLE).scale() <= 8.4);

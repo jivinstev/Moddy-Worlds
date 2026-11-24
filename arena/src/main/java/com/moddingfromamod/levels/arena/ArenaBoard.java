@@ -54,6 +54,9 @@ final class ArenaBoard {
     private final Map<UUID, String> shown = new HashMap<>();
     private boolean dirty = true;
     private String lastState = "";
+    /** Who pressed a button on the panel last (his best is on the board), or null. */
+    private UUID lastPresser;
+    private String lastPresserName = "";
     private long ticks;
 
     ArenaBoard(MinecraftServer server, ArenaPlace place, ArenaState state) {
@@ -108,6 +111,7 @@ final class ArenaBoard {
      */
     void select(ServerLevel level, Control c, boolean busy, ArenaWaves base) {
         ServerPlayer presser = presser(level, c);
+        noteBy(presser);
         int[] at = panel.button(c).pos();
         String who = presser == null ? "a button nobody stood near" : presser.getScoreboardName();
         if (busy) {
@@ -116,25 +120,34 @@ final class ArenaBoard {
         }
         ArenaSettings.Limits limits = base == null ? ArenaSettings.Limits.NONE : base.limits();
         ArenaSettings now = state.settings();
-        boolean up = c == Control.SIZE_UP || c == Control.DIFFICULTY_UP;
+        boolean up = c == Control.SIZE_UP || c == Control.DIFFICULTY_UP || c == Control.WAVES_UP;
         boolean size = c == Control.SIZE_DOWN || c == Control.SIZE_UP;
-        ArenaSettings.Step step = size ? now.stepSize(up, limits) : now.stepDifficulty(up, limits);
+        boolean count = c == Control.WAVES_DOWN || c == Control.WAVES_UP;
+        ArenaSettings.Step step = size ? now.stepSize(up, limits) : count ? now.stepWaves(up, limits)
+                : now.stepDifficulty(up, limits);
         ArenaSettings next = step.settings();
+        java.util.List<Integer> options = limits.waveOptions();
         String words = switch (step.result()) {
-            case CHANGED -> size ? ArenaWords.sizeChanged(next.size(), next.apply(base))
-                    : ArenaWords.difficultyChanged(next.difficulty());
+            case CHANGED -> size ? ArenaWords.sizeChanged(next.size(), next.run(base))
+                    : count ? ArenaWords.wavesChanged(next.waves()) : ArenaWords.difficultyChanged(next.difficulty());
             case AT_END -> size ? ArenaWords.sizeAtEnd(up, limits.maxSize())
+                    : count ? ArenaWords.wavesAtEnd(up, options.get(0), options.get(options.size() - 1),
+                            limits.maxCount() != ArenaSettings.ENDLESS)
                     : ArenaWords.difficultyAtEnd(up, limits.maxDifficulty());
-            case FIXED -> size ? ArenaWords.sizeFixed(next.size()) : ArenaWords.difficultyFixed(next.difficulty());
+            case FIXED -> size ? ArenaWords.sizeFixed(next.size()) : count ? ArenaWords.wavesFixed(next.waves())
+                    : ArenaWords.difficultyFixed(next.difficulty());
         };
         if (step.result() == ArenaSettings.Result.CHANGED) {
             state.settings(next);
             dirty = true;
-            LOG.info("Moddy Arena: control panel: {} set the {} to {} (wave size {}, difficulty {})", who,
-                    size ? "wave size" : "difficulty", size ? next.size() : next.difficulty().word(), next.size(),
-                    next.difficulty().word());
+            LOG.info("Moddy Arena: control panel: {} set the {} to {} (monsters {}, difficulty {}, waves {})", who,
+                    size ? "monsters" : count ? "waves" : "difficulty", size ? next.size() : count
+                            ? ArenaWords.wavesValue(next.waves()) : next.difficulty().word(), next.size(),
+                    next.difficulty().word(), ArenaWords.wavesValue(next.waves()));
         }
-        float pitch = size ? 0.6f + 0.1f * next.size() : 0.7f + 0.3f * next.difficulty().ordinal();
+        int idx = Math.max(0, options.indexOf(next.waves()));
+        float pitch = size ? 0.6f + 0.1f * next.size() : count ? 0.7f + 0.25f * idx
+                : 0.7f + 0.3f * next.difficulty().ordinal();
         tell(level, presser, at, words, step.result() == ArenaSettings.Result.CHANGED, pitch);
     }
 
@@ -155,10 +168,38 @@ final class ArenaBoard {
      * Keeps the words on the board: at once after a change ({@code changed}, or a new state of the battle), else every
      * {@value #CHECK_TICKS} ticks. Nothing happens until the board's chunks have their entities loaded.
      */
+    /** Notes who pressed a button, so his best shows (a press nobody stood near changes nothing). */
+    void noteBy(ServerPlayer presser) {
+        if (presser != null && (!presser.getUUID().equals(lastPresser)
+                || !presser.getScoreboardName().equals(lastPresserName))) {
+            lastPresser = presser.getUUID();
+            lastPresserName = presser.getScoreboardName();
+            dirty = true;
+        }
+    }
+
+    /** The words have to be looked at again (a run was recorded, say). */
+    void changed() {
+        dirty = true;
+    }
+
+    /** The player whose best the board shows: who pressed last, else the only player in the world, else nobody. */
+    private String[] bestFor(ServerLevel level) {
+        if (lastPresser != null) {
+            return new String[] {lastPresser.toString(), lastPresserName};
+        }
+        if (level.players().size() == 1) {
+            ServerPlayer p = level.players().get(0);
+            return new String[] {p.getUUID().toString(), p.getScoreboardName()};
+        }
+        return null;
+    }
+
     void refresh(ServerLevel level, ArenaMatch match, java.util.function.Supplier<ArenaWaves> rules, boolean changed) {
         ticks++;
-        int of = match.table() == null ? 0 : match.table().count();
-        String stateWords = ArenaWords.panelState(match.phase(), match.wave(), of);
+        int of = match.of();
+        boolean boss = boss(match);
+        String stateWords = ArenaWords.panelState(match.phase(), match.wave(), of, boss);
         if (!stateWords.equals(lastState)) {
             changed = true;
         }
@@ -170,15 +211,28 @@ final class ArenaBoard {
         }
         ArenaWaves base = rules.get();
         ArenaSettings settings = state.settings().within(base == null ? null : base.limits());
-        ArenaWaves waves = settings.apply(base);
+        ArenaRun run = settings.run(base);
+        String[] who = bestFor(level);
+        String best = who == null ? null : ArenaChampions.bestLine(who[1], ArenaChampions.bestOf(state.champions(),
+                who[0], ArenaChampions.Key.of(settings)));
         Map<Words, String> want = new EnumMap<>(Words.class);
         for (Slot s : panel.slots()) {
             want.put(s.words(), String.join("\n",
-                    ArenaWords.panel(s.words(), settings, waves, match.phase(), match.wave(), of)));
+                    ArenaWords.panel(s.words(), settings, run, match.phase(), match.wave(), of, boss, best)));
         }
         keep(level, want);
         lastState = stateWords;
         dirty = false;
+    }
+
+    /** True when the wave fought now (or next, in a breather) is a boss wave. */
+    private static boolean boss(ArenaMatch match) {
+        ArenaRun t = match.table();
+        if (t == null) {
+            return false;
+        }
+        return match.phase() == ArenaMatch.Phase.WAVE ? t.isBossWave(match.wave())
+                : match.phase() == ArenaMatch.Phase.BREATHER && t.isBossWave(match.wave() + 1);
     }
 
     private boolean entitiesLoaded(ServerLevel level) {

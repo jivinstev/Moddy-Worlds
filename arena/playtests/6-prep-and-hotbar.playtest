@@ -189,7 +189,7 @@ moddy apprentice a cozy house
 @key key.mouse.left
 @wait 12t
 @end-repeat
-@expect title Wave 5 of 5 within 20s
+@expect title BOSS WAVE within 20s
 @wait 1s
 @repeat each @e[tag=moddyarena_wave] max 60 until execute unless entity {it}
 @aim entity {it}

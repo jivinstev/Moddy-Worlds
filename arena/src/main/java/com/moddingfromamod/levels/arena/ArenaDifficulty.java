@@ -23,11 +23,13 @@ import java.util.Map;
  */
 public enum ArenaDifficulty {
 
-    /** Only husks, and weaker: 0.6 of their health. */
+    /** Only husks, and weaker: 0.6 of their health (the generator's later kinds come as husks too). */
     EASY("easy", "Easy", 0.6, List.of(
             new Swap("minecraft:pillager", "minecraft:husk", 1),
             new Swap("minecraft:witch", "minecraft:husk", 1),
-            new Swap("minecraft:vindicator", "minecraft:husk", 1))),
+            new Swap("minecraft:vindicator", "minecraft:husk", 1),
+            new Swap("minecraft:piglin_brute", "minecraft:husk", 1),
+            new Swap("minecraft:ravager", "minecraft:husk", 1))),
     /** The rules file's waves, exactly. */
     NORMAL("normal", "Normal", 1.0, List.of()),
     /** Tougher: a quarter more health, and from wave 4 the husks are vindicators. */
@@ -119,14 +121,22 @@ public enum ArenaDifficulty {
         }
         List<ArenaWaves.Wave> out = new ArrayList<>();
         for (int n = 1; n <= waves.count(); n++) {
-            Map<String, Integer> counts = new LinkedHashMap<>();
-            for (ArenaWaves.Group g : waves.wave(n).groups()) {
-                counts.merge(kindIn(n, g.mob()), g.count(), Integer::sum);
-            }
-            List<ArenaWaves.Group> groups = new ArrayList<>();
-            counts.forEach((mob, count) -> groups.add(new ArenaWaves.Group(mob, count)));
-            out.add(new ArenaWaves.Wave(groups));
+            out.add(applyWave(n, waves.wave(n)));
         }
         return waves.withWaves(out);
+    }
+
+    /** Wave {@code n} at this difficulty ({@link #apply}'s rule for one wave). Pure. */
+    public ArenaWaves.Wave applyWave(int n, ArenaWaves.Wave wave) {
+        if (swaps.isEmpty()) {
+            return wave;
+        }
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        for (ArenaWaves.Group g : wave.groups()) {
+            counts.merge(kindIn(n, g.mob()), g.count(), Integer::sum);
+        }
+        List<ArenaWaves.Group> groups = new ArrayList<>();
+        counts.forEach((mob, count) -> groups.add(new ArenaWaves.Group(mob, count)));
+        return new ArenaWaves.Wave(groups);
     }
 }

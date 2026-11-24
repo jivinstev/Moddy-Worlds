@@ -6,7 +6,7 @@
   "intro": [
     "Welcome to Moddy Arena! You are in the prep room. The arena is past the gate.",
     "Get ready in the prep room: make things, then put them on your hotbar. Open one in My wishes and press Add to hotbar.",
-    "The battle arena control panel is on the wall: pick the wave size and difficulty, then press START BATTLE. In a battle, only the wishes on your hotbar work."
+    "The battle arena control panel is on the wall: pick the monsters, the difficulty and the waves, then press START BATTLE. In a battle, only the wishes on your hotbar work, and you have 3 lives. The Champions board is on the back wall."
   ],
   "_notes": "The world's manifest, as its jar ships it: gameplay only (no hostnames, ports, machines or briefs). intro: the first-join words, said once per player per world by the core a few seconds after he arrives in the prep room."
 }
