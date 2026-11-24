@@ -101,10 +101,6 @@ class Rule:
         self.category, self.kind, self.pattern, self.label, self.check = category, kind, pattern, label, check
 
 
-#: What labels a NeoForge version, whose 26.x numbers have four parts (the Minecraft version, then a build): the number after it is a version.
-_VERSION_LABEL = re.compile(r"(?:neo_?version\s*[=:]\s*|neoforge[ -:@]\s*v?)$", re.I)
-
-
 def _routable_ipv4(m):
     """A real address someone could reach: not loopback, private, link-local, documentation or a
     version number that happens to have four parts (those are skipped by the lookarounds)."""
@@ -112,8 +108,6 @@ def _routable_ipv4(m):
         ip = ipaddress.IPv4Address(m.group(0))
     except ValueError:
         return False
-    if _VERSION_LABEL.search(m.string[max(0, m.start() - 40):m.start()]):
-        return False                    # NeoForge numbers 26.x by four parts: neo_version=26.1.2.130
     doc = any(ip in ipaddress.ip_network(n) for n in ("192.0.2.0/24", "198.51.100.0/24", "203.0.113.0/24",
                                                       "100.64.0.0/10"))   # + carrier-grade NAT
     if str(ip) in ("1.2.3.4", "4.3.2.1", "8.8.8.8", "1.1.1.1"):          # the placeholders everyone types

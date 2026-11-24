@@ -38,3 +38,8 @@ path:*.env
 re:/home/user/
 re:/Users/[A-Za-z0-9._-]+/
 re:/tmp/claude-
+
+[neoforge-versions]
+# NeoForge numbers 26.x by four parts (the Minecraft version, then a build), which the built-in IPv4 rule reads as an
+# address. Each version a branch pins is allowed here by its exact text, one line per version (as the core's list does).
+allow:^26\.1\.2\.130$
