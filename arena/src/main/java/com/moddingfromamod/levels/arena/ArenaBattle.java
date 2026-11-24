@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Consumer;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -328,7 +327,10 @@ final class ArenaBattle {
         List<int[]> spots = ArenaSpawns.pick(place, players, wave.size(), level.getRandom().nextLong());
         int i = 0;
         for (ArenaWaves.Group g : wave.groups()) {
-            EntityType<?> type = EntityType.byString(g.mob()).orElse(null);
+            // 26.2 dropped EntityType.byString: the registry is asked by id (an unknown or malformed id is null)
+            var id = net.minecraft.resources.Identifier.tryParse(g.mob());
+            EntityType<?> type = id == null ? null
+                    : net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getOptional(id).orElse(null);
             for (int k = 0; k < g.count(); k++) {
                 int[] s = spots.get(i++);
                 if (type == null) {
@@ -347,7 +349,7 @@ final class ArenaBattle {
     }
 
     private static <T extends Entity> T spawnOne(ServerLevel level, EntityType<T> type, BlockPos at) {
-        Consumer<T> mark = e -> {
+        net.minecraft.world.entity.PostSpawnProcessor<T> mark = e -> {
             e.addTag(TAG);
             if (e instanceof Mob m) {
                 m.setPersistenceRequired();   // never despawned while the fighters stand far off
