@@ -10,7 +10,14 @@
 @wait 2s
 
 @step a creature aimed at the arena floor lands there
-tp @s 0 64 10 180 0
+# he opens the gate in the shared wall and walks through it, into the arena
+@aim pos 0.5 64.5 16.5
+@key key.use
+@wait 10t
+@aim look 180 0
+@key key.forward hold 45t
+@wait 10t
+@assert execute if entity @s[z=-15,dz=29]
 @aim look 180 12
 @wait 2s
 # no battle is on and nothing else is in the arena: only what the wish makes will be there
@@ -28,6 +35,7 @@ moddy apprentice a cat
 
 @step the same creature aimed outside the place is refused
 # the flat world's ground, far below and away from the place, looking down at the grass in front of him
+# SHORTCUT: he is put on the ground outside the place (getting out of it is not what the step tests)
 tp @s 40 -60 0 90 0
 @aim look 90 40
 @wait 2s

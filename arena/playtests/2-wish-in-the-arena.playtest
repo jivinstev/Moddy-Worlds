@@ -8,8 +8,15 @@
 @wait 2s
 
 @step into the arena
-# through the gate, onto the sandstone floor, looking north along it
-tp @s 0 64 10 180 0
+# he opens the gate in the shared wall and walks through it, onto the sandstone floor, looking north along it
+@aim pos 0.5 64.5 16.5
+@key key.use
+@wait 10t
+@assert execute if block 0 64 16 minecraft:oak_fence_gate[open=true]
+@aim look 180 0
+@key key.forward hold 45t
+@wait 10t
+@assert execute if entity @s[z=-15,dz=29]
 @aim look 180 12
 @wait 2s
 @assert execute at @s if block ~ ~-1 ~ minecraft:smooth_sandstone
