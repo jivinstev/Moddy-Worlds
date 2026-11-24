@@ -21,14 +21,14 @@
 @aim look 180 12
 @wait 2s
 # no battle is on and nothing else is in the arena: only what the wish makes will be there
-@assert execute unless entity @e[type=!minecraft:player,x=-15,y=60,z=-15,dx=30,dy=12,dz=30]
+@assert execute unless entity @e[type=!minecraft:player,tag=!moddyarena_panel,x=-15,y=60,z=-15,dx=30,dy=12,dz=30]
 moddy apprentice a cat
 @expect screen Container within 10s
 @shot apprentice-page
 @click slot 0
 @expect chat /is ready/ within 90s
 @wait 3s
-@assert execute if entity @e[type=!minecraft:player,x=-15,y=60,z=-15,dx=30,dy=12,dz=30]
+@assert execute if entity @e[type=!minecraft:player,tag=!moddyarena_panel,x=-15,y=60,z=-15,dx=30,dy=12,dz=30]
 @aim look 180 25
 @wait 1s
 @shot the-cat-in-the-arena
@@ -40,12 +40,12 @@ tp @s 40 -60 0 90 0
 @aim look 90 40
 @wait 2s
 @assert execute at @s if block ~ ~-1 ~ minecraft:grass_block
-@assert execute unless entity @e[type=!minecraft:player,distance=..30]
+@assert execute unless entity @e[type=!minecraft:player,tag=!moddyarena_panel,distance=..30]
 moddy apprentice a cat
 @expect screen Container within 10s
 @click slot 0
 @expect chat /didn't work this time/ within 90s
 @wait 3s
 # nothing was left round him
-@assert execute unless entity @e[type=!minecraft:player,distance=..30]
+@assert execute unless entity @e[type=!minecraft:player,tag=!moddyarena_panel,distance=..30]
 @shot refused-outside

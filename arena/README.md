@@ -1,8 +1,8 @@
 # Moddy Arena
 
 A Moddy world (mod id `moddyarena`) that runs on the public Moddy core: a lit prep room beside a walled arena, in an
-empty sky. A button in the prep room starts a battle: waves of monsters that start easy and get harder, never player
-against player. Wishes are made in the prep room (or the arena) before a battle and put on the hotbar; in a battle only
+empty sky. The battle arena control panel on the prep room's wall sets how big the waves are and how hard, and its
+button starts a battle: waves of monsters that start easy and get harder, never player against player. Wishes are made in the prep room (or the arena) before a battle and put on the hotbar; in a battle only
 the hotbar's wishes work, one click each, with a rest between fires. What is not built yet is listed at the end.
 
 ## What a player gets
@@ -13,17 +13,17 @@ place once, around x 0, z 0, standing at y 64:
 - **The prep room**: 9 by 9 inside, an oak plank floor with four sea lanterns set in it, glass walls, a spruce roof.
   A player arrives here on his first join, in the middle of the room, facing north through the glass at the arena, and
   a few seconds later reads three lines (`worlds/arena.json`'s `intro`, which the core says once per player per world):
-  > Welcome to Moddy Arena! You are in the prep room. The arena is through the glass, past the gate.
+  > Welcome to Moddy Arena! You are in the prep room. The arena is past the gate.
   >
   > Get ready in the prep room: make things, then put them on your hotbar. Open one in My wishes and press Add to hotbar.
   >
-  > Press the button beside the gate to start a battle. In a battle, only the wishes on your hotbar work.
+  > The battle arena control panel is on the wall: pick the wave size and difficulty, then press START BATTLE. In a
+  > battle, only the wishes on your hotbar work.
 - **The arena**: 31 by 31 inside, a smooth sandstone floor, stone brick walls 4 high with a polished andesite rim on top
   that overhangs one block inward, so nothing climbs out.
-- **The gate**: an oak fence gate in the middle of the wall the two share (a player opens it; a mob cannot), with the
-  rest of that wall glass across the prep room's width, so the arena is in view.
-- **The start button**: a stone button on the prep room's side of that wall, two blocks east of the gate, on a
-  chiseled stone brick block, with a sign above it: "Press the button to start a battle!".
+- **The gate**: an oak fence gate in the middle of the wall the two share (a player opens it; a mob cannot).
+- **The battle arena control panel**: the rest of that wall, across the prep room's width, is a black board facing the
+  prep room (below). The arena is seen through the gate.
 
 The world spawn is the arrival spot, facing the arena, so a respawn lands there too. Game mode is never changed.
 Everything stands on nothing: there is no ground below, and both rooms are closed, so nothing falls out of them.
@@ -33,13 +33,77 @@ Everything stands on nothing: there is no ground below, and both rooms are close
 patrols would turn up). It is this world's rule only, and a player may set it back; the arena never sets it again.
 Mob spawners, spawn eggs, `/summon`, breeding and wished creatures are not affected.
 
+## The battle arena control panel
+
+The wall between the prep room and the arena is a board of black concrete, 9 wide and 4 high in the default place (the
+whole window but the gate and the opening above it), with its words in big floating letters (vanilla text displays, so
+a stock client draws them). Seen from the prep room:
+
+```
+  [                BATTLE ARENA CONTROL PANEL                 ]     the title, in gold, over the whole board
+  [-]   WAVE SIZE    [+]  .  |  .      START BATTLE                 [-] [+]: stone buttons on blue blocks
+          5                  |     Ready! Press START.              (o): the start button, on green blocks 3 by 2
+  [-]   DIFFICULTY   [+]  .  gate  .   [  (o)  ]
+         Normal              |         [       ]
+   First wave: 3 monsters  gate
+   Last wave: 10 monsters
+```
+
+- **Wave size**: a number from 1 to 10, **5 by default**, with a down button left of it and an up button right of it.
+  Under the two selectors the board says what it means: how many monsters the first wave and the last wave bring.
+- **Difficulty**: Easy, Normal, Hard or Extreme, **Normal by default**, with its own down and up buttons.
+- **START BATTLE**: the start button, on its green blocks, at eye height to the right of the gate, with the battle's
+  state under the label: "Ready! Press START.", "Battle on: wave 2 of 5", "Battle on: wave 3 next", "You won!",
+  "Battle lost", "Tidying the arena...".
+
+Pressing a selector changes the number or the word on the board at once, plays a note (rising with the value; a low
+one when nothing changed) and says one line on the presser's action bar, such as "Wave size 6: the first wave has 4
+monsters, the last has 12." or "Difficulty: Hard. Tougher monsters, and strong ones sooner."; at either end it says
+so ("The wave size is already the biggest.", "Easy is already the easiest."). **During a battle** (from the button to
+the tidy) the selectors change nothing and say "A battle is on. Change the wave size and difficulty when it is over."
+A battle keeps the settings it started with.
+
+The settings are saved with the world (`data/moddyarena_place.dat`, below) and survive a restart; a world saved before
+the panel reads as wave size 5 and Normal.
+
+### What the wave size does
+
+The rules file's `arena_waves` are the base waves. The wave size multiplies every group's count by size / 5, rounded
+(half up), keeping at least 1 of each kind a wave has, and never more than 40 monsters a wave (the biggest group gives
+one back until it fits). So **5 is the rules file's waves exactly**. With the default waves:
+
+| wave size | 1 | 2 | 3 | 4 | **5** | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| first wave | 1 | 1 | 2 | 2 | **3** | 4 | 4 | 5 | 5 | 6 |
+| last wave | 4 | 5 | 6 | 8 | **10** | 12 | 14 | 16 | 18 | 20 |
+
+### What the difficulty does
+
+A difficulty changes **which** mobs come and **how tough** they are, never how many (the size does that). Each is a row
+of data in `ArenaDifficulty`: a health multiplier for every wave mob (an attribute modifier on its most health) and
+swaps, "this kind comes as that kind from wave N on", the first that fits (a group is swapped once, never twice). The
+count stays: one husk becomes one vindicator.
+
+| difficulty | health | swaps |
+|---|---|---|
+| Easy | x0.6 | pillager, witch and vindicator come as husks |
+| **Normal** | x1 | none: the rules file's waves exactly |
+| Hard | x1.25 | from wave 4, husks come as vindicators |
+| Extreme | x1.5 | from wave 3, husks come as vindicators; in wave 2, husks come as pillagers; from wave 5, vindicators come as ravagers |
+
+With the default waves at size 5: Easy is husks only (3, 5, 6, 8, 10); Hard's waves 4 and 5 are vindicators, pillagers
+and a witch; Extreme is 3 husks, then 5 pillagers, then vindicators and pillagers, and its last wave brings 2 ravagers.
+Every mob a swap brings walks, stays in the arena and is none of the refused ones (a unit test reads them all). A wave
+table that names none of a difficulty's mobs gets only its health.
+
 ## A battle
 
-1. **Press the start button** (or type `/moddy arena start`). A battle needs someone in the place (the arena or the
+1. **Press the start button** on the control panel (or type `/moddy arena start`). A battle needs someone in the place (the arena or the
    prep room), a difficulty above Peaceful (on Peaceful monsters vanish), and a wave table in the rules. Only one
    battle at a time: pressing during one says "A battle is already on. Wait for it to end."
 2. **The countdown**: "A battle is starting! 5 waves of monsters. The first comes in 5 seconds." A boss bar,
    "Wave 1 of 5 in 5 seconds", shows to everyone in the place, and the seconds count down above the hotbar.
+   The battle brings the base waves at the panel's wave size and difficulty.
 3. **A wave**: its monsters appear at once on the arena floor, spread out and at least 8 blocks from any player. The
    title says "Wave 1 of 5", "Here they come!", and the boss bar "Wave 1 of 5: 3 monsters left", emptying as they fall.
    The players who are in the place when the countdown ends are the battle's **fighters**.
@@ -58,7 +122,7 @@ Mob spawners, spawn eggs, `/summon`, breeding and wished creatures are not affec
      never hold a battle up forever.
 7. **The arena is tidied** 5 seconds later, then "The arena is tidy again. Press the button in the prep room to start a
    battle." **A battle's end clears the arena**: every block in it is put back as it was built (floor, walls, rim,
-   window, gate), anything standing in it is cleared to the sky (including whatever was wished into it during the
+   board, gate; a panel button knocked off is put back), anything standing in it is cleared to the sky (including whatever was wished into it during the
    battle), and every thing in it that is not a player goes: monsters, drops, experience, arrows, wished creatures and
    things. Kept: players, a pet someone owns, anything carrying a player, and **a player's own things**: what a
    fighter dropped when he was knocked out, and what a player threw, are carried to the prep room's middle (where he
@@ -169,6 +233,20 @@ Everything here is tunable, and **these first values are guesses** to be tuned b
 `minecraft:husk`), the countdown before the first wave (3 to 60 s), the breather between waves (3 to 120 s) and how long
 one wave may last before the battle is lost (30 to 1800 s). A wrong table refuses the file whole, in words; a change
 applies from the next battle. No rule, no battle ("This arena has no waves in its rules, so a battle cannot start.").
+These are the base waves: the control panel's wave size and difficulty are applied on top of them (5 and Normal are
+these waves exactly).
+
+Four optional keys let a world fix or limit the control panel; without them **the player chooses**:
+
+| key | value | what it does |
+|---|---|---|
+| `waveSize` | 1 to 10 | fixes the wave size: the size buttons change nothing and say "This arena's rules keep the wave size at 3." |
+| `maxWaveSize` | 1 to 10 | the biggest wave size the player may pick ("This arena's rules let the wave size go up to 6.") |
+| `difficulty` | `easy`, `normal`, `hard`, `extreme` | fixes the difficulty, the same way |
+| `maxDifficulty` | `easy`, `normal`, `hard`, `extreme` | the hardest difficulty the player may pick |
+
+A key and its `max` are not given together (the file is refused, saying so). A saved choice above a later limit is
+brought down to it.
 
 Why these mobs: the arena is open to the sky in daylight, its walls are 4 high with a rim. **Husks** (a zombie that
 does not burn in daylight) are the easy start; **pillagers** shoot crossbows from a distance; a **witch** throws
@@ -233,8 +311,13 @@ lands there, and an Apprentice Fire Sword goes on the hotbar from its own page i
 hotbar wish is used in the battle and makes it again, a second fire at once is refused with the seconds left, a new make
 is refused with the arena's words; after the battle the hotbar wish is still there and new makes work),
 `7-creature-in-the-arena` (an Apprentice cat made in the arena lands there; made standing outside the place, it is
-refused and nothing is left) and `8-knocked-out-keeps-hotbar` (knocked out in a battle holding a hotbar wish, he comes
-back in the prep room with it in its slot, and it still makes the sword).
+refused and nothing is left), `8-knocked-out-keeps-hotbar` (knocked out in a battle holding a hotbar wish, he comes
+back in the prep room with it in its slot, and it still makes the sword) and `9-control-panel` (the board's blocks and
+twelve lines of words; he walks up to it and presses each selector, looking at it and using it: down and up to each
+end, each press on the board and his action bar; at wave size 10 and Extreme the battle's waves are 6 husks with 30
+health, then 10 pillagers, and ravagers in the last; in a battle a selector is refused and the board says "Battle on:
+wave 1 of 5"; after it the board keeps his settings). A playtest cannot restart its game, so the settings surviving a
+restart are `ArenaStateTest` (the saved record) and a dedicated server's restart.
 
 **A battle on a server with nobody on** (a test): `-PmoddyProps=arena.allowEmptyBattle=true` (the property
 `moddingfromamod.arena.allowEmptyBattle`) lets `/moddy arena start` start a battle from the console and carry it on with
@@ -251,26 +334,36 @@ All of it in `com.moddingfromamod.levels.arena`:
 | `ArenaMod` | the `@Mod` class: the World Type and the built-in marker pack (shared code) |
 | `ArenaPlugin` | the plug-in: the `arena` world module, the `arena_place` and `arena_waves` rule types, `/moddy arena start` |
 | `ArenaPlace` | **pure**: the sizes and their checks, every box of the place, the start button, the arrival spot, the reach, the start decision, the upgrades, what a reset puts back, whether a mob is still in the place |
-| `ArenaWaves` | **pure**: the wave table and its checks |
+| `ArenaWaves` | **pure**: the wave table and its checks, and what the rule fixes or limits on the control panel |
+| `ArenaSettings` | **pure**: the panel's wave size and difficulty, how the size scales the waves, the rules' limits, a selector press |
+| `ArenaDifficulty` | **pure**: the four difficulties as data (health, swaps) and how each changes the waves |
+| `ArenaPanel` | **pure**: the control panel's layout: its blocks, buttons and where each line of words floats and how big |
+| `ArenaBoard` | carries the panel out: reads its buttons, a selector press, keeps its words (text displays) |
 | `ArenaWavesRule` | `arena_waves` as a `WorldRuleType`, and reading the table back from a world's rules |
 | `ArenaMatch` | **pure**: a battle as a state machine (IDLE, COUNTDOWN, WAVE, BREATHER, WON, LOST, RESETTING) and its boss bar |
 | `ArenaSpawns` | **pure**: where a wave's monsters appear |
-| `ArenaWords` | **pure**: every word a player reads about a battle |
+| `ArenaWords` | **pure**: every word a player reads about a battle and on the control panel |
 | `ArenaBattle` | carries a battle out: the button, the fighters, spawning and counting the monsters, the boss bar and titles, the reset |
 | `ArenaRule` | `arena_place` as a `WorldRuleType`, and reading the place back from a world's rules |
 | `ArenaModule` | the world module: builds once, gives a built place its upgrades, sets the spawn, the first arrival, the bases, the fallback rules, ticks the battle |
-| `ArenaBuilder` | each kind of box as a block, placed; the start control added to an older place; the reset |
+| `ArenaBuilder` | each kind of box as a block, placed; the control panel added to (or mended in) a place; the reset |
 | `ArenaBases` | the arena as the core's `Bases`: every player's base, home in the prep room |
 | `ArenaWishPolicy` | **pure**: the two phases, which kinds of wish each lets through, the Magician count, the cooldowns |
 | `ArenaWishes` | **pure**: the wish tunables and their checks |
 | `ArenaWishesRule` | `arena_wishes` as a `WorldRuleType`, and reading it back from a world's rules |
 | `ArenaCharge` | the core's `WishCharge` for arena worlds: sorts each wish, refuses or counts it, gives counts back, says what is left |
-| `ArenaState` | the world's saved record: the built sizes, who has arrived, the upgrades it has had, whether a battle is on |
+| `ArenaState` | the world's saved record (versioned): the built sizes, who has arrived, the upgrades it has had, whether a battle is on, the panel's wave size and difficulty |
 
-**A place built before the start button existed** gains it on its next start, once (the upgrade `start-control`,
-recorded in `data/moddyarena_place.dat` beside `no-natural-spawns`): only where the window's glass and the prep room's
-air are still as built, so nothing a player put there is replaced; otherwise the log says so and `/moddy arena start`
-still works.
+**A place built before the control panel existed** gains it on its next start, once (the upgrade `control-panel`,
+recorded in `data/moddyarena_place.dat` beside `start-control` and `no-natural-spawns`): over the window's glass (and
+the first start control's chiseled stone brick block, whose button and sign are taken down), and only where those
+blocks and the prep room's air are still as built, so nothing a player put there is replaced; otherwise the log says
+so and `/moddy arena start` still works. After that, every start puts back a panel block that is missing (a button
+knocked off), by the same path, which sets nothing when the panel stands whole. The panel's words are text displays
+tagged `moddyarena_panel` (and one role tag each); whenever the board's chunk has its entities loaded they are made
+if missing, a second copy is removed and changed words are rewritten, so a world gets them on load and never twice.
+The saved record carries `v` 2 since the panel; an older record (no `v`) reads its settings as the defaults and keeps
+everything else.
 
 ## Not built yet
 
