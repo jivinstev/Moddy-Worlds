@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.WeakHashMap;
 import net.minecraft.client.gui.screens.worldselection.CreateWorldScreen;
 import net.minecraft.client.gui.screens.worldselection.WorldCreationUiState;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.repository.PackRepository;
 import net.minecraft.world.level.WorldDataConfiguration;
 import net.neoforged.neoforge.client.event.ScreenEvent;
@@ -33,12 +33,12 @@ public final class LevelWorldType {
     /** The screen states already listened to, each with whether it last showed this level's type. */
     private final Map<WorldCreationUiState, Boolean> seen = Collections.synchronizedMap(new WeakHashMap<>());
     private final Level level;
-    private final ResourceLocation preset;
+    private final Identifier preset;
     private final Logger log;
 
     private LevelWorldType(Level level) {
         this.level = level;
-        this.preset = ResourceLocation.fromNamespaceAndPath(level.modid(), level.id());
+        this.preset = Identifier.fromNamespaceAndPath(level.modid(), level.id());
         this.log = LoggerFactory.getLogger(level.loggerName());
     }
 

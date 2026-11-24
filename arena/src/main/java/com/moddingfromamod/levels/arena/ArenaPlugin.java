@@ -9,7 +9,7 @@ import com.moddingfromamod.world.WorldModuleType;
 import com.moddingfromamod.world.WorldRuleType;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.ai.attributes.DefaultAttributes;
 
@@ -56,7 +56,7 @@ public final class ArenaPlugin implements ModdyPlugin {
 
     /** True when the id names a living entity this game knows (one with attributes: every living entity has them). */
     static boolean livingEntity(String id) {
-        ResourceLocation rl = ResourceLocation.tryParse(id);
+        Identifier rl = Identifier.tryParse(id);
         if (rl == null) {
             return false;
         }

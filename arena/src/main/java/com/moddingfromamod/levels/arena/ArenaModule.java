@@ -15,7 +15,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.level.GameRules;
+import net.minecraft.world.level.gamerules.GameRules;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,7 +79,7 @@ public final class ArenaModule implements WorldModule {
         }
         bases = new ArenaBases(place, id -> {
             ServerPlayer p = server.getPlayerList().getPlayer(id);
-            return p == null ? null : new Bases.Pos(p.level().dimension().location().toString(), p.getX(),
+            return p == null ? null : new Bases.Pos(p.level().dimension().identifier().toString(), p.getX(),
                     p.getY(), p.getZ());
         });
         ArenaCharge c = ArenaCharge.of(server);
@@ -113,8 +113,8 @@ public final class ArenaModule implements WorldModule {
                             + " sign beside the gate ({} blocks)", set);
                 }
                 case ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS -> {
-                    level.getGameRules().getRule(GameRules.RULE_DOMOBSPAWNING).set(false, server);
-                    LOG.info("Moddy Arena: natural mob spawning switched off in this world (game rule doMobSpawning"
+                    level.getGameRules().set(GameRules.SPAWN_MOBS, false, server);
+                    LOG.info("Moddy Arena: natural mob spawning switched off in this world (game rule spawn_mobs"
                             + " false), once: only a battle's waves come to the arena");
                 }
                 default -> {

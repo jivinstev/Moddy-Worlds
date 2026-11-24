@@ -8,7 +8,7 @@ import java.util.UUID;
 
 import com.moddingfromamod.marshal.PlayerKind;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -65,8 +65,8 @@ public final class IslandService implements Bases {
     private static final net.minecraft.server.level.TicketType ISLAND_TICKET =
             new net.minecraft.server.level.TicketType(IslandWait.TICKET_LIFESPAN_TICKS,
                     net.minecraft.server.level.TicketType.FLAG_LOADING | net.minecraft.server.level.TicketType.FLAG_SIMULATION);
-    private static final ResourceLocation PACK_LOAD =
-            ResourceLocation.fromNamespaceAndPath("skyvoid_worldgen", "v2.0/load");
+    private static final Identifier PACK_LOAD =
+            Identifier.fromNamespaceAndPath("skyvoid_worldgen", "v2.0/load");
 
     private static volatile IslandService live;
 
@@ -665,7 +665,7 @@ public final class IslandService implements Bases {
                 continue;
             }
             onItNow.add(p.getUUID());
-            boolean op = p.hasPermissions(2);
+            boolean op = p.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER);
             if (reportedOnService.add(p.getUUID())) {
                 LOGGER.warn("MODDY-ALERT canary island entered: {} at {} {} {} — {}", p.getScoreboardName(),
                         (int) p.getX(), (int) p.getY(), (int) p.getZ(),
@@ -709,10 +709,10 @@ public final class IslandService implements Bases {
         }
         java.util.Set<UUID> awayNow = new java.util.HashSet<>();
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
-            if (!PlayerKind.isChild(p.getUUID()) || p.hasPermissions(2)) {
+            if (!PlayerKind.isChild(p.getUUID()) || p.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER)) {
                 continue;
             }
-            double[] col = IslandGrid.overworldColumn(p.level().dimension().location().toString(), p.getX(), p.getZ());
+            double[] col = IslandGrid.overworldColumn(p.level().dimension().identifier().toString(), p.getX(), p.getZ());
             if (col == null) {
                 continue;
             }
@@ -853,6 +853,6 @@ public final class IslandService implements Bases {
         if (p == null) {
             return null;
         }
-        return new Bases.Pos(p.level().dimension().location().toString(), p.getX(), p.getY(), p.getZ());
+        return new Bases.Pos(p.level().dimension().identifier().toString(), p.getX(), p.getY(), p.getZ());
     }
 }

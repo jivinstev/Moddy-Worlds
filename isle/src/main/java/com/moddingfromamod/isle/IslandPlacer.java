@@ -1,7 +1,7 @@
 package com.moddingfromamod.isle;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.RandomizableContainer;
@@ -40,8 +40,8 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
 public final class IslandPlacer {
 
     /** Our copy of Standard SkyBlock's starter island. */
-    public static final ResourceLocation TEMPLATE =
-            ResourceLocation.fromNamespaceAndPath("moddingfromamod", "isle/starter_island");
+    public static final Identifier TEMPLATE =
+            Identifier.fromNamespaceAndPath("moddingfromamod", "isle/starter_island");
 
     /** Where the template's jigsaw (the island's origin) sits inside it. */
     static final int JIGSAW_X = 3;

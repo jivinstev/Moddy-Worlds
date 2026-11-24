@@ -32,7 +32,7 @@ datapack enable "mod/moddyisle:datapacks/skyblock_advancements"
 gamemode survival
 time set noon
 weather clear
-gamerule doDaylightCycle false
+gamerule advance_time false
 effect give @s minecraft:resistance 3000 4 true
 effect give @s minecraft:fire_resistance 3000 0 true
 effect give @s minecraft:saturation 3000 0 true

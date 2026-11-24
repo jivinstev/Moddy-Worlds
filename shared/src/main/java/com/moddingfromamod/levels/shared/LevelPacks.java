@@ -1,7 +1,7 @@
 package com.moddingfromamod.levels.shared;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.repository.Pack;
 import net.minecraft.server.packs.repository.PackSource;
@@ -31,7 +31,7 @@ public final class LevelPacks {
                 return;
             }
             for (String folder : level.allPacks()) {
-                event.addPackFinders(ResourceLocation.fromNamespaceAndPath(level.modid(), "datapacks/" + folder),
+                event.addPackFinders(Identifier.fromNamespaceAndPath(level.modid(), "datapacks/" + folder),
                         PackType.SERVER_DATA, Component.literal(level.typeName() + ": " + folder.replace('_', ' ')),
                         source, false, Pack.Position.TOP);
             }

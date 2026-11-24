@@ -32,7 +32,7 @@ datapack enable "mod/moddyisle:datapacks/skyblock_advancements"
 gamemode survival
 time set noon
 weather clear
-gamerule doDaylightCycle false
+gamerule advance_time false
 effect give @s minecraft:resistance 3000 4 true
 effect give @s minecraft:fire_resistance 3000 0 true
 effect give @s minecraft:saturation 3000 0 true
@@ -720,11 +720,11 @@ tp @s -1019.5 61 -1023.5 90 45
 @shot dripstone-and-cauldron
 # SHORTCUT: lava drips into the cauldron on random ticks, about 20 minutes on average; the game's tick speed is raised
 # until it fills, then put back
-gamerule randomTickSpeed 400
+gamerule random_tick_speed 400
 @repeat 120 until execute if block -1021 61 -1024 minecraft:lava_cauldron
 @wait 1s
 @end-repeat
-gamerule randomTickSpeed 3
+gamerule random_tick_speed 3
 @assert execute if block -1021 61 -1024 minecraft:lava_cauldron
 @key key.inventory
 @click slot 44 shift
