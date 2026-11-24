@@ -103,12 +103,17 @@ moddy apprentice a fire sword
 @shot on-the-hotbar
 
 @step he starts a battle with the button
-# back through the gate into the prep room, then the stone button beside the gate
+# back through the gate into the prep room, then the start button on the control panel
 @aim look 0 0
 @key key.forward hold 40t
 @wait 10t
 @assert execute if entity @s[x=-4,y=63,z=17,dx=8,dy=3,dz=8]
-@aim pos 2.5 65.5 17.1
+# empty-handed, he walks up to the start button on the board, then presses it
+@key key.hotbar.9
+@aim pos 3.5 65.5 17.1
+@key key.forward hold 40t
+@wait 10t
+@aim pos 3.5 65.5 17.1
 @key key.use
 @expect chat A battle is starting within 5s
 moddy wishes

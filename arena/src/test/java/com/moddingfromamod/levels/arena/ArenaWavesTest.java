@@ -130,4 +130,33 @@ class ArenaWavesTest {
         assertEquals(w, ArenaWaves.parse(w.toParams(), KNOWN::contains).waves());
         assertEquals(4, w.wave(2).size());
     }
+
+    @Test
+    void theRuleMayFixOrLimitThePanelAndSaysWhatIsWrong() {
+        String one = "[[{\"mob\":\"husk\",\"count\":3}]]";
+        ArenaWaves free = ArenaWavesRule.wavesOf(read(waves(one)).rules());
+        assertEquals(ArenaSettings.Limits.NONE, free.limits(), "by default the player chooses");
+        WorldRules.Parsed fixed = read(waves(one).replace("{\"countdownSeconds", "{\"waveSize\":3,\"difficulty\":\"Hard\","
+                + "\"countdownSeconds"));
+        assertTrue(fixed.ok(), errors(fixed));
+        ArenaWaves f = ArenaWavesRule.wavesOf(fixed.rules());
+        assertEquals(new ArenaSettings.Limits(3, 10, ArenaDifficulty.HARD, ArenaDifficulty.EXTREME), f.limits());
+        assertEquals(f, ArenaWaves.parse(f.toParams(), KNOWN::contains).waves(), "read back the same");
+        WorldRules.Parsed capped = read(waves(one).replace("{\"countdownSeconds", "{\"maxWaveSize\":6,"
+                + "\"maxDifficulty\":\"normal\",\"countdownSeconds"));
+        assertTrue(capped.ok(), errors(capped));
+        ArenaWaves c = ArenaWavesRule.wavesOf(capped.rules());
+        assertEquals(new ArenaSettings.Limits(null, 6, null, ArenaDifficulty.NORMAL), c.limits());
+        assertEquals(c, ArenaWaves.parse(c.toParams(), KNOWN::contains).waves());
+        assertTrue(errors(read(waves(one).replace("{\"countdownSeconds", "{\"waveSize\":11,\"countdownSeconds")))
+                .contains("waveSize must be a whole number from 1 to 10"));
+        assertTrue(errors(read(waves(one).replace("{\"countdownSeconds", "{\"waveSize\":2.5,\"countdownSeconds")))
+                .contains("waveSize must be a whole number"));
+        assertTrue(errors(read(waves(one).replace("{\"countdownSeconds", "{\"difficulty\":\"nightmare\","
+                + "\"countdownSeconds"))).contains("difficulty must be one of easy, normal, hard, extreme"));
+        assertTrue(errors(read(waves(one).replace("{\"countdownSeconds", "{\"waveSize\":3,\"maxWaveSize\":5,"
+                + "\"countdownSeconds"))).contains("not both"));
+        assertTrue(errors(read(waves(one).replace("{\"countdownSeconds", "{\"difficulty\":\"easy\","
+                + "\"maxDifficulty\":\"hard\",\"countdownSeconds"))).contains("not both"));
+    }
 }
