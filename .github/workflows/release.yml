@@ -126,7 +126,11 @@ jobs:
       - name: Unit tests and the jar (against the pinned core only)
         env:
           LEVEL: ${{ inputs.level }}
-        run: ./gradlew --no-daemon -p "$LEVEL" clean test jar
+        # clean in its own run: from NeoForge 21.10 the NeoForm setup reads the userdev zip that NeoGradle expands
+        # into build/tmp/.cache while configuring, so a clean in the same run deletes it (patches.lzma not found).
+        run: |
+          ./gradlew --no-daemon -p "$LEVEL" clean
+          ./gradlew --no-daemon -p "$LEVEL" test jar
       - name: The jar holds only the level
         id: jar
         env:
