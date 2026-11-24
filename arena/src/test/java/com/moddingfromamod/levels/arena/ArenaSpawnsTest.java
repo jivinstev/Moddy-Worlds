@@ -70,4 +70,44 @@ class ArenaSpawnsTest {
                 new double[] {4, 4}, new double[] {-4, 4}, new double[] {4, -4}), 3, 1);
         assertEquals(3, spots.size());
     }
+
+    @Test
+    void theSeedPropertyMakesEachWavesSpotsTheSameEveryBattle() {
+        String before = System.getProperty(ArenaSpawns.SEED_PROPERTY);
+        try {
+            System.setProperty(ArenaSpawns.SEED_PROPERTY, "42");
+            java.util.function.LongSupplier never = () -> {
+                throw new AssertionError("the game's random is not used while the seed is set");
+            };
+            assertEquals(ArenaSpawns.seedFor(1, never), ArenaSpawns.seedFor(1, never));
+            assertTrue(ArenaSpawns.seedFor(1, never) != ArenaSpawns.seedFor(2, never), "each wave its own layout");
+            System.setProperty(ArenaSpawns.SEED_PROPERTY, "43");
+            long other = ArenaSpawns.seedFor(1, never);
+            System.setProperty(ArenaSpawns.SEED_PROPERTY, "42");
+            assertTrue(other != ArenaSpawns.seedFor(1, never), "another seed, another layout");
+        } finally {
+            if (before == null) {
+                System.clearProperty(ArenaSpawns.SEED_PROPERTY);
+            } else {
+                System.setProperty(ArenaSpawns.SEED_PROPERTY, before);
+            }
+        }
+    }
+
+    @Test
+    void withoutTheSeedEveryBattleUsesTheGamesRandom() {
+        String before = System.getProperty(ArenaSpawns.SEED_PROPERTY);
+        try {
+            System.clearProperty(ArenaSpawns.SEED_PROPERTY);
+            assertEquals(7L, ArenaSpawns.seedFor(1, () -> 7L));
+            System.setProperty(ArenaSpawns.SEED_PROPERTY, "not a number");
+            assertEquals(7L, ArenaSpawns.seedFor(1, () -> 7L));
+        } finally {
+            if (before == null) {
+                System.clearProperty(ArenaSpawns.SEED_PROPERTY);
+            } else {
+                System.setProperty(ArenaSpawns.SEED_PROPERTY, before);
+            }
+        }
+    }
 }

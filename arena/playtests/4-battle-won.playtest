@@ -2,8 +2,12 @@
 # the arena; he presses the start button beside the gate, walks in, and beats all five waves (the default table in the
 # arena's rules file: husks first, then pillagers, a witch and vindicators) with his sword. The battle is won and the
 # arena is put back as built: no mobs, no drops, and the well he made in prep gone.
-# A resistance effect keeps him on his feet (setup: a safety guard); every monster is beaten by his own hits: he turns
-# to it, walks toward it, and clicks the mouse (a click out of reach swings at the air, as it does for a player).
+# A resistance effect keeps him on his feet (setup: a safety guard); every monster is beaten by his own hits: @fight
+# turns him to the nearest, walks him up to it and swings at full charge, never walking off the arena's floor (-15..15:
+# the default 31-block arena of the rules file). Each wave spawns in the same spots in every run, for the same place
+# he stands (play.props arena.spawn.seed).
+# Needs a Gate C carrier with @fight (jivinstev/mc-mod-version-upgrade, the @fight pull request); until a carrier
+# release has it, build one from that branch and pass its folder as CARRIER_DIR (tools/play.sh).
 # play-timeout: 1500
 @intent a player presses the start button, beats five waves with a sword he made, wins, and the arena is tidied afterwards
 @world flat seed=1
@@ -61,26 +65,14 @@ moddy apprentice a stone well
 @key key.hotbar.3
 @expect bossbar /Wave 1 of 5: [0-9]+ monsters? left/ within 5s
 @shot wave-1
-@repeat each @e[tag=moddyarena_wave] max 60 until execute unless entity {it}
-@aim entity {it}
-@key key.forward hold 6t
-@aim entity {it}
-@key key.mouse.left
-@wait 12t
-@end-repeat
+@fight @e[tag=moddyarena_wave] within 150s inside -15 -15 15 15
 @expect chat Wave 1 cleared within 10s
 
 @step wave 2: more husks
 @expect title Wave 2 of 5 within 20s
 @wait 1s
 @assert execute if entity @e[type=minecraft:husk,tag=moddyarena_wave]
-@repeat each @e[tag=moddyarena_wave] max 60 until execute unless entity {it}
-@aim entity {it}
-@key key.forward hold 6t
-@aim entity {it}
-@key key.mouse.left
-@wait 12t
-@end-repeat
+@fight @e[tag=moddyarena_wave] within 150s inside -15 -15 15 15
 @expect chat Wave 2 cleared within 10s
 
 @step wave 3: husks and pillagers
@@ -88,13 +80,7 @@ moddy apprentice a stone well
 @wait 1s
 @assert execute if entity @e[type=minecraft:pillager,tag=moddyarena_wave]
 @shot wave-3
-@repeat each @e[tag=moddyarena_wave] max 60 until execute unless entity {it}
-@aim entity {it}
-@key key.forward hold 6t
-@aim entity {it}
-@key key.mouse.left
-@wait 12t
-@end-repeat
+@fight @e[tag=moddyarena_wave] within 150s inside -15 -15 15 15
 @expect chat Wave 3 cleared within 10s
 
 @step wave 4: husks, pillagers, a witch and a vindicator
@@ -102,26 +88,14 @@ moddy apprentice a stone well
 @wait 1s
 @assert execute if entity @e[type=minecraft:witch,tag=moddyarena_wave]
 @assert execute if entity @e[type=minecraft:vindicator,tag=moddyarena_wave]
-@repeat each @e[tag=moddyarena_wave] max 60 until execute unless entity {it}
-@aim entity {it}
-@key key.forward hold 6t
-@aim entity {it}
-@key key.mouse.left
-@wait 12t
-@end-repeat
+@fight @e[tag=moddyarena_wave] within 150s inside -15 -15 15 15
 @expect chat Wave 4 cleared within 10s
 
 @step the last wave, and the win
 @expect title Wave 5 of 5 within 20s
 @wait 1s
 @shot wave-5
-@repeat each @e[tag=moddyarena_wave] max 60 until execute unless entity {it}
-@aim entity {it}
-@key key.forward hold 6t
-@aim entity {it}
-@key key.mouse.left
-@wait 12t
-@end-repeat
+@fight @e[tag=moddyarena_wave] within 150s inside -15 -15 15 15
 @expect title You won within 10s
 @expect chat You won the battle within 5s
 @shot won

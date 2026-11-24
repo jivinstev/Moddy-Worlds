@@ -210,7 +210,7 @@ final class ArenaBattle {
                     }
                     LOG.info("Moddy Arena: battle: the fighters are {}", names(fighters.keySet()));
                 }
-                int n = spawnWave(level, match.table().wave(ev.wave()));
+                int n = spawnWave(level, ev.wave(), match.table().wave(ev.wave()));
                 match.spawned(n);
                 LOG.info("Moddy Arena: battle: WAVE {} of {} begins: {} mobs", ev.wave(), of, n);
                 titleToPlace(ArenaWords.waveTitle(ev.wave(), of), ArenaWords.waveSubtitle());
@@ -319,13 +319,13 @@ final class ArenaBattle {
 
     // ── the mobs ────────────────────────────────────────────────────────────────────────────────────────────────────
 
-    private int spawnWave(ServerLevel level, ArenaWaves.Wave wave) {
+    private int spawnWave(ServerLevel level, int waveNumber, ArenaWaves.Wave wave) {
         waveMobs.clear();
         List<double[]> players = new ArrayList<>();
         for (ServerPlayer p : level.players()) {
             players.add(new double[] {p.getX(), p.getZ()});
         }
-        List<int[]> spots = ArenaSpawns.pick(place, players, wave.size(), level.random.nextLong());
+        List<int[]> spots = ArenaSpawns.pick(place, players, wave.size(), ArenaSpawns.seedFor(waveNumber, level.random::nextLong));
         int i = 0;
         for (ArenaWaves.Group g : wave.groups()) {
             EntityType<?> type = EntityType.byString(g.mob()).orElse(null);
