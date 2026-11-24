@@ -66,19 +66,20 @@ tp @s -1023.5 66 -1022.5 0 0
 # the Magician plans and makes it; "It's here" when it is done
 @expect chat /It's here/ within 300s
 @wait 5s
-# what did not fit his hotbar waits in his Wish Bag: everything in it shift-clicked into his inventory
+# what did not fit his hotbar waits in his Wish Bag: everything in it shift-clicked into his inventory (the bag closes
+# up its gaps as each thing leaves, so its first slot is clicked again and again)
 @key key.hotbar.2
 @key key.use
 @expect screen Wish Bag within 5s
 @click slot 0 shift
-@click slot 1 shift
-@click slot 2 shift
-@click slot 3 shift
-@click slot 4 shift
-@click slot 5 shift
-@click slot 6 shift
-@click slot 7 shift
-@click slot 8 shift
+@click slot 0 shift
+@click slot 0 shift
+@click slot 0 shift
+@click slot 0 shift
+@click slot 0 shift
+@click slot 0 shift
+@click slot 0 shift
+@click slot 0 shift
 @key key.keyboard.escape
 @expect screen none within 3s
 @shot after-wish-1
@@ -176,19 +177,20 @@ tp @s -1023.5 66 -1022.5 0 0
 # the Magician plans and makes it; "It's here" when it is done
 @expect chat /It's here/ within 300s
 @wait 5s
-# what did not fit his hotbar waits in his Wish Bag: everything in it shift-clicked into his inventory
+# what did not fit his hotbar waits in his Wish Bag: everything in it shift-clicked into his inventory (the bag closes
+# up its gaps as each thing leaves, so its first slot is clicked again and again)
 @key key.hotbar.2
 @key key.use
 @expect screen Wish Bag within 5s
 @click slot 0 shift
-@click slot 1 shift
-@click slot 2 shift
-@click slot 3 shift
-@click slot 4 shift
-@click slot 5 shift
-@click slot 6 shift
-@click slot 7 shift
-@click slot 8 shift
+@click slot 0 shift
+@click slot 0 shift
+@click slot 0 shift
+@click slot 0 shift
+@click slot 0 shift
+@click slot 0 shift
+@click slot 0 shift
+@click slot 0 shift
 @key key.keyboard.escape
 @expect screen none within 3s
 @assert execute if entity @s[advancements={minecraft:story/upgrade_tools=true}]
@@ -217,7 +219,7 @@ tp @s -1023.5 66 -1022.5 0 0
 @repeat 30 until execute if block -1025 66 -1023 minecraft:furnace{Items:[{Slot:2b,id:"minecraft:charcoal"}]}
 @wait 1s
 @end-repeat
-@click slot 2 shift
+@click slot 0 shift
 @key key.keyboard.escape
 @expect screen none within 3s
 @assert execute if entity @s[advancements={skyvoid_advancements:overworld/charcoal=true}]
@@ -235,19 +237,20 @@ tp @s -1023.5 66 -1022.5 0 0
 # the Magician plans and makes it; "It's here" when it is done
 @expect chat /It's here/ within 300s
 @wait 5s
-# what did not fit his hotbar waits in his Wish Bag: everything in it shift-clicked into his inventory
+# what did not fit his hotbar waits in his Wish Bag: everything in it shift-clicked into his inventory (the bag closes
+# up its gaps as each thing leaves, so its first slot is clicked again and again)
 @key key.hotbar.2
 @key key.use
 @expect screen Wish Bag within 5s
 @click slot 0 shift
-@click slot 1 shift
-@click slot 2 shift
-@click slot 3 shift
-@click slot 4 shift
-@click slot 5 shift
-@click slot 6 shift
-@click slot 7 shift
-@click slot 8 shift
+@click slot 0 shift
+@click slot 0 shift
+@click slot 0 shift
+@click slot 0 shift
+@click slot 0 shift
+@click slot 0 shift
+@click slot 0 shift
+@click slot 0 shift
 @key key.keyboard.escape
 @expect screen none within 3s
 @assert execute if entity @s[advancements={minecraft:story/smelt_iron=true}]
@@ -324,7 +327,6 @@ tp @s -1023.5 66 -1022.5 0 0
 @shot mined
 
 @step Time to Get Deadly and Zombie Hunter: a wished zombie, beaten by hand
-@key key.keyboard.escape
 # setup: night, so the zombie does not burn in the sun before he beats it
 time set midnight
 wish summon a zombie next to me so I can fight it
@@ -363,7 +365,7 @@ wish give me two cows and some wheat to feed them
 @key key.use
 @expect screen Wish Bag within 5s
 @click slot 0 shift
-@click slot 1 shift
+@click slot 0 shift
 @key key.keyboard.escape
 @expect screen none within 3s
 @key key.inventory
