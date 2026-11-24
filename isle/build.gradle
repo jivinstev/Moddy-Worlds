@@ -3,7 +3,7 @@
 // transformer, the runs) is ../shared/level.gradle; this file says only what is the Isle's own.
 plugins {
     id 'java-library'
-    id 'net.neoforged.gradle.userdev' version '7.1.39'
+    id 'net.neoforged.moddev' version '2.0.148'
 }
 
 ext.levelId = 'isle'

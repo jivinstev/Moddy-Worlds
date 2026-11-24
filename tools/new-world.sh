@@ -64,7 +64,7 @@ w("build.gradle", f"""// {name.upper()}, the `{modid}` world jar, beside the Mod
 // ../shared/level.gradle; this file says only what is this world's own.
 plugins {{
     id 'java-library'
-    id 'net.neoforged.gradle.userdev' version '7.1.39'
+    id 'net.neoforged.moddev' version '2.0.148'
 }}
 
 ext.levelId = '{world}'

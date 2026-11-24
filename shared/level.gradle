@@ -1,6 +1,6 @@
 // THE BUILD EVERY WORLD SHARES, applied by each world's build.gradle after its plugins block:
 //
-//   plugins { id 'java-library'; id 'net.neoforged.gradle.userdev' version '7.1.39' }
+//   plugins { id 'java-library'; id 'net.neoforged.moddev' version '2.0.148' }
 //   ext.levelId = 'isle'                        // the world's folder, level id and world files' name
 //   apply from: '../shared/level.gradle'
 //
@@ -143,7 +143,7 @@ def unpackLevelPacks = tasks.register('unpackLevelPacks') {
 }
 
 dependencies {
-    implementation "net.neoforged:neoforge:${neo_version}"
+    // NeoForge (and Minecraft with it) comes from ModDevGradle's neoForge { version } below, not from here.
     // The public core mod: compiled against, and loaded as a mod in every dev run (a classpath jar with a mods.toml).
     // Its libraries come from INSIDE it (META-INF/jarjar/): naming them again stops the boot.
     implementation files(coreJar)
@@ -155,39 +155,50 @@ test {
     useJUnitPlatform()
 }
 
-// The access transformer applies to the dev Minecraft too, so the World Type listener compiles.
-minecraft {
-    accessTransformers {
-        file(new File(sharedDir, 'resources/META-INF/accesstransformer.cfg'))
+// ModDevGradle (from Minecraft 26.2 NeoGradle can no longer stage the game): NeoForge, the access transformer (applied
+// to the dev Minecraft too, so the World Type listener compiles), the mod the runs load, and the runs.
+neoForge {
+    version = neo_version
+    accessTransformers.from(new File(sharedDir, 'resources/META-INF/accesstransformer.cfg'))
+    mods {
+        "${mod_id}" {
+            sourceSet sourceSets.main
+        }
     }
-}
-
-runs {
-    configureEach {
-        workingDirectory project.layout.projectDirectory.dir('run').dir(name)
-        modSource project.sourceSets.main
-        systemProperty 'forge.logging.console.level', 'info'
-        // -Plevel=on: the world switched on by properties, as a server's launcher would (its world id, its rules file,
-        // and whatever ext.levelRunProps adds from its manifest), for a dev world not made with its World Type.
-        // -PmoddyProps=k=v,k=v adds any other moddingfromamod.<k>.
-        if (project.findProperty('level') == 'on') {
-            def manifest = new groovy.json.JsonSlurper().parse(file("src/level/resources/worlds/${levelId}.json"))
-            systemProperty 'moddingfromamod.world.id', levelId
-            systemProperty 'moddingfromamod.world.rules', file("src/level/resources/worlds/rules/${levelId}.rules.json").absolutePath
-            if (project.ext.has('levelRunProps')) {
-                project.ext.levelRunProps(manifest).each { k, v -> systemProperty "moddingfromamod.${k}", "${v}" }
+    // The unit tests compile and run against Minecraft and NeoForge, as NeoGradle's implementation line gave them.
+    addModdingDependenciesTo(sourceSets.test)
+    runs {
+        configureEach {
+            gameDirectory = project.layout.projectDirectory.dir('run').dir(name)
+            systemProperty 'forge.logging.console.level', 'info'
+            // -Plevel=on: the world switched on by properties, as a server's launcher would (its world id, its rules
+            // file, and whatever ext.levelRunProps adds from its manifest), for a dev world not made with its World
+            // Type. -PmoddyProps=k=v,k=v adds any other moddingfromamod.<k>.
+            if (project.findProperty('level') == 'on') {
+                def manifest = new groovy.json.JsonSlurper().parse(file("src/level/resources/worlds/${levelId}.json"))
+                systemProperty 'moddingfromamod.world.id', levelId
+                systemProperty 'moddingfromamod.world.rules', file("src/level/resources/worlds/rules/${levelId}.rules.json").absolutePath
+                if (project.ext.has('levelRunProps')) {
+                    project.ext.levelRunProps(manifest).each { k, v -> systemProperty "moddingfromamod.${k}", "${v}" }
+                }
+            }
+            ((project.findProperty('moddyProps') ?: '') as String).split(',').findAll { it.contains('=') }.each {
+                def (k, v) = it.split('=', 2)
+                systemProperty "moddingfromamod.${k}", v
             }
         }
-        ((project.findProperty('moddyProps') ?: '') as String).split(',').findAll { it.contains('=') }.each {
-            def (k, v) = it.split('=', 2)
-            systemProperty "moddingfromamod.${k}", v
+        server {
+            server()
+            programArgument '--nogui'
+        }
+        client {
+            client()
         }
     }
-    server {
-        arguments.add '--nogui'
-    }
-    client {
-    }
+}
+// The NeoForm runtime that stages this Minecraft, when ModDevGradle's own cannot (gradle.properties nfrt_version).
+if (project.findProperty('nfrt_version')) {
+    neoFormRuntime.version = project.property('nfrt_version').toString()
 }
 
 def templateProps = [mod_id: mod_id, mod_name: mod_name, mod_version: mod_version, mod_license: mod_license,
