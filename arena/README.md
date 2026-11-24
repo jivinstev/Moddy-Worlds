@@ -62,8 +62,9 @@ a stock client draws them). Seen from the prep room:
   default**. Under the start button the board says what the settings mean: the first wave's monsters and the boss
   waves ("Boss waves: 5, 10", or "A boss every 5 waves" for Endless).
 - **START BATTLE**: the start button, on its green blocks, at eye height to the right of the gate, with the battle's
-  state under the label: "Ready! Press START.", "Battle on: wave 2 of 5", "Battle on: BOSS wave 5 next", "BOSS wave 5
-  of 5!", "Battle on: wave 12" (Endless), "You won!", "Battle lost", "Tidying the arena...".
+  state under the label: "Ready! Press START.", "Battle on: wave 2 of 5", "Break: wave 3 in 12s", "Break: BOSS wave 5
+  in 9s", "BOSS wave 5 of 5!", "Battle on: wave 12" (Endless), "You won!", "Battle lost", "Tidying the arena...". In a
+  break between waves its label reads **READY** (below).
 - **The best line**, under the title: the best run, at the settings on the panel now, of whoever pressed a button on
   the panel last ("Best for Steve: won in 4:12", "Best for Steve: wave 7 in 3:12", "Steve: no best at these settings
   yet"); before anyone has pressed one, the only player in the world's.
@@ -199,8 +200,9 @@ them.
 3. **A wave**: its monsters appear at once on the arena floor, spread out and at least 8 blocks from any player. The
    title says "Wave 1 of 5", "Here they come!", and the boss bar "Wave 1 of 5: 3 monsters left", emptying as they fall.
    The players who are in the place when the countdown ends are the battle's **fighters**.
-4. **A wave is cleared** when none of its monsters is left: "Wave 1 cleared! The next wave comes in 10 seconds.", then
-   the breather, then the next wave. A monster that gets out of the place (past the walls, or below the floor) is
+4. **A wave is cleared** when none of its monsters is left, and **a break** comes before the next wave: "Wave 1
+   cleared! Break time: the next wave comes in 15 seconds. Change your hotbar in the prep room, or press READY on the
+   board." (below). A monster that gets out of the place (past the walls, or below the floor) is
    removed and counts as cleared, so a battle can always finish. A monster that follows a player into the prep room
    through an open gate is still in the battle.
 5. **Won**: the last wave cleared (an Endless battle is never won: it goes on until the fighters lose). "You won!", "All 5 waves cleared.", and in chat "You won the battle! All 5 waves are
@@ -223,6 +225,28 @@ them.
    things. Kept: players, a pet someone owns, anything carrying a player, and **a player's own things**: what a
    fighter dropped when he was knocked out, and what a player threw, are carried to the prep room's middle (where he
    comes back) rather than cleared. The prep room and everything in it, and players' inventories, are never touched.
+
+### The break between two waves
+
+- **How long**: 15 seconds after a wave (`breatherSeconds`), **45 after a boss wave** (`bossBreatherSeconds`), the
+  hardest fight. Its timer is in sight the whole time: the boss bar ("Wave 6 of 10 in 44 seconds", emptying), the
+  seconds above the hotbar ("Wave 6 in 3..."), and the control panel's state line ("Break: wave 6 in 44s").
+- **READY**: in a break the start button's label reads **READY**. A fighter who presses it is ready ("You are ready!
+  Waiting for 1 more fighter." when friends are not yet); once every fighter still in is ready, "Everyone is ready! The
+  next wave comes in 3 seconds." and the break ends then, so nobody waits. A player who is not fighting is told the
+  fighters press it. Outside a break the button starts a battle as before.
+- **His hotbar**: in the break he may walk back into the prep room and change what is on his hotbar: in My wishes, a
+  thing's page, "Add to hotbar" (or "Take off hotbar"). New wishes are still made only between battles; a hotbar wish
+  fires in the break and counts toward the next wave's hotbar wishes.
+- **The arena mends itself** as the break begins, so a wish that tore it up does not spoil the next wave: every block
+  of it is put back as it was built, by the same reset as the battle's end (a hole in the floor filled, a house or a
+  wall wished into it cleared to the sky, a panel button knocked off put back), and "The arena is mended for the next
+  wave." is said when anything was. Of the things in it, the break tidies what a fight leaves flying or falling: arrows
+  and other thrown things, lit TNT, falling blocks, lingering potion clouds, evoker fangs. It **keeps** what the
+  battle's end waits for: every living creature that is not a wave monster (a player's own wished creatures and pets
+  fight on with him; the battle's end clears the ones nobody owns), the displays a wished creature is drawn with, and
+  dropped things and experience, which a fighter may pick up in the break (the battle's end clears or carries them as
+  before).
 
 A server that stops in the middle of a battle ends it: on the next start the arena is tidied (after 5 seconds, so
 everything in it has loaded) and no battle is on.
@@ -336,7 +360,7 @@ builds nothing. **Sizes changed after that change nothing that stands**: the wor
 
 ```json
 {"id": "the-waves", "type": "arena_waves", "params": {
-  "countdownSeconds": 5, "breatherSeconds": 10, "waveSeconds": 180,
+  "countdownSeconds": 5, "breatherSeconds": 15, "bossBreatherSeconds": 45, "waveSeconds": 180,
   "waves": [
     [{"mob": "minecraft:husk", "count": 3}],
     [{"mob": "minecraft:husk", "count": 5}],
@@ -348,7 +372,8 @@ builds nothing. **Sizes changed after that change nothing that stands**: the wor
 
 Everything here is tunable, and **these first values are guesses** to be tuned by playing: the waves in order (1 to
 20), each a list of `{mob, count}` spawned at once (a count 1 to 20, at most 40 monsters a wave; `husk` alone means
-`minecraft:husk`), the countdown before the first wave (3 to 60 s), the breather between waves (3 to 120 s) and how long
+`minecraft:husk`), the countdown before the first wave (3 to 60 s), the break after a wave (3 to 120 s), the longer break after a boss
+wave (`bossBreatherSeconds`, 3 to 300 s; without it 30 s, or the other break if that is longer) and how long
 one wave may last before the battle is lost (30 to 1800 s). A wrong table refuses the file whole, in words; a change
 applies from the next battle. No rule, no battle ("This arena has no waves in its rules, so a battle cannot start.").
 These are the base waves: the control panel's wave size and difficulty are applied on top of them (5 and Normal are
@@ -453,10 +478,14 @@ press on the board and his action bar; at monsters 10 and Extreme the battle's w
 "Battle on: wave 1 of 5"; after it the board keeps his settings), `10-boss-waves` (WAVES 10: boss waves at 5 and 10,
 each with its named boss, its health on the boss bar and the BOSS WAVE title, generated waves between, and the win)
 `11-champions` (a run lost on wave 3 puts his face, name, wave and time on the Champions board; a better run
-replaces it and a worse one does not; changing the difficulty switches the board) and `12-wishes-per-wave` (the panel
+replaces it and a worse one does not; changing the difficulty switches the board), `12-wishes-per-wave` (the panel
 and `/moddy wishes` say 5 hotbar wishes a wave; in the battle his own bar says 5 of 5 and empties with each fire, the
 slot sweeps for the arena's 10 seconds and a click while it sweeps makes nothing, the sixth fire is refused in one line
-with the wish still on his hotbar, and when the wave is cleared the count is 5 again and the next fire costs one). A playtest cannot restart its game,
+with the wish still on his hotbar, and when the wave is cleared the count is 5 again and the next fire costs one) and
+`13-intermission` (WAVES 10: after a wave a 15-second break counted down on the boss bar, READY on the board and the
+arena mended, a house from prep gone, a hole in the floor filled, an arrow tidied and a creature kept; READY ends the
+break in 3 seconds; after the boss wave a 45-second break, in which he puts another of his makes on his hotbar from My
+wishes, presses READY, and fires it in the next wave). A playtest cannot restart its game,
 so the settings and the champions surviving a restart are `ArenaStateTest` (the saved record) and a dedicated
 server's restart.
 
@@ -487,10 +516,10 @@ All of it in `com.moddingfromamod.levels.arena`:
 | `ArenaPanel` | **pure**: the control panel's layout: its blocks, buttons and where each line of words floats and how big |
 | `ArenaBoard` | carries the panel out: reads its buttons, a selector press, keeps its words (text displays) |
 | `ArenaWavesRule` | `arena_waves` as a `WorldRuleType`, and reading the table back from a world's rules |
-| `ArenaMatch` | **pure**: a battle as a state machine (IDLE, COUNTDOWN, WAVE, BREATHER, WON, LOST, RESETTING), its boss bar (a boss's health on a boss wave) and how far it got |
+| `ArenaMatch` | **pure**: a battle as a state machine (IDLE, COUNTDOWN, WAVE, BREATHER, WON, LOST, RESETTING), the break between waves (longer after a boss wave, ended early when every fighter is READY), its boss bar (a boss's health on a boss wave) and how far it got |
 | `ArenaSpawns` | **pure**: where a wave's monsters appear |
 | `ArenaWords` | **pure**: every word a player reads about a battle and on the control panel |
-| `ArenaBattle` | carries a battle out: the button, the fighters and their lives, spawning and counting the monsters and the boss, the boss bar and titles, recording the runs, the reset |
+| `ArenaBattle` | carries a battle out: the button, the fighters and their lives, spawning and counting the monsters and the boss, the boss bar and titles, recording the runs, READY in a break, the arena mended between waves, each fighter's own bar of hotbar wishes, the reset |
 | `ArenaRule` | `arena_place` as a `WorldRuleType`, and reading the place back from a world's rules |
 | `ArenaModule` | the world module: builds once, gives a built place its upgrades, sets the spawn, the first arrival, the bases, the fallback rules, ticks the battle |
 | `ArenaBuilder` | each kind of box as a block, placed; the control panel added to (or mended in) a place; the reset |
@@ -526,3 +555,16 @@ champions) and keeps everything else.
 - **"Give me one"** (a copy of a kept item) is not a wish: the arena lets it through in a battle with no rest and no
   count. (The core now tells a world which thing it is, `chargeAgain(player, kind, ask)`, so a later change can.)
 - **A stronger wish costing more than one** of a wave's hotbar wishes, if play shows it is needed.
+
+What the public core does not let a world do yet (so the arena does not do it either):
+
+- **The hand-over: a make in the prep room going to the loadout instead of appearing.** The plan (#22): a make
+  finished in the prep room (Builder, Apprentice or Magician) whose result is an item gives the real item, and a
+  creature, event or building becomes a wish on his hotbar instead of appearing beside him, shown for a moment at a
+  hand-over spot in the prep room. Core 1.0.9 gives a world no say in whether or where a finished make appears: a
+  make's placing tools run as soon as its plan is known, and a world's hooks (its charge, its bases and reach rule)
+  can only let it start or refuse it. Doing it in the arena alone would mean tearing down a thing after it appeared (an
+  event cannot be taken back at all), so it waits for a small core hook: a world module answering, before a make's
+  first placing tool runs, whether it lands in the world or is kept and handed over as a hotbar wish, and being told
+  when one is handed over (its picture, its name, the slot or the wish chest) so the world can show it. Today a make in
+  the prep room appears beside him, and he puts it on his hotbar from its page in My wishes.

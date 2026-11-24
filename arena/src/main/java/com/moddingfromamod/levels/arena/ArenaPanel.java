@@ -261,12 +261,16 @@ public final class ArenaPanel {
                 out.add("No waves in the rules");
                 out.add(ArenaWords.wishesMeans(ArenaWishes.MAX_PER_WAVE));
             }
-            case START_LABEL -> out.add(ArenaWords.PANEL_START);
+            case START_LABEL -> {
+                out.add(ArenaWords.PANEL_START);
+                out.add(ArenaWords.PANEL_READY);
+            }
             case STATE -> {
                 int most = ArenaSettings.MAX_WAVE_COUNT;
                 for (ArenaMatch.Phase p : ArenaMatch.Phase.values()) {
                     out.add(ArenaWords.panelState(p, most, most, false));
                     out.add(ArenaWords.panelState(p, most, most, true));
+                    out.add(ArenaWords.panelState(p, most - 1, most, true, ArenaWaves.MAX_BOSS_BREATHER));
                 }
             }
         }

@@ -8,6 +8,8 @@ package com.moddingfromamod.levels.arena;
  *
  * <p>The rules, all here:
  * <ul>
+ *   <li>Between two waves there is a break (the BREATHER): {@code breatherSeconds} after a wave, longer after a boss
+ *       wave ({@code bossBreatherSeconds}); when every fighter says he is ready ({@link #ready}) it ends in 3 seconds.</li>
  *   <li>Only one battle at a time: {@link #start} while one is on is refused.</li>
  *   <li>A wave is cleared when none of its mobs is left; after the last wave the battle is WON.</li>
  *   <li>The battle is LOST when no fighter is still in (during the countdown: nobody in the place), or when a wave
@@ -25,6 +27,8 @@ public final class ArenaMatch {
     public static final int END_HOLD_TICKS = 5 * TICKS_PER_SECOND;
     /** After a restart, how long to wait before resetting, so the arena's mobs have loaded: 5 seconds. */
     public static final int RESTART_WAIT_TICKS = 5 * TICKS_PER_SECOND;
+    /** How long a break still lasts once every fighter is ready: 3 seconds, so the next wave is never a surprise. */
+    public static final int READY_TICKS = 3 * TICKS_PER_SECOND;
 
     public enum Phase { IDLE, COUNTDOWN, WAVE, BREATHER, WON, LOST, RESETTING }
 
@@ -132,6 +136,28 @@ public final class ArenaMatch {
         return phase == Phase.COUNTDOWN || phase == Phase.WAVE || phase == Phase.BREATHER;
     }
 
+    /** True during a break between two waves (the breather), when the fighters may say they are ready. */
+    public boolean inBreak() {
+        return phase == Phase.BREATHER;
+    }
+
+    /**
+     * Every fighter is ready: the break ends in {@link #READY_TICKS}, never later than it would have. True when that
+     * made it shorter; false outside a break, or when it was ending sooner anyway.
+     */
+    public boolean ready() {
+        if (phase != Phase.BREATHER || ticksLeft <= READY_TICKS) {
+            return false;
+        }
+        ticksLeft = READY_TICKS;
+        return true;
+    }
+
+    /** Whether every fighter still in is ready: there is at least one, and each of them said so. Pure. */
+    public static <T> boolean allReady(java.util.Collection<T> fighters, java.util.Collection<T> ready) {
+        return !fighters.isEmpty() && ready.containsAll(fighters);
+    }
+
     /** Starts a battle with this table; false (nothing changes) while one is already on. */
     public boolean start(ArenaWaves waves) {
         return waves != null && start(ArenaRun.exactly(waves));
@@ -219,8 +245,9 @@ public final class ArenaMatch {
                         enter(Phase.WON, END_HOLD_TICKS);
                         return Event.of(Kind.WON, wave, 0);
                     }
-                    enter(Phase.BREATHER, table.breatherSeconds() * TICKS_PER_SECOND);
-                    return Event.of(Kind.WAVE_CLEARED, wave, table.breatherSeconds());
+                    int pause = table.breatherAfter(wave);
+                    enter(Phase.BREATHER, pause * TICKS_PER_SECOND);
+                    return Event.of(Kind.WAVE_CLEARED, wave, pause);
                 }
                 ticksLeft--;
                 if (ticksLeft <= 0) {

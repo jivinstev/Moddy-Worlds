@@ -82,7 +82,7 @@ kill @e[tag=moddyarena_wave]
 @expect chat Wave 5 cleared within 10s
 
 @step waves 6 to 9 are made by the generator: more monsters, and piglin brutes from wave 7
-@expect title Wave 6 of 10 within 20s
+@expect title Wave 6 of 10 within 50s
 @wait 1s
 execute store result score #n arenatest if entity @e[tag=moddyarena_wave]
 @assert execute if score #n arenatest matches 11

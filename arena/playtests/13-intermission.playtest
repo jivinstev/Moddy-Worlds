@@ -1,0 +1,165 @@
+# Moddy Arena: the break between two waves. In prep he makes a house that lands in the arena (a wish that changes the
+# arena) and a Fire Sword he puts on his hotbar. He sets WAVES to 10 and starts a battle. When a wave is cleared there
+# is a break: the boss bar counts it down (15 seconds after a wave, 45 after the boss wave), the board's start button
+# reads READY and its state line is the break's timer, and the arena mends itself: the house is gone, a hole in the
+# floor is filled, an arrow left lying is tidied, and a creature in it stays. Pressing READY ends the break in 3
+# seconds. In the longer break after the boss wave he changes his hotbar from My wishes (the house goes on it), presses
+# READY, and the house's hotbar wish fires in the next wave.
+# He stays in the prep room behind the closed gate and a resistance effect keeps him on his feet; the monsters are not
+# what this tests, so each wave is ended by command (SHORTCUT), and the arena is torn up by command as a wish could.
+# play-timeout: 1500
+@intent between two waves there is a break with a visible timer, longer after a boss wave, that READY on the board ends early; the arena mends itself in it, and he may change his hotbar in it and fire the new wish in the next wave
+@world flat seed=1
+@continue-on-fail
+
+@step arrive
+@expect chat Welcome to Moddy Arena within 90s
+@wait 2s
+difficulty hard
+difficulty normal
+gamemode survival
+effect give @s minecraft:resistance 1500 4 true
+effect give @s minecraft:saturation 1500 0 true
+
+@step in prep a house lands in the arena ahead of him
+@aim look 180 12
+@wait 2s
+moddy apprentice a cozy house
+@expect screen Container within 10s
+@click slot 0
+@expect chat /is ready/ within 90s
+@wait 3s
+@assert execute unless blocks -4 64 3 4 67 15 -4 200 3 all
+@shot a-house-in-the-arena
+
+@step a Fire Sword, on his hotbar from its page
+moddy apprentice a fire sword
+@expect screen Container within 10s
+@click slot 0
+@expect chat /Fire Sword( [0-9]+)? is in slot 3/ within 60s
+@wait 2s
+@key key.hotbar.1
+@key key.use
+@expect screen /make a wish/ within 10s
+@click button "My wishes"
+@expect screen My wishes within 10s
+@click item "Fire Sword"
+@expect screen Fire Sword within 10s
+@click item "Add to hotbar"
+@expect chat On your hotbar, slot 4 within 10s
+@wait 1s
+@key key.keyboard.escape
+@wait 10t
+@key key.keyboard.escape
+@wait 10t
+@expect screen none within 3s
+
+@step WAVES 10, and he starts the battle
+teleport @s 0.5 64 21.5 180 0
+@key key.hotbar.9
+@wait 10t
+@key key.forward hold 15t
+@wait 1s
+@aim pos -0.5 64.5 17.1
+@key key.use
+@expect actionbar Waves: 10 within 3s
+@wait 25t
+@aim pos 3.5 65.5 17.1
+@key key.use
+@expect chat A battle is starting within 5s
+@expect title Wave 1 of 10 within 15s
+@wait 1s
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_start_label,nbt={text:{text:"START BATTLE"}}]
+
+@step wave 1 is cleared: a break with its timer, READY on the board, and the arena mended
+# SHORTCUT: as a wish could, a hole is torn in the floor and an arrow lies in the arena; a cat stands in for his own
+# creature
+fill -1 63 6 1 63 8 minecraft:air
+summon minecraft:arrow 6 64 6
+summon minecraft:cat 6 64 10 {PersistenceRequired:1b}
+@wait 1s
+@assert execute unless block 0 63 7 minecraft:smooth_sandstone
+kill @e[tag=moddyarena_wave]
+@expect chat Wave 1 cleared! Break time: the next wave comes in 15 seconds. within 10s
+@expect chat The arena is mended for the next wave. within 5s
+@expect bossbar /Wave 2 of 10 in 1[0-5] seconds/ within 3s
+@wait 1s
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_start_label,nbt={text:{text:"READY"}}]
+@assert execute if block 0 63 7 minecraft:smooth_sandstone
+@assert execute if blocks -4 64 3 4 67 15 -4 200 3 all
+@assert execute unless entity @e[type=minecraft:arrow,x=-16,y=60,z=-16,dx=32,dy=20,dz=33]
+@assert execute if entity @e[type=minecraft:cat,x=-16,y=60,z=-16,dx=32,dy=20,dz=33]
+@aim look 180 15
+@wait 1s
+@shot the-break-and-the-arena-mended
+@aim pos 3.5 65.5 17.1
+@wait 5t
+@shot ready-on-the-board
+
+@step READY ends the break in 3 seconds
+@key key.use
+@expect chat Everyone is ready! The next wave comes in 3 seconds. within 3s
+@expect bossbar /Wave 2 of 10 in [1-3] seconds?/ within 2s
+@expect title Wave 2 of 10 within 5s
+@wait 1s
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_start_label,nbt={text:{text:"START BATTLE"}}]
+
+@step waves 2 to 4, each followed by its break
+kill @e[tag=moddyarena_wave]
+@expect chat Wave 2 cleared! within 10s
+@key key.use
+@expect title Wave 3 of 10 within 8s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect chat Wave 3 cleared! within 10s
+@key key.use
+@expect title Wave 4 of 10 within 8s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect chat Wave 4 cleared! within 10s
+@key key.use
+@expect title BOSS WAVE within 8s
+@wait 2s
+
+@step after the boss wave, the longer break
+kill @e[tag=moddyarena_wave]
+@expect chat Wave 5 cleared! Break time: the next wave comes in 45 seconds. within 10s
+@expect bossbar /Wave 6 of 10 in 4[0-5] seconds/ within 3s
+@wait 1s
+@shot the-longer-break
+
+@step in the break he changes his hotbar: the house goes on it from My wishes
+@key key.hotbar.1
+@key key.use
+@expect screen /make a wish/ within 10s
+@click button "My wishes"
+@expect screen My wishes within 10s
+@click item "Cozy House"
+@expect screen Cozy House within 10s
+@click item "Add to hotbar"
+@expect chat On your hotbar, slot 5 within 10s
+@wait 1s
+@assert execute if items entity @s hotbar.4 minecraft:paper
+@key key.keyboard.escape
+@wait 10t
+@key key.keyboard.escape
+@wait 10t
+@expect screen none within 3s
+@shot a-new-loadout
+
+@step READY, and the new hotbar wish fires in the next wave
+@aim pos 3.5 65.5 17.1
+@wait 5t
+@key key.use
+@expect chat Everyone is ready! within 3s
+@expect title Wave 6 of 10 within 6s
+@wait 1s
+@aim look 180 12
+@key key.hotbar.5
+@wait 5t
+@assert execute if items entity @s weapon.mainhand minecraft:paper
+@key key.use
+@expect chat /is ready/ within 90s
+@wait 3s
+@assert execute unless blocks -4 64 3 4 67 15 -4 200 3 all
+@shot the-house-from-the-hotbar
