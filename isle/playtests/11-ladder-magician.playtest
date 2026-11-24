@@ -9,8 +9,8 @@
 # never in a loop. It expects a new player's Moddy home (tools/play.sh starts every playtest with an empty one).
 # Commands are setup only, except the lines marked `# SHORTCUT: <why>`.
 # play-timeout: 1500
-# Needs a Gate C carrier with `@click … right|shift` (jivinstev/mc-mod-version-upgrade#246); until a carrier release
-# has it, build one from that branch and pass its folder as CARRIER_DIR (tools/play.sh).
+# Needs a Gate C carrier with `@click … right|shift` (jivinstev/mc-mod-version-upgrade#246) and `@fight` (the @fight
+# pull request there); until a carrier release has them, build one and pass its folder as CARRIER_DIR (tools/play.sh).
 @intent a Magician climbs all 18 goals of Scarcity Isle with a few broad typed wishes and the play no wish does for him
 @world flat seed=1
 @continue-on-fail
@@ -364,6 +364,8 @@ wish summon a zombie next to me so I can fight it
 @wait 1s
 @end-repeat
 @assert execute if entity @e[type=minecraft:zombie,distance=..16]
+# the zombie his wish made, named for the fight (a tag, so it is followed wherever a hit sends it)
+tag @e[type=minecraft:zombie,distance=..16] add wished_zombie
 @key key.inventory
 @click slot 44 shift
 @click item "Stone Pickaxe"
@@ -371,13 +373,9 @@ wish summon a zombie next to me so I can fight it
 @key key.inventory
 @key key.hotbar.9
 @shot the-zombie
-# he swings at it with a mouse click until it is beaten; a hit knocks it back and it comes at him again, or off his
-# island, which beats it too (a click out of reach swings at the air, as it does for a player)
-@repeat 80 until execute if entity @s[advancements={skyvoid_advancements:overworld/zombie_hunter=true}]
-@aim entity @e[type=minecraft:zombie,distance=..16,sort=nearest,limit=1] if-present
-@key key.mouse.left
-@wait 15t
-@end-repeat
+# he beats the zombie his wish made with his stone pickaxe, never walking off his island's top; a hit that knocks it off
+# his island counts once the void has killed it (the kill is still his)
+@fight @e[tag=wished_zombie] within 60s inside -1027 -1025 -1020 -1018
 @wait 1s
 time set noon
 @assert execute if entity @s[advancements={skyvoid_advancements:overworld/mob_farm=true}]

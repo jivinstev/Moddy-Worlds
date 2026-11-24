@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.SplittableRandom;
+import java.util.function.LongSupplier;
 
 /**
  * <b>Where a wave's mobs appear</b>: spots on the arena floor, spread out from each other and away from the players.
@@ -13,6 +15,12 @@ import java.util.Random;
  * than {@link #MIN_FROM_PLAYER} to any player are left out while there are others; then the spots are chosen one at a
  * time, each the farthest from those already chosen (ties broken by the seed). A wave larger than the grid reuses spots
  * in the same order.
+ *
+ * <p><b>Repeatable spawns for a playtest.</b> A battle seeds each wave from the game's random, so no two battles look
+ * alike. A test sets {@value #SEED_PROPERTY} (a whole number, as a {@code -D} property or a playtest's
+ * {@code play.props} line {@code arena.spawn.seed=N}): wave {@code w}'s mobs then appear in the same spots in every
+ * battle for the same player positions (the spots keep away from where the players stand), so a filmed fight can be
+ * played again and a failure looked at twice. A server never sets it.
  */
 public final class ArenaSpawns {
 
@@ -20,7 +28,31 @@ public final class ArenaSpawns {
     public static final int INSET = 2;
     public static final double MIN_FROM_PLAYER = 8.0;
 
+    /** The JVM property that makes every battle's spawns repeatable (playtests only). */
+    public static final String SEED_PROPERTY = "moddingfromamod.arena.spawn.seed";
+
     private ArenaSpawns() {
+    }
+
+    /**
+     * The seed for wave {@code wave}'s spots: derived from {@value #SEED_PROPERTY} when it holds a whole number (the same
+     * for that wave in every battle), else {@code random}'s next value. Read at each wave, so a test can set it late.
+     */
+    public static long seedFor(int wave, LongSupplier random) {
+        Long fixed = fixedSeed(System.getProperty(SEED_PROPERTY));
+        return fixed == null ? random.getAsLong() : new SplittableRandom(fixed + wave).nextLong();
+    }
+
+    /** "42" → 42; absent, blank or not a whole number → null (the game's random). */
+    static Long fixedSeed(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(raw.strip());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     /** Every candidate spot (x, z) on the arena floor. */

@@ -1,3 +1,6 @@
 # The properties tools/play.sh passes as moddingfromamod.<key> (beside world.id and world.rules), the way a server's
 # launcher switches the arena on in a world not made with its World Type: its module, named by worlds/arena.json.
 world.module=@manifest:module
+# Each wave spawns in the same spots in every battle, for the same player positions (ArenaSpawns.SEED_PROPERTY), so a
+# filmed fight can be played again; a server never sets it.
+arena.spawn.seed=1
