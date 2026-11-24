@@ -87,7 +87,7 @@ final class ArenaCharge implements WishCharge {
             return false;
         }
         switch (d.refused()) {
-            case RESTING -> player.displayClientMessage(Component.literal(ArenaWords.resting(d.secondsLeft())), true);
+            case RESTING -> player.sendOverlayMessage(Component.literal(ArenaWords.resting(d.secondsLeft())));
             case MAGICIAN_USED_UP -> player.sendSystemMessage(Component.literal(ArenaWords.magicianUsedUp(d.budget())));
             case BATTLE_INSTANT_ONLY -> {
                 if (kind == ArenaWishPolicy.Kind.BUILDER) {
@@ -215,7 +215,7 @@ final class ArenaCharge implements WishCharge {
         server.execute(() -> {
             ServerPlayer p = server.getPlayerList().getPlayer(who);
             if (p != null) {
-                p.displayClientMessage(Component.literal(words), bar);
+                p.sendSystemMessage(Component.literal(words), bar);
             }
         });
     }

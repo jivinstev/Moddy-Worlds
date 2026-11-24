@@ -480,7 +480,7 @@ public final class WishBankService {
         WishBankBar.Shape shape = WishBankBar.of(s);
         Held held = BARS.get(id);
         if (held == null) {
-            ServerBossEvent e = new ServerBossEvent(Component.literal(shape.name()),
+            ServerBossEvent e = new ServerBossEvent(java.util.UUID.randomUUID(), Component.literal(shape.name()),
                     BossEvent.BossBarColor.YELLOW, overlay(shape.notches()));
             e.setProgress(shape.progress());
             e.addPlayer(player);

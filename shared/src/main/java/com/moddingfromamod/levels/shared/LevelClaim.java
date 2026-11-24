@@ -27,6 +27,16 @@ public final class LevelClaim {
     private LevelClaim() {
     }
 
+    /**
+     * 26.1 keys saved data by an {@code Identifier}, kept at {@code data/<namespace>/<path>.dat}: the level's
+     * {@code <modid>_level} file name of 1.21 is {@code <modid>:level} (as the core's own stores, compat/SavedDataTypes).
+     */
+    static net.minecraft.resources.Identifier dataId(Level level, String name) {
+        String prefix = level.modid() + "_";
+        return net.minecraft.resources.Identifier.fromNamespaceAndPath(level.modid(),
+                name.startsWith(prefix) ? name.substring(prefix.length()) : name);
+    }
+
     /** True when this world is the level's: its saved data says so, or its packs mark it (then recorded, once). */
     public static boolean claims(MinecraftServer server, Level level) {
         if (server == null) {
@@ -34,7 +44,7 @@ public final class LevelClaim {
         }
         var storage = server.overworld().getDataStorage();
         SavedDataType<Marker> type = TYPES.computeIfAbsent(level.markerName(),
-                n -> new SavedDataType<>(n, () -> new Marker(""), Marker.CODEC));
+                n -> new SavedDataType<>(dataId(level, n), () -> new Marker(""), Marker.CODEC));
         Marker m = storage.get(type);
         if (m != null && level.id().equals(m.level)) {
             return true;

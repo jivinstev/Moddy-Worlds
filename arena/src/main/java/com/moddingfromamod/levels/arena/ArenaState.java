@@ -40,7 +40,7 @@ public final class ArenaState extends SavedData {
             Codec.BOOL.optionalFieldOf("battleOn", false).forGetter(s -> s.battleOn)).apply(i, ArenaState::new));
 
     static final SavedDataType<ArenaState> TYPE =
-            new SavedDataType<>(ArenaMod.MODID + "_place", ArenaState::new, CODEC);
+            new SavedDataType<>(net.minecraft.resources.Identifier.fromNamespaceAndPath(ArenaMod.MODID, "place"), ArenaState::new, CODEC);
 
     private Built built;
     private final Set<UUID> arrived = new LinkedHashSet<>();

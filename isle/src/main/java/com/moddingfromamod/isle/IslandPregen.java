@@ -221,7 +221,7 @@ public final class IslandPregen {
                     var source = p.level().getChunkSource();
                     int[] count = {0};
                     p.getChunkTrackingView().forEach(pos -> {
-                        if (source.getChunkNow(pos.x, pos.z) == null) {
+                        if (source.getChunkNow(pos.x(), pos.z()) == null) {
                             count[0]++;
                         }
                     });

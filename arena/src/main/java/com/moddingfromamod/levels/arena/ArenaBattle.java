@@ -57,7 +57,7 @@ final class ArenaBattle {
     private final ArenaPlace place;
     private final ArenaState state;
     private final ArenaMatch match = new ArenaMatch();
-    private final ServerBossEvent bar = new ServerBossEvent(Component.literal(""), BossEvent.BossBarColor.RED,
+    private final ServerBossEvent bar = new ServerBossEvent(java.util.UUID.randomUUID(), Component.literal(""), BossEvent.BossBarColor.RED,
             BossEvent.BossBarOverlay.PROGRESS);
     private final boolean allowEmpty = Boolean.getBoolean(ALLOW_EMPTY_PROPERTY);
     /** The battle's fighters and their death count when it began; a fighter who is out is removed for good. */
@@ -165,7 +165,7 @@ final class ArenaBattle {
             updateBar();
         }
         if (match.phase() == ArenaMatch.Phase.IDLE && ticks % 100 == 0) {
-            int swept = discard(level, placeBox(level), e -> e.getTags().contains(TAG));
+            int swept = discard(level, placeBox(level), e -> e.entityTags().contains(TAG));
             if (swept > 0) {
                 LOG.info("Moddy Arena: removed {} wave mobs left over from a battle that is over", swept);
             }
@@ -198,7 +198,7 @@ final class ArenaBattle {
         switch (ev.kind()) {
             case COUNTDOWN -> {
                 for (ServerPlayer p : audience()) {
-                    p.displayClientMessage(Component.literal(ArenaWords.comingIn(ev.wave(), ev.seconds())), true);
+                    p.sendOverlayMessage(Component.literal(ArenaWords.comingIn(ev.wave(), ev.seconds())));
                 }
             }
             case WAVE_START -> {
@@ -325,7 +325,7 @@ final class ArenaBattle {
         for (ServerPlayer p : level.players()) {
             players.add(new double[] {p.getX(), p.getZ()});
         }
-        List<int[]> spots = ArenaSpawns.pick(place, players, wave.size(), level.random.nextLong());
+        List<int[]> spots = ArenaSpawns.pick(place, players, wave.size(), level.getRandom().nextLong());
         int i = 0;
         for (ArenaWaves.Group g : wave.groups()) {
             EntityType<?> type = EntityType.byString(g.mob()).orElse(null);
@@ -408,7 +408,7 @@ final class ArenaBattle {
         fightersDrops.clear();
         int n = discard(level, arena, e -> !(e instanceof Player) && !owned(e) && !playersOwn(e)
                 && !e.hasPassenger(p -> p instanceof Player));
-        return n + discard(level, placeBox(level), e -> e.getTags().contains(TAG));
+        return n + discard(level, placeBox(level), e -> e.entityTags().contains(TAG));
     }
 
     /** An item a player threw, or one a fighter dropped when he was knocked out. */
