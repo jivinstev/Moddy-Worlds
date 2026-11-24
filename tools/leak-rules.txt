@@ -44,3 +44,4 @@ re:/tmp/claude-
 # address. Each version a branch pins is allowed here by its exact text, one line per version (as the core's list does).
 allow:^26\.1\.2\.130$
 allow:^26\.3\.0\.117$
+allow:^26\.2\.0\.95$
