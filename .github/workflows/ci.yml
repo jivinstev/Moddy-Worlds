@@ -107,14 +107,14 @@ jobs:
         with:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
       # BEGIN core pins: written by tools/core-pins.py from */core.lock; edit core.lock, then tools/core-pins.py --write
-      - name: The pinned public core moddingfromamod-1.0.8-mc26.1.2 (arena, isle)
+      - name: The pinned public core moddingfromamod-1.0.9-mc26.2 (arena, isle)
         env:
           GH_TOKEN: ${{ secrets.CORE_READ_TOKEN }}
         run: |
           mkdir -p "$RUNNER_TEMP/core"
-          curl -fsSL -o "$RUNNER_TEMP/core/moddingfromamod-1.0.8+mc26.1.2.jar" "https://github.com/jivinstev/ModdyTheWishWatch/releases/download/moddingfromamod-1.0.8-mc26.1.2/moddingfromamod-1.0.8+mc26.1.2.jar" || gh release download "moddingfromamod-1.0.8-mc26.1.2" -R "jivinstev/ModdyTheWishWatch" -p "moddingfromamod-1.0.8+mc26.1.2.jar" -D "$RUNNER_TEMP/core" --clobber
-          echo "31f6f62e20ce9fbe54d82fb5ece90ebaadf5ae678394cb9cbd499d6896e1084e  $RUNNER_TEMP/core/moddingfromamod-1.0.8+mc26.1.2.jar" | sha256sum -c -
-          for w in arena isle; do mkdir -p "$w/.core"; cp "$RUNNER_TEMP/core/moddingfromamod-1.0.8+mc26.1.2.jar" "$w/.core/"; done
+          curl -fsSL -o "$RUNNER_TEMP/core/moddingfromamod-1.0.9+mc26.2.jar" "https://github.com/jivinstev/ModdyTheWishWatch/releases/download/moddingfromamod-1.0.9-mc26.2/moddingfromamod-1.0.9+mc26.2.jar" || gh release download "moddingfromamod-1.0.9-mc26.2" -R "jivinstev/ModdyTheWishWatch" -p "moddingfromamod-1.0.9+mc26.2.jar" -D "$RUNNER_TEMP/core" --clobber
+          echo "651589ab6b89dd9eec9489f4154f98d39657049845c3cd053fa506efabc65333  $RUNNER_TEMP/core/moddingfromamod-1.0.9+mc26.2.jar" | sha256sum -c -
+          for w in arena isle; do mkdir -p "$w/.core"; cp "$RUNNER_TEMP/core/moddingfromamod-1.0.9+mc26.2.jar" "$w/.core/"; done
       # END core pins
       - name: Unit tests and the jar
         env:
