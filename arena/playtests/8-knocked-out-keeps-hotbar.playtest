@@ -39,11 +39,11 @@ moddy apprentice a fire sword
 @key key.keyboard.escape
 @wait 10t
 @expect screen none within 3s
-# a couple of steps toward the gate, then the stone button beside it
+# a couple of steps toward the gate, then the start button on the control panel
 @aim look 180 0
 @key key.forward hold 8t
 @wait 10t
-@aim pos 2.5 65.5 17.1
+@aim pos 3.5 65.5 17.1
 @key key.use
 @expect chat A battle is starting within 5s
 
