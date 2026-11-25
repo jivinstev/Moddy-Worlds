@@ -11,13 +11,13 @@ where every wish counts.** Your goal is to grow it from almost nothing into a ho
    Mac and Linux:
 
    ```bash
-   curl -fsSL https://github.com/jivinstev/mc-mod-version-upgrade/releases/download/player-install-v2/install.sh | bash -s -- jivinstev/Moddy-Worlds:isle
+   curl -fsSL https://github.com/jivinstev/mc-mod-version-upgrade/releases/download/player-install-v3/install.sh | bash -s -- jivinstev/Moddy-Worlds:isle
    ```
 
    Windows (PowerShell):
 
    ```powershell
-   & ([scriptblock]::Create((irm https://github.com/jivinstev/mc-mod-version-upgrade/releases/download/player-install-v2/install.ps1))) jivinstev/Moddy-Worlds:isle
+   & ([scriptblock]::Create((irm https://github.com/jivinstev/mc-mod-version-upgrade/releases/download/player-install-v3/install.ps1))) jivinstev/Moddy-Worlds:isle
    ```
 
    Or by hand: the Moddy core jar and the Scarcity Isle jar in a NeoForge game (the Isle's
