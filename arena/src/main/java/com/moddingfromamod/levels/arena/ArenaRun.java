@@ -68,6 +68,11 @@ public final class ArenaRun {
         return base.breatherSeconds();
     }
 
+    /** The break after wave {@code n} is cleared: longer after a boss wave. */
+    public int breatherAfter(int n) {
+        return isBossWave(n) ? base.bossBreatherSeconds() : base.breatherSeconds();
+    }
+
     /** How long wave {@code n} may last: a boss wave {@value #BOSS_TIME} times the others. */
     public int waveSeconds(int n) {
         return isBossWave(n) ? Math.min(ArenaWaves.MAX_WAVE_SECONDS, base.waveSeconds() * BOSS_TIME)

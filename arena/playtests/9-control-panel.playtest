@@ -49,7 +49,7 @@ execute store result score #lines arenatest if entity @e[type=minecraft:text_dis
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_difficulty_value,nbt={text:{text:"Normal"}}]
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_waves_label,nbt={text:{text:"WAVES"}}]
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_waves_value,nbt={text:{text:"5"}}]
-@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_means,nbt={text:{text:"First wave: 3 monsters\nBoss wave: 5"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_means,nbt={text:{text:"First wave: 3 monsters\nBoss wave: 5\nHotbar wishes: 5 a wave"}}]
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_best]
 @assert execute unless entity @e[type=minecraft:text_display,tag=moddyarena_panel_best,nbt={text:{text:"Press a button to see your best"}}]
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_start_label,nbt={text:{text:"START BATTLE"}}]
@@ -76,7 +76,7 @@ teleport @s 0.5 64 21.5 180 0
 @expect actionbar Monsters: 4. The first wave has 2 monsters. within 3s
 @wait 5t
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_value,nbt={text:{text:"4"}}]
-@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_means,nbt={text:{text:"First wave: 2 monsters\nBoss wave: 5"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_means,nbt={text:{text:"First wave: 2 monsters\nBoss wave: 5\nHotbar wishes: 5 a wave"}}]
 @aim pos -0.5 66.5 17.1
 @wait 25t
 @key key.use
@@ -91,7 +91,7 @@ teleport @s 0.5 64 21.5 180 0
 @key key.use
 @expect actionbar Monsters is already the biggest within 3s
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_value,nbt={text:{text:"10"}}]
-@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_means,nbt={text:{text:"First wave: 6 monsters\nBoss wave: 5"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_means,nbt={text:{text:"First wave: 6 monsters\nBoss wave: 5\nHotbar wishes: 5 a wave"}}]
 
 @step the difficulty goes down to Easy and no further, then up to Extreme and no further
 @aim pos -3.5 65.5 17.1
@@ -124,7 +124,7 @@ teleport @s 0.5 64 21.5 180 0
 @expect actionbar Waves: 10. A boss comes every 5th wave. within 3s
 @wait 5t
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_waves_value,nbt={text:{text:"10"}}]
-@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_means,nbt={text:{text:"First wave: 6 monsters\nBoss waves: 5, 10"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_means,nbt={text:{text:"First wave: 6 monsters\nBoss waves: 5, 10\nHotbar wishes: 5 a wave"}}]
 @wait 25t
 @key key.use
 @expect actionbar Waves: 15 within 3s
@@ -136,7 +136,7 @@ teleport @s 0.5 64 21.5 180 0
 @expect actionbar Waves: Endless. They keep coming until you lose! within 3s
 @wait 5t
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_waves_value,nbt={text:{text:"Endless"}}]
-@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_means,nbt={text:{text:"First wave: 6 monsters\nA boss every 5 waves"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_means,nbt={text:{text:"First wave: 6 monsters\nA boss every 5 waves\nHotbar wishes: 5 a wave"}}]
 @wait 25t
 @key key.use
 @expect actionbar Endless is already the most within 3s

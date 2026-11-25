@@ -20,6 +20,7 @@ import java.util.List;
  *   y 65   [-] DIFFICULTY Normal [+] gate   [ (o) ]       (o) the start button, on green blocks 3 by 1
  *   y 64   [-]   WAVES     5  [+]   gate   First wave: 3 monsters
  *                                          Boss wave: 5
+ *                                          Hotbar wishes: 5 a wave
  *          x -4 ...........  -1   0   1 ............ 4
  * </pre>
  * The left half holds the three selectors (a down button, the value, an up button): MONSTERS (how many a wave brings),
@@ -258,13 +259,18 @@ public final class ArenaPanel {
                 out.add("A boss every 50 waves");
                 out.add("No boss waves");
                 out.add("No waves in the rules");
+                out.add(ArenaWords.wishesMeans(ArenaWishes.MAX_PER_WAVE));
             }
-            case START_LABEL -> out.add(ArenaWords.PANEL_START);
+            case START_LABEL -> {
+                out.add(ArenaWords.PANEL_START);
+                out.add(ArenaWords.PANEL_READY);
+            }
             case STATE -> {
                 int most = ArenaSettings.MAX_WAVE_COUNT;
                 for (ArenaMatch.Phase p : ArenaMatch.Phase.values()) {
                     out.add(ArenaWords.panelState(p, most, most, false));
                     out.add(ArenaWords.panelState(p, most, most, true));
+                    out.add(ArenaWords.panelState(p, most - 1, most, true, ArenaWaves.MAX_BOSS_BREATHER));
                 }
             }
         }
@@ -311,7 +317,8 @@ public final class ArenaPanel {
         out.add(new Slot(Words.STATE, right, lr + 0.1, z, fit(1.0, rightRoom, longest(Words.STATE)), "aqua"));
         if (hasTitleRow()) {
             float means = fit(0.9, rightRoom, longest(Words.SIZE_MEANS));
-            out.add(new Slot(Words.SIZE_MEANS, right, wavesRow() + 0.5 - LINE * means, z, means, "aqua"));
+            // three lines (the first wave, the boss waves, the hotbar wishes a wave), centred on the row
+            out.add(new Slot(Words.SIZE_MEANS, right, wavesRow() + 0.5 - 1.5 * LINE * means, z, means, "aqua"));
         }
         return out;
     }

@@ -44,6 +44,15 @@ class ArenaWishesTest {
         assertTrue(ArenaWishes.parse(Map.of("_note", "x")).ok(), "a note is not a param");
         assertThrows(IllegalArgumentException.class, () -> new ArenaWishes(3, 0));
         assertEquals(200, ArenaWishes.DEFAULT.cooldownTicks());
+        assertEquals(5, ArenaWishes.DEFAULT.wishesPerWave(), "5 hotbar wishes a wave");
+        assertEquals(new ArenaWishes(3, 10, 8), ArenaWishes.parse(Map.of("wishesPerWave", 8)).wishes());
+        assertTrue(ArenaWishes.parse(Map.of("wishesPerWave", 1)).ok());
+        assertTrue(ArenaWishes.parse(Map.of("wishesPerWave", 50)).ok());
+        assertFalse(ArenaWishes.parse(Map.of("wishesPerWave", 0)).ok());
+        assertFalse(ArenaWishes.parse(Map.of("wishesPerWave", 51)).ok());
+        assertFalse(ArenaWishes.parse(Map.of("wishesPerWave", 2.5)).ok());
+        assertEquals("wishesPerWave must be from 1 to 50, not 0", ArenaWishes.parse(Map.of("wishesPerWave", 0)).problem());
+        assertThrows(IllegalArgumentException.class, () -> new ArenaWishes(3, 10, 0));
     }
 
     @Test
@@ -51,6 +60,7 @@ class ArenaWishesTest {
         Map<String, Object> m = ArenaWishes.DEFAULT.toParams();
         m.put("x", 1);   // Map.of would throw: the core cannot take one
         assertEquals(3, m.get("magicianWishes"));
+        assertEquals(5, m.get("wishesPerWave"));
     }
 
     @Test
@@ -64,7 +74,7 @@ class ArenaWishesTest {
         assertTrue(p.ok(), String.valueOf(p.errors()));
         WorldRule r = p.rules().first(ArenaWishesRule.KEY);
         assertNotNull(r, "the arena's rules carry arena_wishes");
-        assertEquals(new ArenaWishes(3, 10), ArenaWishesRule.wishesOf(p.rules()));
+        assertEquals(new ArenaWishes(3, 10, 5), ArenaWishesRule.wishesOf(p.rules()));
         assertTrue(text.contains("the arena and its prep room"), "the reach rule's words say where a wish lands");
     }
 

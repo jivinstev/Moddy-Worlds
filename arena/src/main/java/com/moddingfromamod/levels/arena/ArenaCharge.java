@@ -1,10 +1,12 @@
 package com.moddingfromamod.levels.arena;
 
 import com.moddingfromamod.wish.Wish;
+import com.moddingfromamod.wish.WishAsk;
 import com.moddingfromamod.wish.WishCharge;
 import com.moddingfromamod.wish.WishStatus;
 import com.moddingfromamod.world.WorldRulesService;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Supplier;
 import net.minecraft.network.chat.Component;
@@ -18,9 +20,12 @@ import org.slf4j.LoggerFactory;
  * in force in arena worlds only. It prices nothing; it carries out {@link ArenaWishPolicy} at the hooks the core asks:
  *
  * <ul>
- *   <li>{@link #refusesAtSubmit}: every wish that reaches the core's submit (typed words for the Magician, a kept thing
- *       fired again, a Builder make or Apprentice tile) is sorted by {@link ArenaWishPolicy#kindOf} and let through or
- *       refused, saying why itself.</li>
+ *   <li>{@link #refuses}: every wish asks as it starts (typed words for the Magician or the Apprentice's page, a kept
+ *       thing fired again, a Builder make or Apprentice tile); it is sorted by {@link #kindOf} and let through, or
+ *       refused with the one line the core then says. Asking changes nothing.</li>
+ *   <li>{@link #charge(WishAsk, UUID)}: a kept thing fired again in a battle really starts: it costs one of the wave's
+ *       hotbar wishes and starts its rest.</li>
+ *   <li>{@link #restLeft}: how long a hotbar wish still rests, so the slot's own sweep shows the arena's rest.</li>
  *   <li>{@link #atPickup}: a Magician wish is counted when the Magician picks it up (agent thread: the count is
  *       thread-safe, and the line is said on the server thread).</li>
  *   <li>{@link #onStatus} and {@link #refundUndone}: a counted wish that fails, is stopped, times out or is undone gives
@@ -73,50 +78,102 @@ final class ArenaCharge implements WishCharge {
 
     // ── submit ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
-    @Override
-    public boolean refusesAtSubmit(ServerPlayer player, boolean distress, String text, boolean recipe) {
-        ArenaWishPolicy.Kind kind = ArenaWishPolicy.kindOf(text, recipe);
-        ArenaWishPolicy.Phase now = phase;
-        long tick = server == null ? 0 : server.getTickCount();
-        ArenaWishPolicy.Decision d = policy.atSubmit(player.getUUID(), now, kind, text, distress, tick, wishes.get());
-        // a recipe's id or a Builder make's label is ours to log; typed words are the player's, and never logged here
-        LOG.info("Moddy Arena: wishes: {} {} {} in {}{}: {}", player.getScoreboardName(), kind,
-                kind == ArenaWishPolicy.Kind.TYPED ? "(typed words)" : quoted(text), now,
-                distress ? " (distress: never refused)" : "", d.allowed() ? "allowed" : "REFUSED " + d.refused());
-        if (d.allowed()) {
-            return false;
-        }
-        switch (d.refused()) {
-            case RESTING -> player.displayClientMessage(Component.literal(ArenaWords.resting(d.secondsLeft())), true);
-            case MAGICIAN_USED_UP -> player.sendSystemMessage(Component.literal(ArenaWords.magicianUsedUp(d.budget())));
-            case BATTLE_INSTANT_ONLY -> {
-                if (kind == ArenaWishPolicy.Kind.BUILDER) {
-                    sayLast(player, ArenaWords.battleInstantOnly());
-                } else {
-                    player.sendSystemMessage(Component.literal(ArenaWords.battleInstantOnly()));
-                }
-            }
-        }
-        return true;
+    /** Which kind of wish the arena takes this one for ({@link ArenaWishPolicy#kindOf(String, boolean)}). */
+    static ArenaWishPolicy.Kind kindOf(WishAsk ask) {
+        return ArenaWishPolicy.kindOf(ask.magic().name(), ask.namedRecipe());
+    }
+
+    /** The kept thing a wish makes again, for its rest: its recipe id, or its words when it carries none. */
+    static String thingOf(WishAsk ask) {
+        return ask.recipe().isEmpty() ? ask.text() : ask.recipe();
+    }
+
+    private long tick() {
+        return server == null ? 0 : server.getTickCount();
     }
 
     /**
-     * Said after whatever the core says next: a refused Builder make is answered by the core's Builder menus with
-     * their own fixed line, queued on the server thread, so the arena's words are queued behind it and read last.
+     * May this wish start? Every wish asks it as it starts, before anything runs or opens (typed words before the
+     * Apprentice's page, a make before it is built, a hotbar fire before the rate limiter). The answer is the one line
+     * the player then reads, said once by the core; nothing is changed here (the core may ask again, and a menu asks
+     * while it draws): a fire is written down in {@link #charge(WishAsk, UUID)}.
      */
-    private void sayLast(ServerPlayer player, String words) {
-        UUID who = player.getUUID();
-        Runnable say = () -> {
-            ServerPlayer p = server.getPlayerList().getPlayer(who);
-            if (p != null) {
-                p.sendSystemMessage(Component.literal(words));
-            }
-        };
-        if (server == null) {
-            player.sendSystemMessage(Component.literal(words));
-            return;
+    @Override
+    public Optional<String> refuses(WishAsk ask) {
+        ArenaWishPolicy.Kind kind = kindOf(ask);
+        ArenaWishPolicy.Phase now = phase;
+        ArenaWishes w = wishes.get();
+        ArenaWishPolicy.Decision d = policy.check(ask.player(), now, kind, thingOf(ask), ask.distress(), tick(), w);
+        if (d.allowed()) {
+            return Optional.empty();
         }
-        server.execute(() -> server.execute(say));
+        // a recipe's id or a Builder make's label is ours to log; typed words are the player's, and never logged here
+        LOG.info("Moddy Arena: wishes: {} {} {} in {}: REFUSED {}", nameOf(ask.player()), kind,
+                ask.namedRecipe() ? quoted(thingOf(ask)) : "(typed words)", now, d.refused());
+        return Optional.of(switch (d.refused()) {
+            case RESTING -> ArenaWords.resting(d.secondsLeft());
+            case OUT_OF_WISHES -> ArenaWords.outOfWishes(w.wishesPerWave());
+            case MAGICIAN_USED_UP -> ArenaWords.magicianUsedUp(d.budget());
+            case BATTLE_INSTANT_ONLY -> ArenaWords.battleInstantOnly();
+        });
+    }
+
+    /**
+     * A wish served with no model really starts (after the core's rate limiter): in a battle, a kept thing fired again
+     * costs one of this wave's hotbar wishes and starts its rest. Free otherwise.
+     */
+    @Override
+    public Paid charge(WishAsk ask, UUID wishId) {
+        ArenaWishPolicy.Kind kind = kindOf(ask);
+        ArenaWishPolicy.Phase now = phase;
+        ArenaWishes w = wishes.get();
+        int left = policy.fired(ask.player(), now, kind, thingOf(ask), ask.distress(), tick(), w);
+        if (now != ArenaWishPolicy.Phase.BATTLE || kind != ArenaWishPolicy.Kind.REPLAY || ask.distress()) {
+            return Paid.FREE;
+        }
+        if (left < 0) {
+            // two fires in one tick on the last wish: the second is refused here, where the first was counted
+            ArenaWishPolicy.Decision d = policy.check(ask.player(), now, kind, thingOf(ask), false, tick(), w);
+            String line = d.refused() == ArenaWishPolicy.Reason.RESTING ? ArenaWords.resting(d.secondsLeft())
+                    : ArenaWords.outOfWishes(w.wishesPerWave());
+            return new Paid(true, () -> line);
+        }
+        LOG.info("Moddy Arena: wishes: {} fired {} in the battle: {} of {} hotbar wishes left this wave; it rests {} s",
+                nameOf(ask.player()), quoted(thingOf(ask)), left, w.wishesPerWave(), w.cooldownSeconds());
+        return Paid.FREE;
+    }
+
+    /**
+     * How long a hotbar wish still rests, so the slot's own sweep shows the arena's rest: in a battle the ticks left of
+     * this player's rest of that thing (0 when it is ready); in prep, nothing to say (the core keeps its own second).
+     * A query: it changes nothing.
+     */
+    @Override
+    public int restLeft(WishAsk ask) {
+        if (phase != ArenaWishPolicy.Phase.BATTLE) {
+            return -1;
+        }
+        return (int) Math.min(Integer.MAX_VALUE, policy.restTicks(ask.player(), thingOf(ask), tick()));
+    }
+
+    /** This player's hotbar wishes left this wave. */
+    int firesLeft(UUID player) {
+        return policy.firesLeft(player, wishes.get());
+    }
+
+    /** The arena's wish tunables now. */
+    ArenaWishes wishes() {
+        return wishes.get();
+    }
+
+    /** A wave was cleared: every player's hotbar wishes start again for the next one. */
+    void newWave() {
+        policy.newWave();
+    }
+
+    private String nameOf(UUID id) {
+        ServerPlayer p = server == null || id == null ? null : server.getPlayerList().getPlayer(id);
+        return p == null ? String.valueOf(id) : p.getScoreboardName();
     }
 
     @Override
@@ -183,9 +240,10 @@ final class ArenaCharge implements WishCharge {
     public List<String> wishesCommand(UUID player) {
         ArenaWishes w = wishes.get();
         if (phase == ArenaWishPolicy.Phase.BATTLE) {
-            return ArenaWords.battleWishes(w.cooldownSeconds());
+            return ArenaWords.battleWishes(w.cooldownSeconds(), policy.firesLeft(player, w), w.wishesPerWave());
         }
-        return List.of(ArenaWords.magicianLeft(policy.left(player, w), w.magicianWishes()), ArenaWords.prepWishes());
+        return List.of(ArenaWords.magicianLeft(policy.left(player, w), w.magicianWishes()),
+                ArenaWords.prepWishes(w.wishesPerWave()));
     }
 
     @Override

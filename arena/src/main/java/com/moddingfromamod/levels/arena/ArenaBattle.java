@@ -85,8 +85,15 @@ final class ArenaBattle {
     private final List<UUID> waveMobs = new ArrayList<>();
     /** What fighters dropped when they were knocked out: moved to the prep room at the reset, never cleared. */
     private final Set<UUID> fightersDrops = new HashSet<>();
-    /** Told when a battle is over and the arena is ready again (the wishes' counts and cooldowns start again). */
-    private final Runnable onReady;
+    /**
+     * The arena's wish charge: told when a wave is cleared (the hotbar wishes start again) and when a battle is over
+     * (every count and rest starts again), and asked how many hotbar wishes each fighter has left; null in a test.
+     */
+    private final ArenaCharge wishes;
+    /** The fighters who pressed READY in this break. */
+    private final Set<UUID> ready = new HashSet<>();
+    /** Each player's own bar in a battle: his hotbar wishes left this wave. */
+    private final Map<UUID, ServerBossEvent> wishBars = new HashMap<>();
     /** The battle arena control panel: its buttons and its words. */
     private final ArenaBoard board;
     /** The Champions board on the prep room's back wall. */
@@ -99,11 +106,11 @@ final class ArenaBattle {
     private ArenaDifficulty battleDifficulty = ArenaDifficulty.DEFAULT;
     private long ticks;
 
-    ArenaBattle(MinecraftServer server, ArenaPlace place, ArenaState state, Runnable onReady) {
+    ArenaBattle(MinecraftServer server, ArenaPlace place, ArenaState state, ArenaCharge wishes) {
         this.server = server;
         this.place = place;
         this.state = state;
-        this.onReady = onReady == null ? () -> { } : onReady;
+        this.wishes = wishes;
         this.board = new ArenaBoard(server, place, state);
         this.champions = new ArenaChampionsBoard(server, place, state);
         if (state.battleOn()) {
@@ -119,6 +126,10 @@ final class ArenaBattle {
 
     void stop() {
         bar.removeAllPlayers();
+        for (ServerBossEvent b : wishBars.values()) {
+            b.removeAllPlayers();
+        }
+        wishBars.clear();
     }
 
     /** Why an empty server must keep ticking: a battle is on or being cleared away. */
@@ -156,6 +167,7 @@ final class ArenaBattle {
         boss = null;
         told.clear();
         waveMobs.clear();
+        ready.clear();
         LOG.info("Moddy Arena: battle: COUNTDOWN, started by {}: {} waves, the first in {} s (monsters {}, difficulty"
                 + " {}; the first wave {} mobs; boss waves {}; {} lives)", by, ArenaWords.wavesValue(waves.count()),
                 waves.countdownSeconds(), settings.size(), settings.difficulty().word(), waves.size(1),
@@ -199,12 +211,20 @@ final class ArenaBattle {
         }
         int mobsLeft = match.phase() == ArenaMatch.Phase.WAVE ? mobsLeft(level) : 0;
         watchBoss(level);
+        if (match.inBreak() && !ready.isEmpty() && ArenaMatch.allReady(fighters.keySet(), ready) && match.ready()) {
+            LOG.info("Moddy Arena: battle: every fighter still in is ready; the break ends in {} s",
+                    ArenaMatch.READY_TICKS / ArenaMatch.TICKS_PER_SECOND);
+            sayToPlace(ArenaWords.allReady(ArenaMatch.READY_TICKS / ArenaMatch.TICKS_PER_SECOND));
+        }
         ArenaMatch.Event ev = match.tick(mobsLeft, fightersIn);
         if (ev != null) {
             handle(level, ev);
         }
         if (ev != null || ticks % 10 == 0) {
             updateBar();
+        }
+        if (ev != null || ticks % 5 == 0) {
+            updateWishBars();
         }
         board.refresh(level, match, ArenaBattle::baseWaves, ev != null);
         ArenaWaves rules = baseWaves();
@@ -235,6 +255,10 @@ final class ArenaBattle {
                 presser = p;
             }
         }
+        if (match.inBreak()) {
+            readyPressed(level, presser, b);
+            return;
+        }
         String why = tryStart(presser == null ? "the start button" : presser.getScoreboardName());
         if (why != null) {
             if (presser != null) {
@@ -243,6 +267,69 @@ final class ArenaBattle {
                 sayToPlace(why);
             }
         }
+    }
+
+    /**
+     * In a break the start button reads READY: a fighter who presses it is ready, and once every fighter still in is,
+     * the break ends in 3 seconds (the tick sees it, so a fighter who leaves does not hold the others up).
+     */
+    private void readyPressed(ServerLevel level, ServerPlayer presser, int[] at) {
+        if (presser == null) {
+            return;
+        }
+        if (!fighters.containsKey(presser.getUUID())) {
+            presser.displayClientMessage(Component.literal(ArenaWords.readyNotFighting()), true);
+            return;
+        }
+        boolean first = ready.add(presser.getUUID());
+        level.playSound(null, at[0] + 0.5, at[1] + 0.5, at[2] + 0.5, SoundEvents.NOTE_BLOCK_CHIME.value(),
+                SoundSource.BLOCKS, 0.8f, 1.2f);
+        int notYet = 0;
+        for (UUID id : fighters.keySet()) {
+            notYet += ready.contains(id) ? 0 : 1;
+        }
+        if (first) {
+            LOG.info("Moddy Arena: battle: {} is ready ({} fighters not yet)", presser.getScoreboardName(), notYet);
+        }
+        if (notYet > 0) {
+            presser.displayClientMessage(Component.literal(ArenaWords.readyWaiting(notYet)), true);
+        }
+    }
+
+    /**
+     * Between two waves the arena mends itself: every block of it is put back as built (a wish that tore it up, or
+     * built in it, does not spoil the next wave), a panel button knocked off goes back, and the loose things a fight
+     * leaves flying are tidied ({@link #tidyBetweenWaves}). How many blocks were set.
+     */
+    private int mend(ServerLevel level) {
+        long t0 = System.nanoTime();
+        int blocks = ArenaBuilder.reset(level, place) + Math.max(0, ArenaBuilder.addControl(level, place));
+        int loose = tidyBetweenWaves(level);
+        LOG.info("Moddy Arena: battle: the arena is mended for the next wave ({} blocks set, {} loose things removed)"
+                + " in {} ms", blocks, loose, (System.nanoTime() - t0) / 1_000_000);
+        return blocks;
+    }
+
+    /**
+     * What a break tidies in the arena: the end-of-battle rule ({@link #clearArena}) for the things a fight leaves
+     * flying or falling (arrows and other thrown things, lit TNT, falling blocks, lingering clouds, evoker fangs), but
+     * not what the end of the battle waits for: living creatures (the players' own wished creatures and pets fight on
+     * with them), the displays a wished creature is drawn with, and dropped things and experience (a fighter may pick
+     * them up in the break; the battle's end tidies them).
+     */
+    private int tidyBetweenWaves(ServerLevel level) {
+        ArenaPlace.Box r = place.resetBox(level.getMaxY());
+        AABB arena = new AABB(r.x0(), r.y0() - 1, r.z0(), r.x1() + 1, r.y1() + 1, r.z1() + 1);
+        return discard(level, arena, ArenaBattle::looseThing);
+    }
+
+    /** A thing a fight leaves flying or falling, tidied between waves. */
+    static boolean looseThing(Entity e) {
+        return e instanceof net.minecraft.world.entity.projectile.Projectile
+                || e instanceof net.minecraft.world.entity.item.PrimedTnt
+                || e instanceof net.minecraft.world.entity.item.FallingBlockEntity
+                || e instanceof net.minecraft.world.entity.AreaEffectCloud
+                || e instanceof net.minecraft.world.entity.projectile.EvokerFangs;
     }
 
     private void handle(ServerLevel level, ArenaMatch.Event ev) {
@@ -254,6 +341,7 @@ final class ArenaBattle {
                 }
             }
             case WAVE_START -> {
+                ready.clear();
                 if (ev.wave() == 1) {
                     fighters.clear();
                     int lives = match.table().lives();
@@ -287,8 +375,17 @@ final class ArenaBattle {
                 }
             }
             case WAVE_CLEARED -> {
-                LOG.info("Moddy Arena: battle: wave {} cleared; BREATHER of {} s", ev.wave(), ev.seconds());
+                LOG.info("Moddy Arena: battle: wave {} cleared; BREATHER of {} s; the hotbar wishes start again",
+                        ev.wave(), ev.seconds());
                 sayToPlace(ArenaWords.cleared(ev.wave(), ev.seconds()));
+                ready.clear();
+                if (mend(level) > 0) {
+                    sayToPlace(ArenaWords.mended());
+                }
+                if (wishes != null) {
+                    wishes.newWave();
+                    sayToPlace(ArenaWords.wishesBack(wishes.wishes().wishesPerWave()));
+                }
             }
             case WON -> {
                 LOG.info("Moddy Arena: battle: WON, all {} waves cleared", of);
@@ -322,7 +419,9 @@ final class ArenaBattle {
                 LOG.info("Moddy Arena: battle: IDLE, the arena is ready for the next battle");
                 sayToPlace(ArenaWords.ready());
                 told.clear();
-                onReady.run();
+                if (wishes != null) {
+                    wishes.battleEnded();
+                }
             }
         }
     }
@@ -713,6 +812,47 @@ final class ArenaBattle {
         }
         for (ServerPlayer p : want) {
             bar.addPlayer(p);
+        }
+    }
+
+    /**
+     * Each fighter's own bar while the fighting is on (the countdown, the waves and the breathers): his hotbar wishes
+     * left this wave, emptying as he fires them. Gone once the fighting is over. A boss bar is what a stock client
+     * draws at the top of the screen, always in sight, under the wave's own bar.
+     */
+    private void updateWishBars() {
+        Set<UUID> want = new HashSet<>();
+        if (wishes != null && match.fighting()) {
+            int perWave = wishes.wishes().wishesPerWave();
+            for (ServerPlayer p : audience()) {
+                boolean fighter = match.phase() == ArenaMatch.Phase.COUNTDOWN ? place.keeps(p.getX(), p.getY(), p.getZ())
+                        : fighters.containsKey(p.getUUID());
+                if (!fighter) {
+                    continue;
+                }
+                want.add(p.getUUID());
+                int left = wishes.firesLeft(p.getUUID());
+                ServerBossEvent b = wishBars.computeIfAbsent(p.getUUID(), id -> new ServerBossEvent(
+                        Component.literal(""), BossEvent.BossBarColor.GREEN, BossEvent.BossBarOverlay.PROGRESS));
+                String name = ArenaWords.barWishes(left, perWave);
+                if (!name.equals(b.getName().getString())) {
+                    b.setName(Component.literal(name));
+                }
+                b.setColor(left > 0 ? BossEvent.BossBarColor.GREEN : BossEvent.BossBarColor.WHITE);
+                b.setProgress(Math.max(0f, Math.min(1f, (float) left / perWave)));
+                if (!b.getPlayers().contains(p)) {
+                    b.removeAllPlayers();   // his body before a knock-out, if any: one bar, on the body he has now
+                    b.addPlayer(p);
+                }
+            }
+        }
+        var it = wishBars.entrySet().iterator();
+        while (it.hasNext()) {
+            var e = it.next();
+            if (!want.contains(e.getKey())) {
+                e.getValue().removeAllPlayers();
+                it.remove();
+            }
         }
     }
 

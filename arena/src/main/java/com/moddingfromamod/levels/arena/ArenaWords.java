@@ -90,8 +90,30 @@ public final class ArenaWords {
         return "You beat " + boss + "!";
     }
 
+    /** Chat, when a wave is cleared: the break, and what it is for. */
     public static String cleared(int wave, int breather) {
-        return "Wave " + wave + " cleared! The next wave comes in " + seconds(breather) + ".";
+        return "Wave " + wave + " cleared! Break time: the next wave comes in " + seconds(breather) + ". Change your"
+                + " hotbar in the prep room, or press READY on the board.";
+    }
+
+    /** Chat, when the arena was mended in the break. */
+    public static String mended() {
+        return "The arena is mended for the next wave.";
+    }
+
+    /** The action bar, to a fighter who pressed READY while others are not yet. */
+    public static String readyWaiting(int notYet) {
+        return "You are ready! Waiting for " + (notYet == 1 ? "1 more fighter." : notYet + " more fighters.");
+    }
+
+    /** The action bar, to a player who presses READY but is not fighting in this battle. */
+    public static String readyNotFighting() {
+        return "You are not in this battle. The fighters press READY.";
+    }
+
+    /** Chat, to everyone in the place, when every fighter is ready. */
+    public static String allReady(int seconds) {
+        return "Everyone is ready! The next wave comes in " + seconds(seconds) + ".";
     }
 
     /** A fighter knocked out with lives left (action bar and chat). */
@@ -185,6 +207,31 @@ public final class ArenaWords {
         return "That wish is resting. It is ready again in " + seconds(seconds) + ".";
     }
 
+    static String hotbarWishes(int n) {
+        return n == 1 ? "1 hotbar wish" : n + " hotbar wishes";
+    }
+
+    /** A hotbar wish fired in a battle with this wave's wishes used up (chat, once per try). */
+    public static String outOfWishes(int perWave) {
+        return "You have used your " + hotbarWishes(perWave) + " for this wave. You get " + perWave
+                + " more when the next wave comes.";
+    }
+
+    /** The bar each fighter sees in a battle: his hotbar wishes left this wave. */
+    public static String barWishes(int left, int perWave) {
+        return "Your wishes this wave: " + left + " of " + perWave;
+    }
+
+    /** Chat, when a wave is cleared: the hotbar wishes start again. */
+    public static String wishesBack(int perWave) {
+        return "Your " + hotbarWishes(perWave) + " for the next wave are ready.";
+    }
+
+    /** Under the start button: how many hotbar wishes a wave allows. */
+    public static String wishesMeans(int perWave) {
+        return "Hotbar wishes: " + perWave + " a wave";
+    }
+
     /** A typed wish refused in prep: this prep's Magician wishes are used up (chat). */
     public static String magicianUsedUp(int budget) {
         if (budget <= 0) {
@@ -216,15 +263,16 @@ public final class ArenaWords {
     }
 
     /** {@code /moddy wishes} in prep, after how many Magician wishes are left. */
-    public static String prepWishes() {
+    public static String prepWishes(int perWave) {
         return "Builder and Apprentice wishes are free. A wish with Add to hotbar on its page in My wishes can be fired"
-                + " in a battle.";
+                + " in a battle, " + perWave + " each wave.";
     }
 
-    /** {@code /moddy wishes} during a battle. */
-    public static List<String> battleWishes(int cooldownSeconds) {
-        return List.of("A battle is on: fire your wishes from your hotbar. Each one rests " + seconds(cooldownSeconds)
-                + " after you use it.", "New wishes are made in the prep room before a battle.");
+    /** {@code /moddy wishes} during a battle: how many hotbar wishes he has left this wave. */
+    public static List<String> battleWishes(int cooldownSeconds, int left, int perWave) {
+        return List.of("A battle is on: fire your wishes from your hotbar. You have " + left + " of " + perWave
+                + " left this wave. Each one rests " + seconds(cooldownSeconds) + " after you use it.",
+                "New wishes are made in the prep room before a battle.");
     }
 
     /** What the watch's and the wish box's titles add in prep. */
@@ -244,6 +292,8 @@ public final class ArenaWords {
     public static final String PANEL_WAVES = "WAVES";
     public static final String PANEL_DIFFICULTY = "DIFFICULTY";
     public static final String PANEL_START = "START BATTLE";
+    /** The start button's label in a break between waves: pressing it says you are ready. */
+    public static final String PANEL_READY = "READY";
     public static final String ENDLESS = "Endless";
 
     static String monsters(int n) {
@@ -259,6 +309,11 @@ public final class ArenaWords {
      * What the settings mean, under the start button: the first wave's monsters, and the boss waves (two lines).
      */
     public static List<String> sizeMeans(ArenaRun run) {
+        return sizeMeans(run, 0);
+    }
+
+    /** The same, and a third line with the hotbar wishes a wave allows ({@code perWave} above 0). */
+    public static List<String> sizeMeans(ArenaRun run, int perWave) {
         if (run == null) {
             return List.of("No waves in the rules");
         }
@@ -276,7 +331,7 @@ public final class ArenaWords {
             }
             boss = b.toString();
         }
-        return List.of(first, boss);
+        return perWave > 0 ? List.of(first, boss, wishesMeans(perWave)) : List.of(first, boss);
     }
 
     /** The battle's state, under the start button: what the board shows now. */
@@ -286,6 +341,14 @@ public final class ArenaWords {
 
     /** The same; {@code boss}: the wave fought now (or the next one, in a breather) is a boss wave. */
     public static String panelState(ArenaMatch.Phase phase, int wave, int of, boolean boss) {
+        return panelState(phase, wave, of, boss, -1);
+    }
+
+    /** The same, with the seconds left of a break ({@code secondsLeft} 0 or more): its timer on the board. */
+    public static String panelState(ArenaMatch.Phase phase, int wave, int of, boolean boss, int secondsLeft) {
+        if (phase == ArenaMatch.Phase.BREATHER && secondsLeft >= 0) {
+            return "Break: " + (boss ? "BOSS " : "") + "wave " + (wave + 1) + " in " + secondsLeft + "s";
+        }
         return switch (phase) {
             case IDLE -> "Ready! Press START.";
             case COUNTDOWN -> "Battle on: wave 1 next";
@@ -301,6 +364,23 @@ public final class ArenaWords {
     /** The lines of words one place on the board shows, for these settings, waves and battle. */
     public static List<String> panel(ArenaPanel.Words w, ArenaSettings settings, ArenaRun run,
                                      ArenaMatch.Phase phase, int wave, int of, boolean boss, String best) {
+        return panel(w, settings, run, phase, wave, of, boss, best, 0);
+    }
+
+    /** The same, with the hotbar wishes a wave allows under the start button ({@code perWave} above 0). */
+    public static List<String> panel(ArenaPanel.Words w, ArenaSettings settings, ArenaRun run,
+                                     ArenaMatch.Phase phase, int wave, int of, boolean boss, String best,
+                                     int perWave) {
+        return panel(w, settings, run, phase, wave, of, boss, best, perWave, -1);
+    }
+
+    /**
+     * The same, with the seconds left of a break ({@code secondsLeft} 0 or more): in a break the start button reads
+     * READY and the state line is the break's timer.
+     */
+    public static List<String> panel(ArenaPanel.Words w, ArenaSettings settings, ArenaRun run,
+                                     ArenaMatch.Phase phase, int wave, int of, boolean boss, String best,
+                                     int perWave, int secondsLeft) {
         return switch (w) {
             case TITLE -> List.of(PANEL_TITLE);
             case SIZE_LABEL -> List.of(PANEL_SIZE);
@@ -311,9 +391,9 @@ public final class ArenaWords {
             case DIFFICULTY_VALUE -> List.of(settings.difficulty().word());
             case WAVES_LABEL -> List.of(PANEL_WAVES);
             case WAVES_VALUE -> List.of(wavesValue(settings.waves()));
-            case SIZE_MEANS -> sizeMeans(run);
-            case START_LABEL -> List.of(PANEL_START);
-            case STATE -> List.of(panelState(phase, wave, of, boss));
+            case SIZE_MEANS -> sizeMeans(run, perWave);
+            case START_LABEL -> List.of(phase == ArenaMatch.Phase.BREATHER ? PANEL_READY : PANEL_START);
+            case STATE -> List.of(panelState(phase, wave, of, boss, secondsLeft));
             case BEST -> List.of(best == null || best.isBlank() ? "Press a button to see your best" : best);
         };
     }
@@ -415,15 +495,17 @@ public final class ArenaWords {
                 barNext(9, 0, 3), barNextBoss(5, 5, 3), barBoss("Rumble the Ravager", 5, 10), barWon(), barLost(),
                 started(5, 5, 3), started(1, 3, 1), started(0, 5, 3), comingIn(1, 3), waveTitle(2, 5),
                 waveTitle(30, 0), waveSubtitle(), bossTitle(), bossSubtitle("King Husk"), bossChat("King Husk", 20),
-                bossBeaten("Captain Chop"), cleared(2, 10), knockedOut(2), knockedOut(1), outOfLives(),
+                bossBeaten("Captain Chop"), cleared(2, 10), mended(), readyWaiting(1), readyWaiting(2),
+                allReady(3), readyNotFighting(), knockedOut(2), knockedOut(1), outOfLives(),
                 livesLeft(3), livesLeft(1), wonTitle(), wonSubtitle(5), wonSubtitle(1), wonChat(5), wonChat(1),
                 lostTitle(), lostSubtitle(ArenaMatch.Why.TIME_UP), lostSubtitle(ArenaMatch.Why.NOBODY_LEFT),
                 lostChat(ArenaMatch.Why.TIME_UP, 3), lostChat(ArenaMatch.Why.NOBODY_LEFT, 2),
                 recorded("Won all 5", "3:12", 1), recorded("Wave 3", "1:10", 0), ready(), busy(),
                 noWaves(), peaceful(), nobody(), notAnArena(), battleInstantOnly(), resting(7),
-                resting(1), magicianUsedUp(3), magicianUsedUp(1), magicianUsedUp(0), magicianLeft(2, 3),
-                magicianCounted(0, 3), magicianGivenBack(1, 3), magicianUndone(3, 3), prepWishes(),
-                String.join(" ", battleWishes(10)), titlePrep(2), titlePrep(1), titleBattle(), PANEL_TITLE, PANEL_SIZE,
+                resting(1), outOfWishes(5), outOfWishes(1), barWishes(3, 5), barWishes(0, 1), wishesBack(5),
+                wishesBack(1), wishesMeans(5), magicianUsedUp(3), magicianUsedUp(1), magicianUsedUp(0), magicianLeft(2, 3),
+                magicianCounted(0, 3), magicianGivenBack(1, 3), magicianUndone(3, 3), prepWishes(5),
+                String.join(" ", battleWishes(10, 4, 5)), titlePrep(2), titlePrep(1), titleBattle(), PANEL_TITLE, PANEL_SIZE,
                 PANEL_WAVES, PANEL_DIFFICULTY, PANEL_START, panelBusy(), sizeFixed(5), sizeAtEnd(true, 10),
                 sizeAtEnd(true, 7), sizeAtEnd(false, 10), difficultyAtEnd(true, ArenaDifficulty.EXTREME),
                 difficultyAtEnd(true, ArenaDifficulty.HARD), difficultyAtEnd(false, ArenaDifficulty.EXTREME),
@@ -443,7 +525,7 @@ public final class ArenaWords {
             for (int n : ArenaSettings.Limits.NONE.waveOptions()) {
                 ArenaRun at = new ArenaSettings(s, ArenaDifficulty.NORMAL, n).run(waves);
                 out.add(sizeChanged(s, at));
-                out.addAll(sizeMeans(at));
+                out.addAll(sizeMeans(at, ArenaWishes.DEFAULT_PER_WAVE));
                 out.add(wavesChanged(n));
                 out.add(wavesValue(n));
                 for (ArenaDifficulty d : ArenaDifficulty.values()) {
@@ -456,6 +538,8 @@ public final class ArenaWords {
             out.add(panelState(p, 2, 5));
             out.add(panelState(p, 5, 5, true));
             out.add(panelState(p, 25, 0, true));
+            out.add(panelState(p, 4, 10, true, 45));
+            out.add(panelState(p, 24, 0, false, 15));
         }
         return out;
     }

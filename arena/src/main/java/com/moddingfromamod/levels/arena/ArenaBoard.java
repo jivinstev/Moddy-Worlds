@@ -199,7 +199,8 @@ final class ArenaBoard {
         ticks++;
         int of = match.of();
         boolean boss = boss(match);
-        String stateWords = ArenaWords.panelState(match.phase(), match.wave(), of, boss);
+        int breakLeft = match.inBreak() ? match.secondsLeft() : -1;   // a break's timer, on the board
+        String stateWords = ArenaWords.panelState(match.phase(), match.wave(), of, boss, breakLeft);
         if (!stateWords.equals(lastState)) {
             changed = true;
         }
@@ -215,10 +216,12 @@ final class ArenaBoard {
         String[] who = bestFor(level);
         String best = who == null ? null : ArenaChampions.bestLine(who[1], ArenaChampions.bestOf(state.champions(),
                 who[0], ArenaChampions.Key.of(settings)));
+        int perWave = ArenaWishesRule.wishesOf(com.moddingfromamod.world.WorldRulesService.current()).wishesPerWave();
         Map<Words, String> want = new EnumMap<>(Words.class);
         for (Slot s : panel.slots()) {
             want.put(s.words(), String.join("\n",
-                    ArenaWords.panel(s.words(), settings, run, match.phase(), match.wave(), of, boss, best)));
+                    ArenaWords.panel(s.words(), settings, run, match.phase(), match.wave(), of, boss, best, perWave,
+                            breakLeft)));
         }
         keep(level, want);
         lastState = stateWords;

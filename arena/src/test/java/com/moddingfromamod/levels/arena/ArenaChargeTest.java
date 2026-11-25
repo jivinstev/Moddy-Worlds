@@ -6,10 +6,12 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.moddingfromamod.wish.Wish;
+import com.moddingfromamod.wish.WishAsk;
 import com.moddingfromamod.wish.WishCharge;
 import com.moddingfromamod.wish.WishSource;
 import com.moddingfromamod.wish.WishStatus;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -17,7 +19,8 @@ import org.junit.jupiter.api.Test;
  * The arena's charge through the core's own {@link WishCharge} methods, with stand-in wishes of the Magician kind (a
  * typed wish, as the core hands it to {@code atPickup} when the Magician picks it up). No model is called and no real
  * Magician wish is made: this drives the hooks the core calls, in the order it calls them, with the core's own
- * {@link Wish} records. {@code refusesAtSubmit} takes a real player, so it is proven in the playtests.
+ * {@link Wish} records, and the core's own {@link WishAsk} at {@code refuses}, {@code charge} and {@code restLeft}, as the
+ * core builds it for each kind of wish (the playtests prove the core really asks so).
  */
 class ArenaChargeTest {
 
@@ -127,12 +130,90 @@ class ArenaChargeTest {
         c.atPickup(typed());
         assertEquals(List.of("Magician wishes left before the next battle: 2 of 3.",
                 "Builder and Apprentice wishes are free. A wish with Add to hotbar on its page in My wishes can be fired"
-                        + " in a battle."), c.wishesCommand(HIM));
+                        + " in a battle, 5 each wave."), c.wishesCommand(HIM));
         assertEquals("Moddy - 2 Magician wishes left", c.panelTitle("Moddy", HIM));
         assertEquals("Wish - 3 Magician wishes left", c.composeTitle("Wish", UUID.randomUUID()));
         c.phase(ArenaWishPolicy.Phase.BATTLE);
-        assertEquals(List.of("A battle is on: fire your wishes from your hotbar. Each one rests 10 seconds after you"
-                + " use it.", "New wishes are made in the prep room before a battle."), c.wishesCommand(HIM));
+        assertEquals(List.of("A battle is on: fire your wishes from your hotbar. You have 5 of 5 left this wave. Each one"
+                + " rests 10 seconds after you use it.", "New wishes are made in the prep room before a battle."),
+                c.wishesCommand(HIM));
         assertEquals("Moddy - Battle: use your hotbar", c.panelTitle("Moddy", HIM));
+    }
+
+    // ── the core's WishAsk hooks ────────────────────────────────────────────────────────────────────────────────────
+
+    /** A hotbar fire (or its landing in his inventory), as the core asks about it. */
+    private static WishAsk fire(String recipe) {
+        return WishAsk.replay(HIM, recipe).withText(recipe);
+    }
+
+    private static WishAsk make() {
+        return WishAsk.of(HIM, WishSource.BUILDER, WishAsk.Magic.BUILDER).withText("Builder: Cozy House (building)");
+    }
+
+    private static WishAsk apprenticePage() {
+        return WishAsk.of(HIM, WishSource.TYPED, WishAsk.Magic.APPRENTICE).withText("a fire sword");
+    }
+
+    private static WishAsk magician() {
+        return WishAsk.of(HIM, WishSource.TYPED, WishAsk.Magic.MAGICIAN).withText("a dragon that breathes ice");
+    }
+
+    @Test
+    void inPrepEveryNoModelWishIsFreeAndTheRestIsTheCores() {
+        ArenaCharge c = charge(ArenaWishes.DEFAULT);
+        for (WishAsk a : List.of(fire("apprentice_fire_sword"), make(), apprenticePage(), magician())) {
+            assertEquals(Optional.empty(), c.refuses(a), String.valueOf(a));
+            assertFalse(c.charge(a, UUID.randomUUID()).refused());
+        }
+        assertEquals(-1, c.restLeft(fire("apprentice_fire_sword")), "in prep the core keeps its own second");
+        assertEquals(5, c.firesLeft(HIM), "prep fires cost nothing");
+    }
+
+    @Test
+    void inABattleOneLineInTheArenasWordsRefusesANewWishBeforeAnythingOpens() {
+        ArenaCharge c = charge(ArenaWishes.DEFAULT);
+        c.phase(ArenaWishPolicy.Phase.BATTLE);
+        for (WishAsk a : List.of(make(), apprenticePage(), magician(),
+                WishAsk.of(HIM, WishSource.TYPED, WishAsk.Magic.REPLAY).withRecipe("apprentice_cozy_house"))) {
+            assertEquals(Optional.of(ArenaWords.battleInstantOnly()), c.refuses(a), String.valueOf(a));
+        }
+        assertEquals(Optional.empty(), c.refuses(apprenticePage().withDistress(true)),
+                "a child in distress is never refused");
+    }
+
+    @Test
+    void aFireInABattleCostsOneRestsAndTheSweepShowsTheArenasRest() {
+        ArenaCharge c = charge(new ArenaWishes(3, 10, 2));
+        c.phase(ArenaWishPolicy.Phase.BATTLE);
+        WishAsk sword = fire("apprentice_fire_sword");
+        assertEquals(0, c.restLeft(sword), "ready before its first fire");
+        for (int i = 0; i < 3; i++) {
+            assertEquals(Optional.empty(), c.refuses(sword), "asking changes nothing");
+        }
+        assertEquals(2, c.firesLeft(HIM));
+        assertFalse(c.charge(sword, UUID.randomUUID()).refused());
+        assertEquals(1, c.firesLeft(HIM));
+        assertEquals(200, c.restLeft(sword), "the sweep lasts the arena's 10 seconds (no server: the tick stands)");
+        assertEquals(Optional.of(ArenaWords.resting(10)), c.refuses(sword));
+        assertEquals(200, c.restLeft(sword), "a refused fire never restarts the rest");
+
+        WishAsk house = fire("builder:cozy_house_1");
+        assertEquals(0, c.restLeft(house), "another wish has its own rest");
+        assertFalse(c.charge(house, UUID.randomUUID()).refused());
+        assertEquals(0, c.firesLeft(HIM));
+        WishAsk cat = fire("apprentice_cat");
+        assertEquals(Optional.of(ArenaWords.outOfWishes(2)), c.refuses(cat));
+        assertEquals("You have used your 2 hotbar wishes for this wave. You get 2 more when the next wave comes.",
+                c.refuses(cat).orElseThrow());
+        assertEquals(0, c.restLeft(cat), "refused for its count, not its rest: the sweep is cleared");
+        assertTrue(c.charge(cat, UUID.randomUUID()).refused(), "two fires at once on the last wish: the second waits");
+
+        c.newWave();
+        assertEquals(2, c.firesLeft(HIM), "the next wave");
+        assertEquals(Optional.empty(), c.refuses(cat));
+        c.battleEnded();
+        c.phase(ArenaWishPolicy.Phase.PREP);
+        assertEquals(-1, c.restLeft(sword));
     }
 }
