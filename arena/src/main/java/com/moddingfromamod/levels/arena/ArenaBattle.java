@@ -106,7 +106,9 @@ final class ArenaBattle {
     private ArenaDifficulty battleDifficulty = ArenaDifficulty.DEFAULT;
     /** The wished creatures' battle roles, during a wave ({@link ArenaRoles}). */
     private final ArenaRoleKeeper roles;
-    /** Fighters back on their feet outside the arena during a wave: the ticks until each is moved in. */
+    /** Fighters knocked out with lives left in this wave, to be moved back in when they are on their feet. */
+    private final Set<UUID> knockedOut = new HashSet<>();
+    /** Of those, the ones back on their feet outside the arena: the ticks until each is moved in. */
     private final Map<UUID, Integer> backIn = new HashMap<>();
     /** Whether the gateway was last set shut (null: not set yet in this run of the server). */
     private Boolean gateSetShut;
@@ -176,6 +178,8 @@ final class ArenaBattle {
         reached.clear();
         fighterNames.clear();
         tellLives.clear();
+        knockedOut.clear();
+        backIn.clear();
         boss = null;
         told.clear();
         waveMobs.clear();
@@ -485,6 +489,9 @@ final class ArenaBattle {
                     LOG.info("Moddy Arena: battle: {} was knocked out; {} lives left", p.getScoreboardName(), f[1]);
                     p.sendSystemMessage(Component.literal(ArenaWords.knockedOut(f[1])));
                     tellLives.add(p.getUUID());
+                    if (match.phase() == ArenaMatch.Phase.WAVE) {
+                        knockedOut.add(p.getUUID());
+                    }
                 } else {
                     out = "was knocked out of his last life";
                     p.sendSystemMessage(Component.literal(ArenaWords.outOfLives()));
@@ -570,6 +577,7 @@ final class ArenaBattle {
     /** When a wave starts: every fighter on his feet who is not inside the arena is moved in, and told. */
     private void moveFightersIn(ServerLevel level) {
         backIn.clear();
+        knockedOut.clear();
         for (UUID id : fighters.keySet()) {
             ServerPlayer p = server.getPlayerList().getPlayer(id);
             if (p != null && onFeet(p) && !ArenaGate.inArena(place, p.getX(), p.getY(), p.getZ())) {
@@ -579,44 +587,58 @@ final class ArenaBattle {
     }
 
     /**
-     * During a wave, a fighter back on his feet outside the arena (knocked out with lives left, so in the prep room)
-     * counts {@value ArenaGate#BACK_IN_SECONDS} seconds on his action bar, with his lives, and is then moved in.
+     * During a wave, a fighter knocked out with lives left who is back on his feet outside the arena (in the prep room,
+     * where he comes back) counts {@value ArenaGate#BACK_IN_SECONDS} seconds on his action bar, with his lives, and is
+     * then moved in. Once the wave is over (or he went in himself) nothing more happens: in a break he walks in, and the
+     * next wave takes him in.
      */
     private void backInTheArena(ServerLevel level) {
-        boolean waveOn = match.phase() == ArenaMatch.Phase.WAVE;
-        if (!waveOn && backIn.isEmpty()) {
+        if (knockedOut.isEmpty()) {
             return;
         }
-        backIn.keySet().removeIf(id -> !fighters.containsKey(id));
-        for (Map.Entry<UUID, int[]> e : fighters.entrySet()) {
-            ServerPlayer p = server.getPlayerList().getPlayer(e.getKey());
-            if (p == null) {
+        boolean waveOn = match.phase() == ArenaMatch.Phase.WAVE;
+        var it = knockedOut.iterator();
+        while (it.hasNext()) {
+            UUID id = it.next();
+            ServerPlayer p = server.getPlayerList().getPlayer(id);
+            int[] f = fighters.get(id);
+            if (p == null || f == null || !waveOn) {
+                backIn.remove(id);
+                it.remove();
                 continue;
             }
-            Integer left = backIn.get(e.getKey());
-            ArenaGate.Act act = ArenaGate.act(waveOn, false, onFeet(p),
-                    ArenaGate.inArena(place, p.getX(), p.getY(), p.getZ()), left == null ? -1 : left);
-            switch (act) {
+            boolean inArena = ArenaGate.inArena(place, p.getX(), p.getY(), p.getZ());
+            Integer left = backIn.get(id);
+            switch (ArenaGate.act(true, false, onFeet(p), inArena, left == null ? -1 : left)) {
                 case START_COUNT -> {
-                    backIn.put(e.getKey(), ArenaGate.BACK_IN_TICKS);
-                    tellLives.remove(e.getKey());
-                    p.displayClientMessage(Component.literal(ArenaWords.backInCount(e.getValue()[1],
+                    backIn.put(id, ArenaGate.BACK_IN_TICKS);
+                    tellLives.remove(id);
+                    p.displayClientMessage(Component.literal(ArenaWords.backInCount(f[1],
                             ArenaGate.BACK_IN_SECONDS)), true);
                 }
                 case COUNT -> {
                     int now = left - 1;
-                    backIn.put(e.getKey(), now);
+                    backIn.put(id, now);
                     if (now > 0 && now % ArenaMatch.TICKS_PER_SECOND == 0) {
-                        p.displayClientMessage(Component.literal(ArenaWords.backInCount(e.getValue()[1],
+                        p.displayClientMessage(Component.literal(ArenaWords.backInCount(f[1],
                                 ArenaGate.secondsLeft(now))), true);
                     }
                 }
                 case MOVE -> {
-                    backIn.remove(e.getKey());
+                    backIn.remove(id);
+                    it.remove();
                     moveIn(level, p, ArenaWords.backIn());
                 }
-                case STOP_COUNT -> backIn.remove(e.getKey());
+                case STOP_COUNT -> {
+                    backIn.remove(id);
+                    if (inArena && onFeet(p)) {
+                        it.remove();            // he went in by himself
+                    }
+                }
                 case NONE -> {
+                    if (inArena && onFeet(p)) {
+                        it.remove();            // on his feet in the arena: nothing to do (a knock-out is a body there)
+                    }
                 }
             }
         }

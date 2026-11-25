@@ -1,0 +1,77 @@
+# Moddy Arena: nobody falls out. The place stands on its base: under the whole of it and round it, a layer of stone on
+# bedrock, with grass round the floors. A hole torn in the arena's floor (by command, as a wish could) and a real TNT
+# blast leave him standing on the bedrock two blocks down, unhurt, never falling further. A hole under the prep room's
+# spawn is put back within a second, and a respawn lands on it. Teleported far below the arena (as if he had fallen
+# through), he is put back in the prep room, unharmed, with one line. The picture: the place from outside, on its base.
+# These worlds are the playtest carrier's flat world with the arena switched on by properties, so the place stands on
+# its base high over the flat ground; a world made with the World Type is grassland level with the floors.
+# play-timeout: 600
+@intent the arena and the prep room stand on a bedrock base: a blast drops him onto it and no further, the spawn's floor comes back, and a player who falls out under the place is put back in the prep room
+@world flat seed=1
+
+@step arrive: the base under the place
+@expect chat Welcome to Moddy Arena within 90s
+@wait 2s
+difficulty hard
+difficulty normal
+gamemode survival
+effect give @s minecraft:saturation 600 0 true
+scoreboard objectives add hp health
+# under the arena's floor: stone, then bedrock; under the prep room's floor too; and round the place, grass on it
+@assert execute if block 0 63 0 minecraft:smooth_sandstone
+@assert execute if block 0 62 0 minecraft:stone
+@assert execute if block 0 61 0 minecraft:bedrock
+@assert execute if block 0 62 21 minecraft:stone
+@assert execute if block 0 61 21 minecraft:bedrock
+@assert execute if block -18 63 0 minecraft:grass_block
+@assert execute if block -18 61 0 minecraft:bedrock
+@assert execute if block 18 61 28 minecraft:bedrock
+@assert execute if block 0 60 0 minecraft:air
+
+@step a hole torn in the arena's floor: he lands on the bedrock, two blocks down, unhurt
+teleport @s 5.5 64 0.5 180 0
+@wait 1s
+fill 4 62 -1 6 63 1 minecraft:air
+@wait 2s
+@assert execute if entity @s[x=4,y=61.9,z=-1,dx=3,dy=0.5,dz=3]
+@assert execute if score @s hp matches 20
+@aim look 180 60
+@wait 5t
+@shot standing-on-the-bedrock
+
+@step a real TNT blast in the arena breaks the floor and not the bedrock
+effect give @s minecraft:resistance 30 4 true
+teleport @s 0.5 64 -8.5 0 0
+summon minecraft:tnt 0.5 64 6.5 {fuse:10}
+@wait 3s
+@assert execute unless block 0 63 6 minecraft:smooth_sandstone
+@assert execute if block 0 61 6 minecraft:bedrock
+# he walks into the crater and stands on the bedrock
+teleport @s 0.5 63 6.5 0 60
+@wait 2s
+@assert execute if entity @s[x=-3,y=61.9,z=3,dx=7,dy=1.2,dz=7]
+@shot in-the-crater
+
+@step a hole under the spawn is put back within a second, and a respawn lands on it
+teleport @s 2.5 64 23.5 180 0
+@wait 10t
+setblock 0 63 21 minecraft:air
+@wait 2s
+@assert execute if block 0 63 21 minecraft:oak_planks
+kill @s
+@wait 3s
+@assert execute if entity @s[x=-4,y=63.9,z=17,dx=8,dy=0.5,dz=8]
+
+@step teleported far below the arena, he is put back in the prep room, unharmed
+teleport @s 0.5 30 0.5
+@expect actionbar Whoops, you fell out! Back to the prep room. within 3s
+@wait 10t
+@assert execute if entity @s[x=-4,y=63.9,z=17,dx=8,dy=0.5,dz=8]
+@assert execute if score @s hp matches 20
+
+@step the picture: the place from outside, on its base
+gamemode spectator
+teleport @s -30 74 42 -145 18
+@wait 4s
+@shot the-place-on-its-base
+gamemode survival

@@ -5,7 +5,8 @@
 # floor is filled, an arrow left lying is tidied, and a creature in it stays. Pressing READY ends the break in 3
 # seconds. In the longer break after the boss wave he changes his hotbar from My wishes (the house goes on it), presses
 # READY, and the house's hotbar wish fires in the next wave.
-# He stays in the prep room behind the closed gate and a resistance effect keeps him on his feet; the monsters are not
+# Each wave takes him into the arena and shuts the gate behind him; in each break the gate is open and he is back at the
+# board (by command, to keep it short) to press READY. A resistance effect keeps him on his feet; the monsters are not
 # what this tests, so each wave is ended by command (SHORTCUT), and the arena is torn up by command as a wish could.
 # play-timeout: 1500
 @intent between two waves there is a break with a visible timer, longer after a boss wave, that READY on the board ends early; the arena mends itself in it, and he may change his hotbar in it and fire the new wish in the next wave
@@ -83,7 +84,7 @@ teleport @s 0.5 64 21.5 180 0
 @wait 10t
 @key key.forward hold 15t
 @wait 1s
-@aim pos -0.5 64.5 17.1
+@aim pos -0.5 65.5 17.1
 @key key.use
 @expect actionbar Waves: 10 within 3s
 @wait 25t
@@ -103,7 +104,7 @@ summon minecraft:cat 6 64 10 {PersistenceRequired:1b}
 @wait 1s
 @assert execute unless block 0 63 7 minecraft:smooth_sandstone
 kill @e[tag=moddyarena_wave]
-@expect chat Wave 1 cleared! Break time: the next wave comes in 15 seconds. within 10s
+@expect chat Wave 1 cleared! Break time: the gate is open, and the next wave comes in 15 seconds. within 10s
 @expect chat The arena is mended for the next wave. within 5s
 @expect bossbar /Wave 2 of 10 in 1[0-5] seconds/ within 3s
 @wait 1s
@@ -112,9 +113,15 @@ kill @e[tag=moddyarena_wave]
 @assert execute if blocks -15 64 -15 15 67 15 -15 200 -15 all
 @assert execute unless entity @e[type=minecraft:arrow,x=-16,y=60,z=-16,dx=32,dy=20,dz=33]
 @assert execute if entity @e[type=minecraft:cat,x=-16,y=60,z=-16,dx=32,dy=20,dz=33]
+# in the break the gate is the fence gate again
+@assert execute if block 0 64 16 minecraft:oak_fence_gate
+@assert execute if block 0 65 16 minecraft:air
 @aim look 180 15
 @wait 1s
 @shot the-break-and-the-arena-mended
+# back to the board (the wave took him into the arena)
+teleport @s 0.5 64 19.5 180 0
+@wait 10t
 @aim pos 3.5 65.5 17.1
 @wait 5t
 @shot ready-on-the-board
@@ -126,27 +133,42 @@ kill @e[tag=moddyarena_wave]
 @expect title Wave 2 of 10 within 5s
 @wait 1s
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_start_label,nbt={text:{text:"START BATTLE"}}]
+# the wave took him in again, and the gate is shut
+@assert execute if entity @s[x=-1,y=63,z=14,dx=3,dy=3,dz=2]
+@assert execute if block 0 64 16 minecraft:iron_bars
 
 @step waves 2 to 4, each followed by its break
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 2 cleared! within 10s
+teleport @s 0.5 64 19.5 180 0
+@wait 10t
+@aim pos 3.5 65.5 17.1
+@wait 5t
 @key key.use
 @expect title Wave 3 of 10 within 8s
 @wait 1s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 3 cleared! within 10s
+teleport @s 0.5 64 19.5 180 0
+@wait 10t
+@aim pos 3.5 65.5 17.1
+@wait 5t
 @key key.use
 @expect title Wave 4 of 10 within 8s
 @wait 1s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 4 cleared! within 10s
+teleport @s 0.5 64 19.5 180 0
+@wait 10t
+@aim pos 3.5 65.5 17.1
+@wait 5t
 @key key.use
 @expect title BOSS WAVE within 8s
 @wait 2s
 
 @step after the boss wave, the longer break
 kill @e[tag=moddyarena_wave]
-@expect chat Wave 5 cleared! Break time: the next wave comes in 45 seconds. within 10s
+@expect chat Wave 5 cleared! Break time: the gate is open, and the next wave comes in 45 seconds. within 10s
 @expect bossbar /Wave 6 of 10 in 4[0-5] seconds/ within 3s
 @wait 1s
 @shot the-longer-break
@@ -174,12 +196,15 @@ kill @e[tag=moddyarena_wave]
 @shot a-new-loadout
 
 @step READY, and the new hotbar wish fires in the next wave
+teleport @s 0.5 64 19.5 180 0
+@wait 10t
 @aim pos 3.5 65.5 17.1
 @wait 5t
 @key key.use
 @expect chat Everyone is ready! within 3s
 @expect title Wave 6 of 10 within 6s
 @wait 1s
+# the wave took him into the arena: the house lands ahead of him there
 @aim look 180 12
 @key key.hotbar.5
 @wait 5t

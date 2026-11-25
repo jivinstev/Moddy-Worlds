@@ -6,7 +6,7 @@
 # monsters turn to it, the sheep is a Healer and heals him when he is near it and not when he is far. The cow gets
 # nothing. When the wave ends every role stops: no sign, no role tag, no Resistance left on the tank. A creature taken
 # out of the arena in a wave loses its role at once.
-# He stays in the prep room behind the shut gate with Resistance V, so the monsters cannot hurt him; his health is
+# Each wave takes him into the arena (the gate shuts); he has Resistance V, so the monsters cannot hurt him; his health is
 # taken by /damage (generic_kill passes Resistance) and natural regeneration is off, so only a heal can raise it.
 # play-timeout: 1500
 @intent in a wave every wished creature in the arena takes one role (Fighter, Healer or Tank) shown above it and told once; a Fighter goes for the monsters, a Tank draws them, a Healer heals him only when near; a mob nobody wished gets nothing; every role stops at the wave's end and outside the arena

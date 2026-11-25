@@ -1,5 +1,5 @@
 # Moddy Arena: the Champions board on the prep room's back wall. It shows the leaders at the settings on the control
-# panel (Normal, 5 waves, 5 monsters). His first run is lost on wave 3 (out of his 3 lives, by command): the board's
+# panel (Normal, 5 waves: a difficulty and a number of waves; the difficulty brings its monsters). His first run is lost on wave 3 (out of his 3 lives, by command): the board's
 # first row is his face, his name, "Wave 3" and his time, and the control panel says his best. A better run (all 5
 # waves won) replaces it; a worse one (lost on wave 1) does not. He changes the difficulty on the panel and the board
 # switches to Easy's champions (none yet), then back. Monsters are removed by command.
@@ -114,11 +114,11 @@ kill @s
 @wait 1s
 teleport @s 0.5 64 18.5 180 0
 @wait 10t
-@aim pos -3.5 65.5 17.1
+@aim pos -3.5 66.5 17.1
 @key key.use
 @expect actionbar Difficulty: Easy within 3s
 @wait 1s
-@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_champions_settings,nbt={text:{text:"Easy, 5 waves, 5 monsters"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_champions_settings,nbt={text:{text:"Easy, 5 waves"}}]
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_champions_none,nbt={text:{text:"No champions here yet. Be the first!"}}]
 @assert execute unless entity @e[type=minecraft:item_display,tag=moddyarena_champions_face_1]
 teleport @s 0.5 64 21.5 0 2
@@ -126,11 +126,11 @@ teleport @s 0.5 64 21.5 0 2
 @shot champions-easy
 teleport @s 0.5 64 18.5 180 0
 @wait 10t
-@aim pos -0.5 65.5 17.1
+@aim pos -0.5 66.5 17.1
 @key key.use
 @expect actionbar Difficulty: Normal within 3s
 @wait 1s
-@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_champions_settings,nbt={text:{text:"Normal, 5 waves, 5 monsters"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_champions_settings,nbt={text:{text:"Normal, 5 waves"}}]
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_champions_result_1,nbt={text:{text:"Won all 5"}}]
 @assert execute if entity @e[type=minecraft:item_display,tag=moddyarena_champions_face_1]
 teleport @s 0.5 64 21.5 180 -2

@@ -15,7 +15,7 @@ import java.util.List;
  *   <li>When a wave starts (the first, and after each break), every fighter who is not inside the arena is moved just
  *       inside the gate, facing in, and the gate shuts. A player who is not fighting is never moved, unless he stands
  *       in the gateway itself, which is then moved to the prep room's side.</li>
- *   <li>A fighter who comes back on his feet in the prep room during a wave (knocked out with lives left) sees his
+ *   <li>A fighter knocked out with lives left during a wave, back on his feet in the prep room, sees his
  *       lives and a count of {@value #BACK_IN_SECONDS} seconds on his action bar, then is moved inside, while the wave
  *       is still on. A fighter out of lives is not a fighter any more: he stays in the prep room and watches through
  *       the bars.</li>
