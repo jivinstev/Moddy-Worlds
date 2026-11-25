@@ -4,10 +4,14 @@ The **worlds** of [Moddy the Wish Watch](https://github.com/jivinstev/ModdyTheWi
 own rules and its own game, shipped as its own mod (jar) that runs on the public Moddy core. A player installs the
 core and the world's jar; nothing else.
 
-| world | folder | mod id | what it is |
+## The worlds
+
+Each world has its own page, for players first: how to install it, make the world and play it.
+
+| world | read this | mod id | what it is |
 |---|---|---|---|
-| Scarcity Isle | [`isle/`](isle/) | `moddyisle` | a tiny island in the sky for every player, and a wish bank where every wish counts |
-| Moddy Arena | [`arena/`](arena/) | `moddyarena` | a lit prep room beside a walled arena in the sky, where wishes stay inside the arena and its prep room, and a battle arena control panel sets the monsters, difficulty and number of waves (5 to 20, or Endless) and starts a battle: waves of monsters with a boss every 5th wave, fought with the wishes on your hotbar (5 fires a wave) and 3 lives, a break between waves to change them, and a Champions board of the best runs |
+| Scarcity Isle | **[isle/README.md](isle/README.md)** | `moddyisle` | a tiny island in the sky for every player, and a wish bank where every wish counts |
+| Moddy Arena | **[arena/README.md](arena/README.md)** | `moddyarena` | a lit prep room beside a walled arena, on the ground: pick the difficulty (it sets how many monsters come) and the number of waves (5 to 20, or Endless), then fight waves of monsters, with a boss every 5th wave, behind a gate that shuts while a wave is on, with the wishes on your hotbar (5 fires a wave) and 3 lives, a break between waves to change them, and a Champions board of the best runs |
 
 Minecraft 1.21.10, NeoForge 21.10.64, Java 21 (branch `neoforge-1.21.10`; `main` is 1.21.8). Licence: [MPL-2.0](LICENSE). Third-party datapacks keep their own
 licences (each world's `THIRD_PARTY_NOTICES.txt`).
@@ -42,7 +46,8 @@ refuses a split package).
 
 **By hand:** put the Moddy core jar and the world's jar in a NeoForge 1.21.10 instance (the world's
 [release notes](../../releases) name the core release it was built against), then **Create World → World tab →
-World Type** (for the Isle: **Moddy Isle**). That is all: the world switches itself on in that world and nowhere else.
+World Type** (for the Isle: **Moddy Isle**; for the arena: **Moddy Arena**, then choose your game mode, and play the
+arena in Survival). That is all: the world switches itself on in that world and nowhere else.
 
 **A dedicated server** selects it the vanilla way in `server.properties`, read only when the world is first created.
 For the Isle:

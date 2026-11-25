@@ -32,9 +32,9 @@ class ArenaWaveCountTest {
         assertTrue(s.endless());
         assertEquals(Result.AT_END, s.stepWaves(true, null).result());
         assertEquals(20, s.stepWaves(false, null).settings().waves());
-        assertEquals(5, s.size(), "a waves step keeps the size and the difficulty");
-        assertEquals(new ArenaSettings(7, ArenaDifficulty.HARD, 0), ArenaSettings.of(7, "hard", 0));
-        assertEquals(10, new ArenaSettings(5, null, 10).stepSize(true, null).settings().waves());
+        assertEquals(ArenaDifficulty.NORMAL, s.difficulty(), "a waves step keeps the difficulty");
+        assertEquals(new ArenaSettings(ArenaDifficulty.HARD, 0), ArenaSettings.of("hard", 0));
+        assertEquals(10, new ArenaSettings(null, 10).stepDifficulty(true, null).settings().waves());
     }
 
     private static ArenaWaves parse(Map<String, Object> extra) {
@@ -61,7 +61,7 @@ class ArenaWaveCountTest {
         assertEquals(List.of(0), parse(Map.of("waveCount", "endless")).limits().waveOptions());
         Limits max = parse(Map.of("maxWaveCount", 10)).limits();
         assertEquals(List.of(5, 10), max.waveOptions());
-        assertEquals(10, new ArenaSettings(5, null, 0).within(max).waves(), "Endless above a limit comes down to it");
+        assertEquals(10, new ArenaSettings(null, 0).within(max).waves(), "Endless above a limit comes down to it");
         assertEquals(List.of(5, 10, 15, 20, 30), parse(Map.of("maxWaveCount", 30)).limits().waveOptions());
         assertTrue(problem(Map.of("waveCount", 7)).contains("multiple of 5"));
         assertTrue(problem(Map.of("maxWaveCount", 12)).contains("multiple of 5"));
@@ -88,5 +88,16 @@ class ArenaWaveCountTest {
         assertTrue(problem(Map.of("lives", 11)).contains("lives"));
         assertTrue(problem(Map.of("generator", Map.of("maxHealth", 9))).contains("maxHealth"));
         assertNull(problem(Map.of("waveCount", 20)));
+    }
+
+    @Test
+    void waveSizesIsAnOptionalCheckedKeyThatReadsBack() {
+        ArenaWaves set = parse(Map.of("waveSizes", Map.of("easy", 1, "extreme", 10)));
+        assertEquals(1, set.limits().sizeFor(ArenaDifficulty.EASY));
+        assertEquals(10, set.limits().sizeFor(ArenaDifficulty.EXTREME));
+        assertEquals(set, ArenaWaves.parse(set.toParams(), null).waves(), "what the rule hands the core reads back");
+        assertEquals(6, new ArenaSettings(ArenaDifficulty.EASY).run(parse(Map.of("waveSize", 10))).size(1),
+                "the old waveSize key: every difficulty's wave size (3 husks at 10 is 6)");
+        assertTrue(problem(Map.of("waveSizes", Map.of("hard", 0))).contains("waveSizes.hard"));
     }
 }

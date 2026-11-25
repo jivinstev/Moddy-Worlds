@@ -151,7 +151,7 @@ moddy apprentice a cozy house
 @shot new-wish-refused
 
 @step he wins the battle with the sword his hotbar made
-# through the gate he left open, into the arena
+# the wave took him into the arena (the gate shut behind him): he fights there
 @key key.hotbar.3
 @aim look 180 0
 @key key.forward hold 30t

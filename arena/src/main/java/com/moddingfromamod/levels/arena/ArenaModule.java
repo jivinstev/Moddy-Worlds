@@ -72,6 +72,7 @@ public final class ArenaModule implements WorldModule {
             state.markUpgraded(ArenaPlace.UPGRADE_START_CONTROL);   // fills() carries the panel, which replaced it
             state.markUpgraded(ArenaPlace.UPGRADE_CONTROL_PANEL);
             state.markUpgraded(ArenaPlace.UPGRADE_CHAMPIONS);
+            state.markUpgraded(ArenaPlace.UPGRADE_BASE);
             LOG.info("Moddy Arena: built the place ({}): {} blocks in {} ms", place.describe(), set,
                     (System.nanoTime() - t0) / 1_000_000);
         } else {
@@ -89,8 +90,8 @@ public final class ArenaModule implements WorldModule {
             LOG.warn("Moddy Arena: control panel: the saved difficulty '{}' is not one this arena knows; it is {}",
                     state.unknownDifficulty(), ArenaDifficulty.DEFAULT.word());
         }
-        LOG.info("Moddy Arena: control panel: monsters {}, difficulty {}, waves {}{}; {} champion entries",
-                state.settings().size(), state.settings().difficulty().word(),
+        LOG.info("Moddy Arena: control panel: difficulty {}, waves {}{}; {} champion entries",
+                state.settings().difficulty().word(),
                 ArenaWords.wavesValue(state.settings().waves()), state.readVersion() < ArenaState.VERSION
                         ? " (this world was saved by an older arena: what it lacks is the default)" : "",
                 state.champions().size());
@@ -153,6 +154,11 @@ public final class ArenaModule implements WorldModule {
                     LOG.info("Moddy Arena: the place was missing its Champions board; added it on the prep room's"
                             + " back wall ({} blocks)", set);
                 }
+                case ArenaPlace.UPGRADE_BASE -> {
+                    int set = ArenaBuilder.addBase(level, place);
+                    LOG.info("Moddy Arena: the place stood in the sky; put a base under it ({} blocks: bedrock, a layer"
+                            + " of stone, ground round the floors), so nobody falls out of it", set);
+                }
                 case ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS -> {
                     level.getGameRules().getRule(GameRules.RULE_DOMOBSPAWNING).set(false, server);
                     LOG.info("Moddy Arena: natural mob spawning switched off in this world (game rule doMobSpawning"
@@ -163,6 +169,9 @@ public final class ArenaModule implements WorldModule {
                 }
             }
             state.markUpgraded(u);
+        }
+        if (ArenaBuilder.keepSpawnFloor(level, place)) {
+            LOG.info("Moddy Arena: the floor under the world spawn was missing; put back");
         }
         if (state.upgrades().contains(ArenaPlace.UPGRADE_CONTROL_PANEL)) {
             int set = ArenaBuilder.addControl(level, place);
