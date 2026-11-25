@@ -1,0 +1,129 @@
+# Moddy Arena: the gate in a battle. He presses START and waits in the prep room: when the wave comes he is taken just
+# inside the gate, facing in, with one line, and the gate is iron bars behind him. He cannot open them (he uses them,
+# empty-handed) nor walk through them. A monster put in the prep room (by command, as if it had slipped out) is put
+# back in the arena. From the prep room the shut gate is seen through (the picture). When the wave is cleared, in the
+# break, the gate is the fence gate again and he walks back into the prep room; when the next wave comes he is taken
+# in again and the gate shuts. Knocked out with lives left (by command), he is back in the prep room, counts 3 on his
+# action bar and is taken back in while the wave is on. Out of lives he stays in the prep room; the battle is lost and
+# the gate is the fence gate again.
+# A resistance effect keeps him on his feet; the monsters are removed by command.
+# play-timeout: 900
+@intent while a wave is on the gate is iron bars nobody opens, every fighter is taken inside as it starts and a knocked-out fighter after a count, a monster is kept in; in a break and after the battle the gate is the fence gate
+@world flat seed=1
+
+@step arrive
+@expect chat Welcome to Moddy Arena within 90s
+@wait 2s
+difficulty hard
+difficulty normal
+gamemode survival
+effect give @s minecraft:resistance 900 4 true
+effect give @s minecraft:saturation 900 0 true
+@assert execute if block 0 64 16 minecraft:oak_fence_gate
+@assert execute if block 0 65 16 minecraft:air
+
+@step he presses START and waits in the prep room
+@key key.hotbar.9
+@aim look 180 0
+@key key.forward hold 8t
+@wait 10t
+@aim pos 3.5 65.5 17.1
+@key key.use
+@expect chat A battle is starting within 5s
+@expect chat When a wave comes, the gate shuts and everyone fighting is taken into the arena within 3s
+# he steps back to the middle of the room and waits there
+teleport @s 0.5 64 21.5 180 0
+@assert execute if block 0 64 16 minecraft:oak_fence_gate
+
+@step the wave comes: he is taken inside, facing in, and the gate is iron bars
+@expect title Wave 1 of 5 within 15s
+@expect actionbar The gate is shut. Fight! within 3s
+@assert execute if entity @s[x=-1,y=63,z=14,dx=3,dy=3,dz=2]
+@assert execute if entity @s[y_rotation=170..190]
+@assert execute if block 0 64 16 minecraft:iron_bars
+@assert execute if block 0 65 16 minecraft:iron_bars
+@assert execute if entity @e[tag=moddyarena_wave]
+
+@step he cannot open the bars, nor walk through them
+@aim pos 0.5 64.5 16.5
+@key key.use
+@wait 10t
+@assert execute if block 0 64 16 minecraft:iron_bars
+@key key.forward hold 30t
+@wait 10t
+@assert execute if entity @s[z=-16,dz=31.9]
+@assert execute unless entity @s[x=-5,y=62,z=16.5,dx=11,dy=6,dz=10]
+
+@step a monster in the prep room is put back in the arena
+# SHORTCUT: one of the wave's husks is put in the prep room, as if it had slipped out
+teleport @e[type=minecraft:husk,tag=moddyarena_wave,limit=1] 2.5 64 22.5
+@wait 1s
+@assert execute unless entity @e[tag=moddyarena_wave,x=-5,y=60,z=16.5,dx=11,dy=10,dz=10]
+@assert execute if entity @e[tag=moddyarena_wave,x=-15,y=60,z=-15,dx=31,dy=10,dz=31]
+
+@step the picture: the shut gate seen from the prep room
+# a fighter put in the prep room by command (not knocked out) is left there
+teleport @s 0.5 64 20.5 180 6
+@wait 2s
+@assert execute if entity @s[x=-4,y=63,z=17,dx=8,dy=3,dz=8]
+# after the chat has faded
+@wait 10s
+@assert execute if entity @s[x=-4,y=63,z=17,dx=8,dy=3,dz=8]
+@shot shut-gate-from-the-prep-room
+
+@step in the break the gate is open, and he walks back into the prep room
+kill @e[tag=moddyarena_wave]
+@expect chat Wave 1 cleared! Break time: the gate is open within 10s
+@wait 1s
+@assert execute if block 0 64 16 minecraft:oak_fence_gate
+@assert execute if block 0 65 16 minecraft:air
+@aim look 180 8
+@wait 5t
+@shot open-in-the-break
+# he goes through the open gate into the arena and back, by hand
+teleport @s 0.5 64 18.5 180 0
+@wait 10t
+@aim pos 0.5 64.5 16.5
+@key key.use
+@wait 10t
+@assert execute if block 0 64 16 minecraft:oak_fence_gate[open=true]
+@aim look 180 0
+@key key.forward hold 30t
+@wait 10t
+@assert execute if entity @s[z=-15,dz=29]
+@aim look 0 0
+@key key.forward hold 30t
+@wait 10t
+@assert execute if entity @s[x=-4,y=63,z=17,dx=8,dy=3,dz=8]
+
+@step the next wave takes him in again and the gate shuts
+@expect title Wave 2 of 5 within 20s
+@expect actionbar The gate is shut. Fight! within 3s
+@assert execute if entity @s[x=-1,y=63,z=14,dx=3,dy=3,dz=2]
+@assert execute if block 0 64 16 minecraft:iron_bars
+
+@step knocked out with lives left: back in the prep room, a count, and back in while the wave is on
+kill @s
+@expect chat Knocked out! 2 lives left within 10s
+@expect actionbar 2 lives left. Back into the arena in 3 within 10s
+@assert execute if entity @s[x=-4,y=63,z=17,dx=8,dy=3,dz=8]
+@expect actionbar Back into the arena in 2 within 3s
+@expect actionbar Back into the arena in 1 within 3s
+@expect actionbar Back in the arena. Fight! within 3s
+@wait 5t
+@assert execute if entity @s[x=-1,y=63,z=14,dx=3,dy=3,dz=2]
+@assert execute if entity @e[tag=moddyarena_wave]
+@assert execute if block 0 64 16 minecraft:iron_bars
+
+@step out of lives he stays in the prep room; the battle is lost and the gate is the fence gate again
+kill @s
+@expect chat Knocked out! 1 life left within 10s
+@wait 1s
+kill @s
+@expect chat no lives left within 10s
+@wait 5s
+@assert execute if entity @s[x=-4,y=63,z=17,dx=8,dy=3,dz=8]
+@expect chat The arena is tidy again within 20s
+@wait 1s
+@assert execute if block 0 64 16 minecraft:oak_fence_gate
+@assert execute if block 0 65 16 minecraft:air

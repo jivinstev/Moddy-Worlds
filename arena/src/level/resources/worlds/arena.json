@@ -6,7 +6,7 @@
   "intro": [
     "Welcome to Moddy Arena! You are in the prep room. The arena is past the gate.",
     "Get ready in the prep room: make things, then put them on your hotbar. Open one in My wishes and press Add to hotbar.",
-    "The battle arena control panel is on the wall: pick the monsters, the difficulty and the waves, then press START BATTLE. In a battle, only the wishes on your hotbar work, and you have 3 lives. The Champions board is on the back wall."
+    "The battle arena control panel is on the wall: pick the difficulty and the waves, then press START BATTLE. When a wave comes the gate shuts and you are taken into the arena. Only your hotbar wishes work in a battle, and you have 3 lives. The Champions board is on the back wall."
   ],
   "guide": {
     "book": {
@@ -14,11 +14,11 @@
       "author": "Moddy",
       "pages": [
         "Welcome to\nModdy Arena!\n\nGet ready in the prep room, then fight waves of monsters in the arena.\n\nThis book tells you how it all works.",
-        "The prep room\n\nYou start in the prep room. The arena is past the gate.\n\nOpen the gate to walk into the arena and back.",
-        "The control panel\n\nThe panel on the prep room wall sets up your battle:\n\nMONSTERS: how many\nDIFFICULTY: how hard\nWAVES: how many",
+        "The prep room\n\nYou start in the prep room. The arena is past the gate.\n\nWhen a wave comes, the gate shuts with bars and you are taken in. In a break it opens.",
+        "The control panel\n\nThe panel on the prep room wall sets up your battle:\n\nDIFFICULTY: how hard, and how many monsters\n\nWAVES: how many waves",
         "Start!\n\nPress START BATTLE on the panel. After a short countdown, the first wave comes.",
         "Waves\n\nMonsters come in waves. Beat them all to clear a wave.\n\nEvery {arena_boss_every} waves comes a BOSS WAVE, with a big boss and its helpers!",
-        "Lives\n\nYou have {arena_lives} lives in a battle.\n\nKnocked out? You go back to the prep room with your hotbar, and run back in!",
+        "Lives\n\nYou have {arena_lives} lives in a battle.\n\nKnocked out? You go back to the prep room with your hotbar. Soon you are back in the arena!",
         "Breaks\n\nAfter a wave there is a break of {arena_break_seconds} seconds. After a boss wave it is {arena_boss_break_seconds} seconds.\n\nThe bar at the top counts it down.",
         "READY\n\nIn a break, the START BATTLE button says READY.\n\nPress it when you want the next wave to come sooner.",
         "The arena mends\n\nIn every break the arena fixes itself: holes fill in, and things your wishes built go away.\n\nYour creatures stay.",

@@ -6,28 +6,29 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * <b>What the player picked on the control panel</b>: the wave size (MONSTERS on the board: a whole number, 1 to 10),
- * the difficulty ({@link ArenaDifficulty}) and the number of waves (WAVES on the board: 5, 10, 15, 20 or Endless), and
- * what a world's rules may fix or limit about them ({@link Limits}). Pure: no Minecraft.
+ * <b>What the player picked on the control panel</b>: the difficulty ({@link ArenaDifficulty}) and the number of waves
+ * (WAVES on the board: 5, 10, 15, 20 or Endless), and what a world's rules may fix or limit about them
+ * ({@link Limits}). Pure: no Minecraft.
  *
- * <p>The rules file's {@code arena_waves} are the base waves. The wave size scales every wave's mob counts
- * ({@link #scale}): a count times size / {@value #DEFAULT_SIZE}, rounded, at least 1 of each kind a wave has, and never
- * more than {@link ArenaWaves#MAX_PER_WAVE} a wave. So the default, {@value #DEFAULT_SIZE}, is the rules file's waves
- * exactly. The difficulty then swaps kinds and sets their health. Size first, then difficulty: a kind the difficulty
- * swaps in keeps the count the size gave.
+ * <p>How many monsters a wave brings is not picked: it comes with the difficulty, its <b>wave size</b> (a whole number,
+ * {@value #MIN_SIZE} to {@value #MAX_SIZE}; {@link ArenaDifficulty#size}, or a rules file's {@code waveSizes}). The
+ * rules file's {@code arena_waves} are the base waves. The wave size scales every wave's mob counts ({@link #scale}): a
+ * count times size / {@value #DEFAULT_SIZE}, rounded, at least 1 of each kind a wave has, and never more than
+ * {@link ArenaWaves#MAX_PER_WAVE} a wave. So size {@value #DEFAULT_SIZE} (Normal's) is the rules file's waves exactly.
+ * The difficulty then swaps kinds and sets their health. Size first, then the swaps: a kind the difficulty swaps in
+ * keeps the count the size gave.
  *
  * <p>The number of waves: a battle brings the rules file's waves in order, and past their end waves made by its
  * generator ({@link ArenaGenerator}); {@value #ENDLESS} means Endless (waves until the fighters lose).
  *
- * @param size       the wave size, {@value #MIN_SIZE} to {@value #MAX_SIZE}
  * @param difficulty the difficulty
  * @param waves      how many waves a battle has (a multiple of 5 on the panel), or {@value #ENDLESS} for Endless
  */
-public record ArenaSettings(int size, ArenaDifficulty difficulty, int waves) {
+public record ArenaSettings(ArenaDifficulty difficulty, int waves) {
 
     public static final int MIN_SIZE = 1;
     public static final int MAX_SIZE = 10;
-    /** The wave size at which the waves are the rules file's, exactly. */
+    /** The wave size at which the waves are the rules file's, exactly (Normal's). */
     public static final int DEFAULT_SIZE = 5;
 
     /** The number of waves meaning Endless: waves come until the fighters lose. */
@@ -41,18 +42,17 @@ public record ArenaSettings(int size, ArenaDifficulty difficulty, int waves) {
     /** The WAVES selector's steps, in order, before Endless (the last step). */
     public static final List<Integer> WAVE_STEPS = List.of(5, 10, 15, 20);
 
-    /** What a new arena starts with: the rules file's waves, exactly (and boss waves, ArenaRun). */
-    public static final ArenaSettings DEFAULT = new ArenaSettings(DEFAULT_SIZE, ArenaDifficulty.DEFAULT, DEFAULT_WAVES);
+    /** What a new arena starts with: Normal (the rules file's waves, exactly) and 5 waves. */
+    public static final ArenaSettings DEFAULT = new ArenaSettings(ArenaDifficulty.DEFAULT, DEFAULT_WAVES);
 
     public ArenaSettings {
-        size = Math.max(MIN_SIZE, Math.min(MAX_SIZE, size));
         difficulty = difficulty == null ? ArenaDifficulty.DEFAULT : difficulty;
         waves = waves <= ENDLESS ? ENDLESS : Math.min(MAX_WAVE_COUNT, waves);
     }
 
     /** These settings with the default number of waves (five). */
-    public ArenaSettings(int size, ArenaDifficulty difficulty) {
-        this(size, difficulty, DEFAULT_WAVES);
+    public ArenaSettings(ArenaDifficulty difficulty) {
+        this(difficulty, DEFAULT_WAVES);
     }
 
     /** True when the battle is Endless. */
@@ -60,16 +60,15 @@ public record ArenaSettings(int size, ArenaDifficulty difficulty, int waves) {
         return waves == ENDLESS;
     }
 
-    /** The settings saved as these values (an unknown or missing one is the default's). */
-    public static ArenaSettings of(Integer size, String difficulty) {
-        return of(size, difficulty, null);
+    /** The settings saved as these values (an unknown or missing one is the default's; waves 0 is Endless). */
+    public static ArenaSettings of(String difficulty, Integer waves) {
+        ArenaDifficulty d = ArenaDifficulty.byId(difficulty);
+        return new ArenaSettings(d == null ? ArenaDifficulty.DEFAULT : d, waves == null ? DEFAULT_WAVES : waves);
     }
 
-    /** The settings saved as these values (an unknown or missing one is the default's; waves 0 is Endless). */
-    public static ArenaSettings of(Integer size, String difficulty, Integer waves) {
-        ArenaDifficulty d = ArenaDifficulty.byId(difficulty);
-        return new ArenaSettings(size == null ? DEFAULT_SIZE : size, d == null ? ArenaDifficulty.DEFAULT : d,
-                waves == null ? DEFAULT_WAVES : waves);
+    /** The wave size these settings bring under these rules: the difficulty's, or what the rules say. */
+    public int size(Limits limits) {
+        return (limits == null ? Limits.NONE : limits).sizeFor(difficulty);
     }
 
     /** A wave's count at this wave size: count times size / 5, rounded (half up), at least 1. Pure. */
@@ -127,11 +126,11 @@ public record ArenaSettings(int size, ArenaDifficulty difficulty, int waves) {
     }
 
     /**
-     * The rules file's own waves at these settings' size and difficulty (the waves it authors, no more; the number
-     * of waves, the generator and the bosses are {@link #run}'s).
+     * The rules file's own waves at these settings' wave size and difficulty (the waves it authors, no more; the
+     * number of waves, the generator and the bosses are {@link #run}'s).
      */
     public ArenaWaves apply(ArenaWaves base) {
-        return base == null ? null : difficulty.apply(scale(base, size));
+        return base == null ? null : difficulty.apply(scale(base, size(base.limits())));
     }
 
     /** The battle these settings bring with these base waves ({@link ArenaRun}), or null when there are none. */
@@ -142,36 +141,62 @@ public record ArenaSettings(int size, ArenaDifficulty difficulty, int waves) {
     // ── what a world's rules may fix or limit ───────────────────────────────────────────────────────────────────────
 
     /**
-     * What a world's {@code arena_waves} rule says about the panel (each optional; by default the player chooses):
-     * {@code waveSize} fixes the size (the panel's size buttons then do nothing), {@code maxWaveSize} limits it;
-     * {@code difficulty} fixes the difficulty, {@code maxDifficulty} limits it; {@code waveCount} fixes the number of
-     * waves (a number, or {@code "endless"}), {@code maxWaveCount} limits it (and then there is no Endless). A rule names
-     * a fixed value or a limit for each, not both.
+     * What a world's {@code arena_waves} rule says about the panel and the wave sizes (each optional; by default the
+     * player chooses, and each difficulty brings its own wave size):
+     * <ul>
+     *   <li>{@code waveSizes}: an object giving some difficulties another wave size ({@code {"easy": 2, "hard": 7}},
+     *       each {@value #MIN_SIZE} to {@value #MAX_SIZE});</li>
+     *   <li>{@code waveSize} and {@code maxWaveSize}, read as they were when the panel had its own MONSTERS selector:
+     *       {@code waveSize} is now the wave size of every difficulty, {@code maxWaveSize} caps every difficulty's;
+     *       {@code waveSize} and {@code waveSizes} are not given together;</li>
+     *   <li>{@code difficulty} fixes the difficulty, {@code maxDifficulty} limits it;</li>
+     *   <li>{@code waveCount} fixes the number of waves (a number, or {@code "endless"}), {@code maxWaveCount} limits it
+     *       (and then there is no Endless).</li>
+     * </ul>
+     * A rule names a fixed value or a limit for each, not both.
      *
-     * @param size          the fixed size, or null when the player chooses
-     * @param maxSize       the biggest size the player may choose
+     * @param size          the wave size of every difficulty, or null when each has its own
+     * @param maxSize       the biggest wave size any difficulty brings
+     * @param sizes         difficulties whose wave size the rules set (the others bring {@link ArenaDifficulty#size})
      * @param difficulty    the fixed difficulty, or null when the player chooses
      * @param maxDifficulty the hardest difficulty the player may choose
      * @param count         the fixed number of waves ({@value #ENDLESS}: Endless), or null when the player chooses
      * @param maxCount      the most waves the player may choose, or {@value #ENDLESS} for no limit (Endless allowed)
      */
-    public record Limits(Integer size, int maxSize, ArenaDifficulty difficulty, ArenaDifficulty maxDifficulty,
-                         Integer count, int maxCount) {
+    public record Limits(Integer size, int maxSize, Map<ArenaDifficulty, Integer> sizes, ArenaDifficulty difficulty,
+                         ArenaDifficulty maxDifficulty, Integer count, int maxCount) {
 
-        /** The player chooses everything. */
-        public static final Limits NONE = new Limits(null, MAX_SIZE, null, ArenaDifficulty.EXTREME, null, ENDLESS);
+        /** The player chooses everything, and each difficulty brings its own wave size. */
+        public static final Limits NONE = new Limits(null, MAX_SIZE, Map.of(), null, ArenaDifficulty.EXTREME, null,
+                ENDLESS);
 
         /** The params' keys this reads. */
-        static final List<String> KEYS = List.of("waveSize", "maxWaveSize", "difficulty", "maxDifficulty", "waveCount",
-                "maxWaveCount");
+        static final List<String> KEYS = List.of("waveSize", "maxWaveSize", "waveSizes", "difficulty", "maxDifficulty",
+                "waveCount", "maxWaveCount");
+
+        public Limits {
+            sizes = sizes == null ? Map.of() : Map.copyOf(sizes);
+        }
+
+        /** Limits with no wave sizes of the rules' own. */
+        public Limits(Integer size, int maxSize, ArenaDifficulty difficulty, ArenaDifficulty maxDifficulty,
+                      Integer count, int maxCount) {
+            this(size, maxSize, Map.of(), difficulty, maxDifficulty, count, maxCount);
+        }
 
         /** Limits on the size and the difficulty only (the player chooses the number of waves). */
         public Limits(Integer size, int maxSize, ArenaDifficulty difficulty, ArenaDifficulty maxDifficulty) {
-            this(size, maxSize, difficulty, maxDifficulty, null, ENDLESS);
+            this(size, maxSize, Map.of(), difficulty, maxDifficulty, null, ENDLESS);
         }
 
-        public boolean sizeFixed() {
-            return size != null;
+        /**
+         * The wave size difficulty {@code d} brings under these rules: {@code waveSize} when given, else the rules'
+         * {@code waveSizes} for it, else its own ({@link ArenaDifficulty#size}); never above {@code maxWaveSize}.
+         */
+        public int sizeFor(ArenaDifficulty d) {
+            ArenaDifficulty dd = d == null ? ArenaDifficulty.DEFAULT : d;
+            int v = size != null ? size : sizes.getOrDefault(dd, dd.size());
+            return Math.max(MIN_SIZE, Math.min(maxSize, v));
         }
 
         public boolean difficultyFixed() {
@@ -209,11 +234,14 @@ public record ArenaSettings(int size, ArenaDifficulty difficulty, int waves) {
         static LimitsParsed parse(Map<String, ?> p) {
             Integer fixed = null;
             int max = MAX_SIZE;
-            for (String[] pair : new String[][] {{"waveSize", "maxWaveSize", "the size is fixed"},
-                    {"difficulty", "maxDifficulty", "it is fixed"}, {"waveCount", "maxWaveCount", "it is fixed"}}) {
+            for (String[] pair : new String[][] {{"waveSize", "maxWaveSize", "it is the wave size of every difficulty",
+                    "every difficulty's wave size is at most it"}, {"waveSize", "waveSizes",
+                    "it is the wave size of every difficulty", "a wave size for some difficulties"},
+                    {"difficulty", "maxDifficulty", "it is fixed", "the player chooses up to it"},
+                    {"waveCount", "maxWaveCount", "it is fixed", "the player chooses up to it"}}) {
                 if (p.get(pair[0]) != null && p.get(pair[1]) != null) {
                     return new LimitsParsed(null, "give " + pair[0] + " (" + pair[2] + ") or " + pair[1]
-                            + " (the player chooses up to it), not both");
+                            + " (" + pair[3] + "), not both");
                 }
             }
             for (String key : List.of("waveSize", "maxWaveSize")) {
@@ -230,6 +258,32 @@ public record ArenaSettings(int size, ArenaDifficulty difficulty, int waves) {
                     fixed = v;
                 } else {
                     max = v;
+                }
+            }
+            Map<ArenaDifficulty, Integer> sizes = new java.util.EnumMap<>(ArenaDifficulty.class);
+            Object ws = p.get("waveSizes");
+            if (ws != null) {
+                if (!(ws instanceof Map<?, ?> m)) {
+                    return new LimitsParsed(null, "waveSizes must be an object such as {\"easy\": 3, \"hard\": 7},"
+                            + " not " + ws);
+                }
+                for (Map.Entry<?, ?> e : m.entrySet()) {
+                    String k = String.valueOf(e.getKey());
+                    if (k.startsWith("_")) {
+                        continue;
+                    }
+                    ArenaDifficulty d = ArenaDifficulty.byId(k);
+                    if (d == null) {
+                        return new LimitsParsed(null, "waveSizes names '" + k + "'; it may name "
+                                + ArenaDifficulty.ids());
+                    }
+                    Integer v = whole(e.getValue());
+                    if (v == null || v < MIN_SIZE || v > MAX_SIZE) {
+                        return new LimitsParsed(null, "waveSizes." + d.id() + " must be a whole number from " + MIN_SIZE
+                                + " to " + MAX_SIZE + " (" + DEFAULT_SIZE + " is the waves exactly), not "
+                                + e.getValue());
+                    }
+                    sizes.put(d, v);
                 }
             }
             ArenaDifficulty fixedD = null;
@@ -270,7 +324,7 @@ public record ArenaSettings(int size, ArenaDifficulty difficulty, int waves) {
                 }
                 maxCount = v;
             }
-            return new LimitsParsed(new Limits(fixed, max, fixedD, maxD, fixedCount, maxCount), null);
+            return new LimitsParsed(new Limits(fixed, max, sizes, fixedD, maxD, fixedCount, maxCount), null);
         }
 
         private static Integer whole(Object o) {
@@ -283,8 +337,18 @@ public record ArenaSettings(int size, ArenaDifficulty difficulty, int waves) {
             Map<String, Object> out = new LinkedHashMap<>();
             if (size != null) {
                 out.put("waveSize", size);
-            } else if (maxSize != MAX_SIZE) {
+            }
+            if (maxSize != MAX_SIZE) {
                 out.put("maxWaveSize", maxSize);
+            }
+            if (!sizes.isEmpty()) {
+                Map<String, Object> m = new LinkedHashMap<>();
+                for (ArenaDifficulty d : ArenaDifficulty.values()) {
+                    if (sizes.containsKey(d)) {
+                        m.put(d.id(), sizes.get(d));
+                    }
+                }
+                out.put("waveSizes", m);
             }
             if (difficulty != null) {
                 out.put("difficulty", difficulty.id());
@@ -310,7 +374,6 @@ public record ArenaSettings(int size, ArenaDifficulty difficulty, int waves) {
      */
     public ArenaSettings within(Limits limits) {
         Limits l = limits == null ? Limits.NONE : limits;
-        int s = l.size() != null ? l.size() : Math.min(size, l.maxSize());
         ArenaDifficulty d = l.difficulty() != null ? l.difficulty()
                 : difficulty.ordinal() > l.maxDifficulty().ordinal() ? l.maxDifficulty() : difficulty;
         List<Integer> options = l.waveOptions();
@@ -320,7 +383,7 @@ public record ArenaSettings(int size, ArenaDifficulty difficulty, int waves) {
                 w = o;
             }
         }
-        return new ArenaSettings(s, d, w);
+        return new ArenaSettings(d, w);
     }
 
     /** A number of waves as a size to compare: Endless is the most. */
@@ -344,20 +407,6 @@ public record ArenaSettings(int size, ArenaDifficulty difficulty, int waves) {
     public record Step(ArenaSettings settings, Result result) {
     }
 
-    /** The wave size one step up ({@code up}) or down, as the rules allow. Pure. */
-    public Step stepSize(boolean up, Limits limits) {
-        Limits l = limits == null ? Limits.NONE : limits;
-        ArenaSettings now = within(l);
-        if (l.sizeFixed()) {
-            return new Step(now, Result.FIXED);
-        }
-        int next = now.size + (up ? 1 : -1);
-        if (next < MIN_SIZE || next > l.maxSize()) {
-            return new Step(now, Result.AT_END);
-        }
-        return new Step(new ArenaSettings(next, now.difficulty, now.waves), Result.CHANGED);
-    }
-
     /** The difficulty one step harder ({@code up}) or easier, as the rules allow. Pure. */
     public Step stepDifficulty(boolean up, Limits limits) {
         Limits l = limits == null ? Limits.NONE : limits;
@@ -369,7 +418,7 @@ public record ArenaSettings(int size, ArenaDifficulty difficulty, int waves) {
         if (next < 0 || next > l.maxDifficulty().ordinal()) {
             return new Step(now, Result.AT_END);
         }
-        return new Step(new ArenaSettings(now.size, ArenaDifficulty.values()[next], now.waves), Result.CHANGED);
+        return new Step(new ArenaSettings(ArenaDifficulty.values()[next], now.waves), Result.CHANGED);
     }
 
     /** The number of waves one step up ({@code up}: 5, 10, 15, 20, Endless) or down, as the rules allow. Pure. */
@@ -384,6 +433,6 @@ public record ArenaSettings(int size, ArenaDifficulty difficulty, int waves) {
         if (next < 0 || next >= options.size()) {
             return new Step(now, Result.AT_END);
         }
-        return new Step(new ArenaSettings(now.size, now.difficulty, options.get(next)), Result.CHANGED);
+        return new Step(new ArenaSettings(now.difficulty, options.get(next)), Result.CHANGED);
     }
 }

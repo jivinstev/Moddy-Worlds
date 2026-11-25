@@ -52,7 +52,7 @@ class ArenaDifficultyTest {
     }
 
     @Test
-    void normalIsTodaysWavesAndNoStepChangesHowMany() throws IOException {
+    void normalIsTodaysWavesAndTheSwapsNeverChangeHowMany() throws IOException {
         ArenaWaves base = ArenaSettingsTest.bundled();
         assertEquals(base, ArenaDifficulty.NORMAL.apply(base));
         for (ArenaDifficulty d : ArenaDifficulty.values()) {
@@ -63,7 +63,9 @@ class ArenaDifficultyTest {
                 for (int i = 1; i <= at.count(); i++) {
                     assertEquals(scaled.wave(i).size(), at.wave(i).size(), d + " keeps wave " + i + "'s count");
                 }
-                assertEquals(new ArenaSettings(size, d).apply(base), at, "size first, then difficulty");
+                if (size == d.size()) {
+                    assertEquals(new ArenaSettings(d).apply(base), at, "its own size first, then its swaps");
+                }
             }
         }
     }

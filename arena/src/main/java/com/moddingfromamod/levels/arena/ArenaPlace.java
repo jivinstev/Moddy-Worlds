@@ -17,7 +17,7 @@ import java.util.Set;
  *   |                 |   with a rim on top that overhangs inward so nothing climbs out
  *   |      arena      |
  *   |                 |
- *   +------[g]--------+   g: the gate (a fence gate: players open it, mobs cannot); the shared wall
+ *   +------[g]--------+   g: the gate (a fence gate; iron bars while a wave is on, ArenaGate); the shared wall
  *       |  prep  |        is glass there, so the arena is in view from the prep room
  *       +--------+        the prep room: prepSize x prepSize inside, glass walls, a lit floor and a roof
  * </pre>
@@ -146,6 +146,8 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
         AIR,
         /** the gate between the prep room and the arena (a fence gate, facing the arena) */
         GATE,
+        /** the gateway while a wave is on: iron bars in the gate's block and the opening above it ({@link ArenaGate}) */
+        GATE_BARS,
         /** the control panel's board: the shared wall's window, on the prep room's side ({@link ArenaPanel}) */
         PANEL_BOARD,
         /** a block of the board that holds a selector button (wave size or difficulty, down or up) */
@@ -157,7 +159,13 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
         /** the start button, on the prep room's side of the board */
         START_BUTTON,
         /** the Champions board: the inside of the prep room's back wall ({@link ArenaChampionsLayout}) */
-        CHAMPIONS_BOARD
+        CHAMPIONS_BOARD,
+        /** the ground round the place, level with its floors, on the base ({@link #baseFills()}) */
+        GROUND,
+        /** the layer of the base under the floors and the ground: a block a blast can break */
+        BASE_FILL,
+        /** the bottom of the base: bedrock, which nothing breaks, so nobody falls further */
+        BASE_BEDROCK
     }
 
     /** One box to fill. Later fills overwrite earlier ones where they overlap. */
@@ -203,6 +211,77 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
     public Box footprint() {
         Box p = prepInside();
         return new Box(-ah() - 1, floorY - 1, -ah() - 1, ah() + 1, floorY + wallHeight, p.z1() + 1);
+    }
+
+    /** How far the base reaches past the place's walls, each way, in blocks. */
+    public static final int BASE_MARGIN = 2;
+    /** How many layers the base has under the floors: a fill layer, then bedrock. */
+    public static final int BASE_DEPTH = 2;
+
+    /**
+     * The base the place stands on: under the whole footprint and {@value #BASE_MARGIN} blocks round it, from the bedrock
+     * layer up to the floors' level. Its top layer (the floors' level) is the place's own floors, and ground round them;
+     * under that one layer a blast can break; under that bedrock. So a blast that breaks a floor drops a player
+     * {@value #BASE_DEPTH} blocks at most, onto bedrock, and never out of the world.
+     */
+    public Box baseBox() {
+        Box f = footprint();
+        return new Box(f.x0() - BASE_MARGIN, bedrockY(), f.z0() - BASE_MARGIN, f.x1() + BASE_MARGIN, floorY - 1,
+                f.z1() + BASE_MARGIN);
+    }
+
+    /** The y of the base's bedrock layer. */
+    public int bedrockY() {
+        return floorY - 1 - BASE_DEPTH;
+    }
+
+    /**
+     * The base's blocks ({@link #baseBox}): bedrock at the bottom, the fill layer over it, and ground at the floors'
+     * level, which the place's own floors then cover. Part of {@link #fills()}, first; a world built before the base
+     * existed gains exactly these ({@link #UPGRADE_BASE}), the ground only where nothing stands.
+     */
+    public List<Fill> baseFills() {
+        Box b = baseBox();
+        return List.of(
+                new Fill(new Box(b.x0(), bedrockY(), b.z0(), b.x1(), bedrockY(), b.z1()), Kind.BASE_BEDROCK),
+                new Fill(new Box(b.x0(), bedrockY() + 1, b.z0(), b.x1(), floorY - 2, b.z1()), Kind.BASE_FILL),
+                new Fill(new Box(b.x0(), floorY - 1, b.z0(), b.x1(), floorY - 1, b.z1()), Kind.GROUND));
+    }
+
+    /**
+     * True when a body at (x, y, z) has fallen out of the place: over the base's columns (or near them) and more than a
+     * few blocks under the floors, where the base would have caught anyone who did not fall past it. Such a player is
+     * put back in the prep room.
+     */
+    public boolean fellOut(double x, double y, double z) {
+        Box b = baseBox();
+        int bx = (int) Math.floor(x);
+        int bz = (int) Math.floor(z);
+        int near = 16;
+        return bx >= b.x0() - near && bx <= b.x1() + near && bz >= b.z0() - near && bz <= b.z1() + near
+                && y < bedrockY() - 2;
+    }
+
+    /** The block under the arrival spot (the world spawn): the prep room's floor there, kept whole. */
+    public int[] spawnFloor() {
+        int[] a = arrival();
+        return new int[] {a[0], floorY - 1, a[2]};
+    }
+
+    /** The prep room's floor, inside its walls (what a mend puts back where it is missing). */
+    public Box prepFloor() {
+        Box p = prepInside();
+        return new Box(p.x0(), floorY - 1, p.z0(), p.x1(), floorY - 1, p.z1());
+    }
+
+    /** True when the prep room's floor at column (x, z) is one of its lights. */
+    public boolean isPrepLight(int x, int z) {
+        for (int[] l : lights()) {
+            if (l[0] == x && l[1] == z) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** A column-aligned rectangle (every y), both corners inclusive: the shape the core's bases speak. */
@@ -302,6 +381,8 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
         int a = ah();
         int fy = floorY - 1;
         int top = floorY + wallHeight - 1;
+        // the base it stands on: bedrock, a fill layer, ground level with the floors (which cover it where they are)
+        out.addAll(baseFills());
         // the insides cleared first (nothing to clear in a void world; in any other, the room is a room)
         out.add(new Fill(arenaInside(), Kind.AIR));
         out.add(new Fill(prepInside(), Kind.AIR));
@@ -394,9 +475,11 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
     public static final String UPGRADE_CONTROL_PANEL = "control-panel";
     /** The upgrade that gives a place its Champions board ({@link #championsFills()}), over the back wall's glass. */
     public static final String UPGRADE_CHAMPIONS = "champions-board";
+    /** The upgrade that puts the base under a place built in the sky ({@link #baseFills()}). */
+    public static final String UPGRADE_BASE = "ground-base";
     /** Every upgrade, in the order a world gets them. A new world gets them all when it is built. */
     public static final List<String> UPGRADES = List.of(UPGRADE_START_CONTROL, UPGRADE_NO_NATURAL_SPAWNS,
-            UPGRADE_CONTROL_PANEL, UPGRADE_CHAMPIONS);
+            UPGRADE_CONTROL_PANEL, UPGRADE_CHAMPIONS, UPGRADE_BASE);
 
     /** The upgrades a world that has had {@code done} still needs, in order. Pure. */
     public static List<String> pendingUpgrades(Set<String> done) {
@@ -404,26 +487,29 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
     }
 
     /**
-     * True when a wave's mob at (x, y, z) is still in the place: inside its walls' footprint (the prep room counts: a
-     * mob may follow a player through an open gate) and not fallen below the floor. A mob that is not is removed and
-     * counted as cleared, so a battle can always finish.
+     * True when a body at (x, y, z) is still in the place: inside its walls' footprint (the prep room counts) and not
+     * fallen below the base's top (standing in a hole a blast made, on the bedrock, is still in it).
      */
     public boolean keeps(double x, double y, double z) {
         Box f = footprint();
         int bx = (int) Math.floor(x);
         int bz = (int) Math.floor(z);
-        return bx >= f.x0() && bx <= f.x1() && bz >= f.z0() && bz <= f.z1() && y >= floorY - 1;
-    }
-
-    /** The block box an arena's reset looks through: the arena's footprint (shared wall included), floor to {@code maxY}. */
-    public Box resetBox(int maxY) {
-        int a = ah();
-        return new Box(-a - 1, floorY - 1, -a - 1, a + 1, Math.max(maxY, floorY + wallHeight + 1), sharedWallZ());
+        return bx >= f.x0() && bx <= f.x1() && bz >= f.z0() && bz <= f.z1() && y >= bedrockY();
     }
 
     /**
-     * <b>What a reset puts back</b>: the arena's inside, floor, walls, rim, the shared wall's gate and the control
-     * panel's board, as {@link #fills()} built them, and air everywhere above the arena's floor and walls. Never the
+     * The block box an arena's reset looks through: the arena's footprint (shared wall included), from the base's fill
+     * layer (so a blast's hole is filled back to the floor) to {@code maxY}.
+     */
+    public Box resetBox(int maxY) {
+        int a = ah();
+        return new Box(-a - 1, bedrockY(), -a - 1, a + 1, Math.max(maxY, floorY + wallHeight + 1), sharedWallZ());
+    }
+
+    /**
+     * <b>What a reset puts back</b>: the base under the arena (its bedrock and fill layer), the arena's inside, floor,
+     * walls, rim, the shared wall's gate and the control panel's board, as {@link #fills()} built them, and air
+     * everywhere above the arena's floor and walls. Never the
      * prep room: its floor, roof and lights, where they meet the shared wall, are left as they stand (and the panel's
      * buttons, which are in the prep room, are mended by {@link ArenaBuilder#addControl}).
      */
@@ -442,7 +528,8 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
                 }
             }
         }
-        m.values().removeIf(k -> k == Kind.PREP_FLOOR || k == Kind.PREP_ROOF || k == Kind.PREP_LIGHT);
+        m.values().removeIf(k -> k == Kind.PREP_FLOOR || k == Kind.PREP_ROOF || k == Kind.PREP_LIGHT
+                || k == Kind.GROUND);
         // the prep room's own blocks over the shared wall are not the arena's: mark them so nothing above clears them
         Map<Long, Kind> prep = new HashMap<>();
         for (Fill f : fills()) {

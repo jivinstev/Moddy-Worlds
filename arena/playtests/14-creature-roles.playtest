@@ -6,7 +6,7 @@
 # monsters turn to it, the sheep is a Healer and heals him when he is near it and not when he is far. The cow gets
 # nothing. When the wave ends every role stops: no sign, no role tag, no Resistance left on the tank. A creature taken
 # out of the arena in a wave loses its role at once.
-# He stays in the prep room behind the shut gate with Resistance V, so the monsters cannot hurt him; his health is
+# Each wave takes him into the arena (the gate shuts); he has Resistance V, so the monsters cannot hurt him; his health is
 # taken by /damage (generic_kill passes Resistance) and natural regeneration is off, so only a heal can raise it.
 # play-timeout: 1500
 @intent in a wave every wished creature in the arena takes one role (Fighter, Healer or Tank) shown above it and told once; a Fighter goes for the monsters, a Tank draws them, a Healer heals him only when near; a mob nobody wished gets nothing; every role stops at the wave's end and outside the arena
@@ -51,7 +51,8 @@ moddy apprentice a cat
 summon minecraft:wolf -2 64 6 {Tags:["wishmob","standin"],PersistenceRequired:1b,CustomName:"Rex"}
 summon minecraft:sheep -3 64 12 {Tags:["wishmob","standin"],PersistenceRequired:1b,CustomName:"Puff"}
 summon minecraft:camel 4 64 9 {Tags:["wishmob","standin"],PersistenceRequired:1b,CustomName:"Hump"}
-summon minecraft:cow -8 64 10 {Tags:["bystander"],PersistenceRequired:1b}
+# the cow stands still (no AI)
+summon minecraft:cow -8 64 10 {Tags:["bystander"],PersistenceRequired:1b,NoAI:1b}
 effect give @e[type=minecraft:wolf,tag=standin] minecraft:resistance 1500 4 true
 effect give @e[type=minecraft:sheep,tag=standin] minecraft:resistance 1500 4 true
 @wait 1s
@@ -94,13 +95,17 @@ effect give @e[tag=moddyarena_wave] minecraft:weakness 600 255 true
 
 @step the cow nobody wished gets nothing
 @assert execute unless entity @e[type=minecraft:cow,tag=moddyarena_role]
-@assert execute as @e[type=minecraft:cow,tag=bystander] at @s unless entity @e[type=minecraft:text_display,tag=moddyarena_rolesign,distance=..3]
+# no sign over its head (a sign floats over its own creature's head; another creature walking past the cow is not it)
+@assert execute as @e[type=minecraft:cow,tag=bystander] at @s positioned ~ ~1.9 ~ unless entity @e[type=minecraft:text_display,tag=moddyarena_rolesign,distance=..0.6]
 teleport @s 0.5 64 17.5 180 10
 @wait 10t
 @shot the-roles-shown
 
 @step the Tank draws the monsters and stands up to them
-# a monster that comes within reach of the camel turns to it: its target is the camel, not him
+# a monster that comes within reach of the camel turns to it: its target is the camel, not him. SHORTCUT: the camel
+# is put 3 blocks from one of the monsters (toward the middle), since they may gather by the shut gate, out of its
+# reach
+execute at @e[tag=moddyarena_wave,limit=1] facing 0.5 64 0.5 run teleport @e[type=minecraft:camel,tag=standin] ^ ^ ^3
 @repeat 600 until execute as @e[tag=moddyarena_wave] on target if entity @s[type=minecraft:camel]
 @wait 1t
 @end-repeat
