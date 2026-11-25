@@ -112,6 +112,9 @@ final class ArenaRoleKeeper {
      */
     void tick(ServerLevel level, boolean wave, Collection<UUID> fighters, Collection<UUID> waveMobs) {
         ticks++;
+        if (ticks % SIDE_TICKS == 0) {
+            keepOnPlayersSide(level, waveMobs);
+        }
         if (!wave) {
             if (!held.isEmpty() || !holding.isEmpty()) {
                 int[] n = releaseAll(level);
@@ -177,6 +180,43 @@ final class ArenaRoleKeeper {
         keepHold(level);
     }
 
+    /** How often the wished creatures in the place are looked at for a player target (twice a second). */
+    static final int SIDE_TICKS = 10;
+
+    /**
+     * A wished creature is on the players' side in the place ({@link ArenaSide}): in the arena and its prep room, in a
+     * battle or not, one whose target is a player lets him go (its target and its brain's attack memory cleared). The
+     * game's damage event stops any hurt it still gets in ({@link ArenaModule#onIncomingDamage}). The wave's monsters
+     * are not wished and are not touched.
+     */
+    private void keepOnPlayersSide(ServerLevel level, Collection<UUID> waveMobs) {
+        ArenaPlace.Box f = place.footprint();
+        AABB box = new AABB(f.x0(), f.y0() - 2, f.z0(), f.x1() + 1, level.getMaxY() + 1, f.z1() + 1);
+        for (Mob m : level.getEntities(EntityTypeTest.forClass(Mob.class), box, x -> x.isAlive()
+                && (x.getTarget() instanceof Player || remembersPlayer(x)))) {
+            if (waveMobs.contains(m.getUUID()) || !ArenaSide.dropTarget(ArenaRoles.wished(
+                    com.moddingfromamod.world.Wished.isWished(m), m.getTags(), arenasOwn),
+                    place.keeps(m.getX(), m.getY(), m.getZ()), true)) {
+                continue;
+            }
+            LivingEntity was = m.getTarget() instanceof Player ? m.getTarget() : null;
+            if (was != null) {
+                m.setTarget(null);
+            }
+            if (remembersPlayer(m)) {
+                m.getBrain().eraseMemory(MemoryModuleType.ATTACK_TARGET);
+            }
+            LOG.info("Moddy Arena: a wished {} had a player as its target; let go (a wished creature is on the players'"
+                    + " side here)", EntityType.getKey(m.getType()));
+        }
+    }
+
+    /** A creature whose brain (the newer mobs' AI) holds a player as its attack target. */
+    private static boolean remembersPlayer(Mob m) {
+        return m.getBrain().checkMemory(MemoryModuleType.ATTACK_TARGET, MemoryStatus.REGISTERED)
+                && m.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).filter(t -> t instanceof Player).isPresent();
+    }
+
     // ── taking a role ───────────────────────────────────────────────────────────────────────────────────────────────
 
     private void start(ServerLevel level, Mob m, Held h, List<ArenaRoles.Spot> spots) {
@@ -205,7 +245,11 @@ final class ArenaRoleKeeper {
 
     // ── the roles ───────────────────────────────────────────────────────────────────────────────────────────────────
 
-    /** A Fighter: walks to its foe ({@link ArenaAllies#pick}) and, beside it, strikes it once a second. */
+    /**
+     * A Fighter: walks to its foe ({@link ArenaAllies#pick}) and, beside it, strikes it once a second, at its own attack
+     * damage. The arena lands the blow itself, so a creature whose own nature never strikes (a friendly one) fights all
+     * the same; its own goals may strike too, as any creature's do.
+     */
     private void fight(ServerLevel level, Mob m, Held h, List<LivingEntity> foes) {
         if (m.getTarget() instanceof Player) {
             m.setTarget(null);   // a wished monster fights the wave, not the players
@@ -231,9 +275,9 @@ final class ArenaRoleKeeper {
         }
         boolean ridden = m.hasPassenger(p -> p instanceof Player);
         if (ArenaAllies.inReach(m.distanceToSqr(foe), m.getBbWidth(), foe.getBbWidth())) {
-            if (ArenaAllies.mayStrike(h.lastStrike, ticks)) {
-                AttributeInstance attack = m.getAttribute(Attributes.ATTACK_DAMAGE);
-                float dmg = ArenaAllies.damage(attack == null ? 0 : attack.getValue());
+            AttributeInstance attack = m.getAttribute(Attributes.ATTACK_DAMAGE);
+            float dmg = ArenaAllies.damage(attack == null ? 0 : attack.getValue());
+            if (dmg > 0 && ArenaAllies.mayStrike(h.lastStrike, ticks)) {
                 m.getLookControl().setLookAt(foe);
                 m.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
                 foe.hurtServer(level, m.damageSources().mobAttack(m), dmg);

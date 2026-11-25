@@ -254,6 +254,7 @@ public final class ArenaPanel {
             case BEST -> {
                 out.add("Best for MMMMMMMMMMMMMMMM: wave 995 in 99:59");
                 out.add("MMMMMMMMMMMMMMMM: no best at these settings yet");
+                out.add(ArenaWords.bestNotRecorded("MMMMMMMMMMMMMMMM", ArenaUnranked.Mode.SPECTATOR));
                 out.add("Press a button to see your best");
             }
             case DIFFICULTY_LABEL -> out.add(ArenaWords.PANEL_DIFFICULTY);

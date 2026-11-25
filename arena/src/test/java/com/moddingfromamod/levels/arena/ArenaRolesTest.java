@@ -27,8 +27,12 @@ class ArenaRolesTest {
         assertEquals(Role.FIGHTER, ArenaRoles.choose(new Facts(3, 20, 0.6, false, true), N), "a cat or a zombie's punch");
         assertEquals(Role.FIGHTER, ArenaRoles.choose(new Facts(15, 100, 1.4, false, true), N),
                 "big and tough, but it fights: a fighter first");
-        assertEquals(Role.FIGHTER, ArenaRoles.choose(new Facts(0, 20, 0.6, true, true), N),
-                "a monster a wish summoned fights, attack or not");
+        assertEquals(Role.FIGHTER, ArenaRoles.choose(new Facts(1, 20, 0.6, true, true), N),
+                "a monster a wish summoned fights, however soft its punch");
+        assertEquals(Role.HEALER, ArenaRoles.choose(new Facts(0, 20, 0.6, true, true), N),
+                "but a monster with no attack at all is no Fighter: it heals");
+        assertEquals(Role.TANK, ArenaRoles.choose(new Facts(0, 80, 0.6, true, true), N),
+                "or, when tough, it is a Tank");
         assertEquals(Role.FIGHTER, ArenaRoles.choose(new Facts(3, 20, 0.6, false, false), N),
                 "it fights where it stands when it cannot walk");
     }

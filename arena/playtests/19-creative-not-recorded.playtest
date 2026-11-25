@@ -1,0 +1,127 @@
+# Moddy Arena: a battle fought in Creative is not on the Champions board, and he is told so once, in chat; while he is
+# in Creative the control panel's best line (his, by name) says his runs are not recorded. A battle he switches to
+# Creative in and back is not recorded either, nor one he turns to Spectator in (which also takes him out of it, so
+# that battle is lost). A battle in Survival all the way is recorded. Monsters are removed by command (the fighting is
+# 4-battle-won's); a resistance effect keeps him on his feet.
+# play-timeout: 1200
+@intent a battle fought in Creative or Spectator at any point does not go on the Champions board and the player is told once in chat, while a battle in Survival all the way does
+@world flat seed=1
+@continue-on-fail
+
+@step he arrives; nobody is on the Champions board yet
+@expect chat Welcome to Moddy Arena within 90s
+@wait 2s
+difficulty hard
+difficulty normal
+gamemode survival
+effect give @s minecraft:resistance 1500 4 true
+effect give @s minecraft:saturation 1500 0 true
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_champions_none,nbt={text:{text:"No champions here yet. Be the first!"}}]
+
+@step in Creative, the control panel's best line says his runs are not recorded
+gamemode creative
+@wait 3s
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_best,nbt={text:{text:"Tester: in Creative, runs not recorded"}}]
+teleport @s 0.5 64 21.5 180 0
+@aim pos 0.5 66.5 17.1
+@wait 2s
+@shot panel-best-in-creative
+
+@step a battle started in Creative: he is told once, and it is not recorded
+moddy arena start
+@expect chat You are in Creative: this battle will not go on the Champions board. within 5s
+@expect title Wave 1 of 5 within 15s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title Wave 2 of 5 within 25s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title Wave 3 of 5 within 25s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title Wave 4 of 5 within 25s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title BOSS WAVE within 25s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title You won within 10s
+@expect chat The arena is tidy again within 20s
+@wait 2s
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_champions_none,nbt={text:{text:"No champions here yet. Be the first!"}}]
+@assert execute unless entity @e[type=minecraft:item_display,tag=moddyarena_champions_face_1]
+@shot board-after-a-creative-battle
+
+@step a Survival battle he switches to Creative in, and back: told once, not recorded
+gamemode survival
+@wait 2s
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_best,nbt={text:{text:"Tester: no best at these settings yet"}}]
+moddy arena start
+@expect title Wave 1 of 5 within 15s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect chat Wave 1 cleared within 10s
+gamemode creative
+@expect chat You are in Creative: this battle will not go on the Champions board. within 3s
+@wait 1s
+@shot told-when-he-switches
+gamemode survival
+@expect title Wave 2 of 5 within 25s
+@wait 1s
+gamemode creative
+@wait 1s
+gamemode survival
+kill @e[tag=moddyarena_wave]
+@expect title Wave 3 of 5 within 25s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title Wave 4 of 5 within 25s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title BOSS WAVE within 25s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title You won within 10s
+@expect chat The arena is tidy again within 20s
+@wait 2s
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_champions_none,nbt={text:{text:"No champions here yet. Be the first!"}}]
+
+@step a battle he turns to Spectator in: told, out of it (so it is lost), and not recorded
+moddy arena start
+@expect title Wave 1 of 5 within 15s
+@wait 1s
+gamemode spectator
+@expect chat You are in Spectator: this battle will not go on the Champions board. within 3s
+@expect title Battle lost within 10s
+@expect chat The arena is tidy again within 20s
+@wait 2s
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_champions_none,nbt={text:{text:"No champions here yet. Be the first!"}}]
+gamemode survival
+teleport @s 0.5 64 21.5 180 0
+@wait 1s
+
+@step a battle in Survival all the way goes on the board
+moddy arena start
+@expect title Wave 1 of 5 within 15s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title Wave 2 of 5 within 25s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title Wave 3 of 5 within 25s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title Wave 4 of 5 within 25s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title BOSS WAVE within 25s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect chat Your run: Won all 5 in within 10s
+@expect chat The arena is tidy again within 20s
+@wait 2s
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_champions_result_1,nbt={text:{text:"Won all 5"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_champions_name_1,nbt={text:{text:"Tester"}}]
+teleport @s 0.5 64 19.5 0 0
+@wait 3s
+@shot board-after-a-survival-battle

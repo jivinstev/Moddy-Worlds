@@ -28,7 +28,7 @@
         "Firing a wish\n\nIn a battle, hold a wish on your hotbar and use it.\n\nThen it rests for {arena_rest_seconds} seconds before you can use it again.",
         "Wishes a wave\n\nYou can fire {arena_wishes_per_wave} hotbar wishes in each wave. You get them all back in the next wave.\n\nThe bar at the top shows how many are left.",
         "Creatures help!\n\nA creature you wish into the arena helps in a battle:\n\nFighter: it fights the monsters.\n\nHealer: it stays near you and heals you.",
-        "Tank: the monsters chase it and leave you alone.\n\nChampions\n\nThe best battles go on the Champions board on the back wall."
+        "Tank: the monsters chase it and leave you alone.\n\nYour creatures are on your side here.\n\nChampions\n\nThe best battles go on the Champions board on the back wall. Battles in Creative do not."
       ]
     }
   },

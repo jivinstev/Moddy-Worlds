@@ -13,8 +13,11 @@ import java.util.UUID;
  * wished as.
  *
  * <ul>
- *   <li><b>Fighter</b>: a creature that can fight (its own attack is at least {@link ArenaCreatures#fighterAttack}, or
- *       it is a monster) goes for the wave's monsters ({@link ArenaAllies});</li>
+ *   <li><b>Fighter</b>: a creature that can hurt (its own attack is at least {@link ArenaCreatures#fighterAttack}, or
+ *       it is a monster with any attack at all) goes for the wave's monsters, and the arena lands its blows at its own
+ *       attack damage ({@link ArenaAllies}), whatever its own nature (a friendly creature never strikes by itself). A
+ *       creature whose attack damage is 0 is never a Fighter: nothing it does is known to hurt a monster (the core
+ *       gives no fact about its special moves), and the arena gives no creature damage it does not have;</li>
  *   <li><b>Tank</b>: a big or tough creature that does not fight (most health at least
  *       {@link ArenaCreatures#tankHealth}, or at least {@link ArenaCreatures#tankWidth} wide) draws the monsters near it
  *       and stands up to them;</li>
@@ -86,7 +89,7 @@ final class ArenaRoles {
      * walk to its player, is a Tank where it stands.
      */
     static Role choose(Facts f, ArenaCreatures n) {
-        if (f.monster() || f.attack() >= n.fighterAttack()) {
+        if (f.attack() >= n.fighterAttack() || (f.monster() && f.attack() > 0)) {
             return Role.FIGHTER;
         }
         if (f.maxHealth() >= n.tankHealth() || f.width() >= n.tankWidth()) {

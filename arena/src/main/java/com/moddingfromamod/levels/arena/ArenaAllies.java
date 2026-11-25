@@ -18,8 +18,6 @@ final class ArenaAllies {
     static final int STRIKE_COOLDOWN_TICKS = 20;
     /** How often its walk to its foe is set again (the foe moves): twice a second. */
     static final int REPATH_TICKS = 10;
-    /** What a strike takes when the creature's own attack reads as nothing: one and a half hearts (never a 0 hit). */
-    static final float NO_ATTACK_DAMAGE = 3.0f;
     /** The gap between the two that a strike reaches across, past their touching sides: a block and a half. */
     static final double REACH = 1.5;
     /** The walk's speed, as a multiple of the creature's own. */
@@ -70,8 +68,11 @@ final class ArenaAllies {
         return lastStrike < 0 || now - lastStrike >= STRIKE_COOLDOWN_TICKS;
     }
 
-    /** What a strike takes: the creature's own attack when it has one above nothing, else {@link #NO_ATTACK_DAMAGE}. */
+    /**
+     * What a strike takes: the creature's own attack damage, never more; 0 (no strike at all) when it has none. A
+     * Fighter always has some ({@link ArenaRoles#choose}); a creature that lost it (a fit lowered it) strikes nothing.
+     */
     static float damage(double ownAttack) {
-        return ownAttack > 0 ? (float) ownAttack : NO_ATTACK_DAMAGE;
+        return ownAttack > 0 && Double.isFinite(ownAttack) ? (float) ownAttack : 0f;
     }
 }

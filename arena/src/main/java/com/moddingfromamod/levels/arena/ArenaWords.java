@@ -192,6 +192,63 @@ public final class ArenaWords {
                 + " on the Champions board!" : ".");
     }
 
+    /**
+     * Chat, once a battle, to a player seen in Creative or Spectator during it (at its start, or when he switches): his
+     * run of this battle is not recorded.
+     */
+    public static String notRecorded(ArenaUnranked.Mode mode) {
+        return "You are in " + modeName(mode) + ": this battle will not go on the Champions board.";
+    }
+
+    /** The control panel's best line, for the player who pressed last while he is in Creative or Spectator. */
+    public static String bestNotRecorded(String name, ArenaUnranked.Mode mode) {
+        return name + ": in " + modeName(mode) + ", runs not recorded";
+    }
+
+    private static String modeName(ArenaUnranked.Mode mode) {
+        return mode == ArenaUnranked.Mode.SPECTATOR ? "Spectator" : "Creative";
+    }
+
+    /** "wave 5" or "boss 2": how far a battle has to get, as the ladder counts. */
+    private static String stepName(ArenaLadder.Count count, int after) {
+        return count == ArenaLadder.Count.BOSSES ? "boss " + after + " is beaten" : "wave " + after + " is cleared";
+    }
+
+    /**
+     * Chat, once per wish per prep, when a wish he puts on his hotbar would not come out as it is at the step the battle
+     * is on (a battle starts at the first): "Your Meteor is locked in a battle until wave 5 is cleared.", "Your Dragon
+     * will be smaller at first. It grows as you clear waves." Null when there is nothing to say.
+     */
+    public static String pinNotice(String name, ArenaPinNotice.Notice n, ArenaLadder.Count count) {
+        if (n == null || n.type() == ArenaPinNotice.Type.NONE) {
+            return null;
+        }
+        String your = name == null || name.isBlank() ? "This wish" : "Your " + name;
+        boolean bosses = count == ArenaLadder.Count.BOSSES;
+        return switch (n.type()) {
+            case LOCKED -> your + " is locked in a battle until " + stepName(count, n.after()) + ".";
+            case TOO_MUCH -> n.after() > 0 ? your + " is too much for now. It opens when " + stepName(count, n.after())
+                    + "." : your + " is too much for this arena right now.";
+            case FITTED -> {
+                List<String> how = new java.util.ArrayList<>();
+                for (ArenaPinNotice.Held h : n.held()) {
+                    how.add(switch (h) {
+                        case SMALLER -> "smaller";
+                        case WEAKER -> "weaker";
+                        case FEWER -> "fewer";
+                        case GENTLER -> "gentler";
+                    });
+                }
+                String what = how.size() == 1 ? how.get(0) : String.join(", ", how.subList(0, how.size() - 1))
+                        + " and " + how.get(how.size() - 1);
+                String grows = n.held().contains(ArenaPinNotice.Held.SMALLER) ? "It grows" : "It gets stronger";
+                yield your + " will be " + what + " at first. " + grows + " as you "
+                        + (bosses ? "beat bosses." : "clear waves.");
+            }
+            default -> null;
+        };
+    }
+
     /** Chat, to everyone in the place, once the arena is put back. */
     public static String ready() {
         return "The arena is tidy again. Press the button in the prep room to start a battle.";

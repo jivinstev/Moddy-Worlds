@@ -54,10 +54,89 @@ public final class ArenaModule implements WorldModule {
     private volatile ArenaMakes makes;
     /** Players who arrived for the first time, and the tick until which the core's guide book is looked for. */
     private final Map<UUID, Long> guideDue = new HashMap<>();
+    /** The wished creatures whose hurt to a player was stopped, so the log says it once for each. */
+    private final Set<UUID> spared = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     @Override
     public String id() {
         return ID;
+    }
+
+    /**
+     * The game's events (registered by {@link ArenaMod}, on {@code NeoForge.EVENT_BUS}): the items a player drops when
+     * he dies (or is knocked out) are his own, so the arena keeps them between waves and moves them to the prep room
+     * at a battle's end, never removes them. Only in an arena world, while its module runs. Server thread.
+     */
+    static void onDrops(net.neoforged.neoforge.event.entity.living.LivingDropsEvent event) {
+        ArenaModule m = live;
+        ArenaBattle b = m == null ? null : m.battle;
+        if (b == null || !(event.getEntity() instanceof ServerPlayer)) {
+            return;
+        }
+        for (net.minecraft.world.entity.item.ItemEntity item : event.getDrops()) {
+            b.playersItem(item.getUUID());
+        }
+    }
+
+    /**
+     * The game's damage event: a creature a wish made never hurts a player in the place ({@link ArenaSide}). What is
+     * traced: the creature itself, and anything the game records it as the owner of (an arrow, a fireball, a trident,
+     * evoker fangs, a potion cloud, lit TNT it set off: the damage's cause, or the thing that hit). Not traced: damage
+     * the game gives no source for (a fall, fire or lava it caused, a blast nobody owns, a block it changed, a command a
+     * datapack power runs), which a player takes as from anything else.
+     */
+    static void onIncomingDamage(net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent event) {
+        ArenaModule m = live;
+        ArenaBattle b = m == null ? null : m.battle;
+        if (b == null || !(event.getEntity() instanceof ServerPlayer p)) {
+            return;
+        }
+        var source = event.getSource();
+        if (ArenaSide.spare(true, b.inPlace(p), wishMade(source.getEntity()), wishMade(source.getDirectEntity()))) {
+            event.setCanceled(true);
+            net.minecraft.world.entity.Entity by = source.getEntity() != null ? source.getEntity() : source.getDirectEntity();
+            if (by != null && m.spared.add(by.getUUID())) {
+                LOG.info("Moddy Arena: a wished {} would have hurt {}; stopped (a wished creature is on the players' side"
+                        + " here)", net.minecraft.world.entity.EntityType.getKey(by.getType()), p.getScoreboardName());
+            }
+        }
+    }
+
+    /**
+     * The game's event for a creature choosing a target: a creature a wish made, in the place, never picks a player
+     * ({@link ArenaSide}); the role keeper's pass lets go of one it still holds.
+     */
+    static void onChangeTarget(net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent event) {
+        ArenaModule m = live;
+        ArenaBattle b = m == null ? null : m.battle;
+        if (b == null || !(event.getNewAboutToBeSetTarget() instanceof net.minecraft.world.entity.player.Player)) {
+            return;
+        }
+        if (ArenaSide.dropTarget(com.moddingfromamod.world.Wished.isWished(event.getEntity()),
+                b.inPlace(event.getEntity()), true)) {
+            event.setNewAboutToBeSetTarget(null);
+        }
+    }
+
+    /** True for an entity a wish made, or one whose owner a wish made (what such a creature shot or threw). */
+    private static boolean wishMade(net.minecraft.world.entity.Entity e) {
+        if (e == null) {
+            return false;
+        }
+        if (com.moddingfromamod.world.Wished.isWished(e)) {
+            return true;
+        }
+        return e instanceof net.minecraft.world.entity.TraceableEntity t && t.getOwner() != null
+                && com.moddingfromamod.world.Wished.isWished(t.getOwner());
+    }
+
+    /** The game's event for an item a player throws (Q, or out of his inventory): his own, as {@link #onDrops}. */
+    static void onToss(net.neoforged.neoforge.event.entity.item.ItemTossEvent event) {
+        ArenaModule m = live;
+        ArenaBattle b = m == null ? null : m.battle;
+        if (b != null && event.getPlayer() instanceof ServerPlayer) {
+            b.playersItem(event.getEntity().getUUID());
+        }
     }
 
     @Override

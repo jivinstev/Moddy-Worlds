@@ -211,6 +211,11 @@ final class ArenaBoard {
         String[] who = bestFor(level);
         String best = who == null ? null : ArenaChampions.bestLine(who[1], ArenaChampions.bestOf(state.champions(),
                 who[0], ArenaChampions.Key.of(settings)));
+        ArenaUnranked.Mode mode = who == null ? ArenaUnranked.Mode.PLAY : ArenaBattle.modeOf(server.getPlayerList()
+                .getPlayer(java.util.UUID.fromString(who[0])));
+        if (mode != ArenaUnranked.Mode.PLAY) {
+            best = ArenaWords.bestNotRecorded(who[1], mode);   // about him, by name: true for whoever reads it
+        }
         int perWave = ArenaWishesRule.wishesOf(com.moddingfromamod.world.WorldRulesService.current()).wishesPerWave();
         Map<Words, String> want = new EnumMap<>(Words.class);
         for (Slot s : panel.slots()) {
