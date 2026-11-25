@@ -14,6 +14,8 @@
 @assert execute unless items entity @s hotbar.* minecraft:written_book
 
 @step he reads it
+# in survival, so the inventory key opens his own inventory
+gamemode survival
 @key key.inventory
 @expect screen Inventory within 5s
 @click item "Arena Guide" shift
@@ -24,7 +26,8 @@
 @assert execute if items entity @s hotbar.2 minecraft:written_book
 @key key.hotbar.3
 @wait 5t
-data get entity @s SelectedItem.components
+# the lives page as given: its number is the rules' lives (3 in the arena's own rules), filled in from the arena's charge
+@assert execute if data entity @s SelectedItem.components."minecraft:written_book_content".pages[{raw:"Lives\n\nYou have 3 lives in a battle.\n\nKnocked out? You go back to the prep room with your hotbar, and run back in!"}]
 @key key.use
 @expect screen /book/ within 5s
 @wait 10t
