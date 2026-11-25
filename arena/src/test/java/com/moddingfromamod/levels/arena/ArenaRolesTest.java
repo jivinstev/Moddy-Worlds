@@ -41,10 +41,11 @@ class ArenaRolesTest {
     }
 
     @Test
-    void anyOtherCreatureHealsOrIsADecoy() {
+    void anyOtherCreatureHealsOrTanksWhereItStands() {
         assertEquals(Role.HEALER, ArenaRoles.choose(new Facts(0, 20, 0.65, false, true), N), "a gentle cat");
         assertEquals(Role.HEALER, ArenaRoles.choose(new Facts(2.9, 39.9, 1.29, false, true), N), "just under each line");
-        assertEquals(Role.DECOY, ArenaRoles.choose(new Facts(0, 8, 0.4, false, false), N), "cannot follow anyone");
+        assertEquals(Role.TANK, ArenaRoles.choose(new Facts(0, 8, 0.4, false, false), N),
+                "it cannot follow anyone to heal him, so it draws the monsters where it stands");
     }
 
     @Test
@@ -70,8 +71,8 @@ class ArenaRolesTest {
             if (role == Role.HEALER) {
                 assertTrue(f.canWalk(), "a healer follows its player, so it walks: " + f);
             }
-            if (role == Role.DECOY) {
-                assertFalse(f.canWalk(), "a decoy is only for a creature that cannot walk: " + f);
+            if (!f.canWalk() && role != Role.FIGHTER) {
+                assertEquals(Role.TANK, role, "a creature that cannot walk and does not fight holds the monsters: " + f);
             }
         }
         assertEquals(EnumSet.allOf(Role.class), got, "every role is reached");
@@ -171,7 +172,7 @@ class ArenaRolesTest {
             assertTrue(r.word().chars().allMatch(c -> c >= 32 && c < 127));
             assertTrue(ArenaRoleKeeper.signNbt(r, "t").contains(r.word()));
         }
-        assertTrue(Role.TANK.draws() && Role.DECOY.draws() && !Role.HEALER.draws() && !Role.FIGHTER.draws());
+        assertTrue(Role.TANK.draws() && !Role.HEALER.draws() && !Role.FIGHTER.draws());
     }
 
     /** What a role line says, one for each role, naming the creature. */

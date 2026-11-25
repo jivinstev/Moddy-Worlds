@@ -293,7 +293,6 @@ public final class ArenaWords {
             case FIGHTER -> "Your " + name + " is a Fighter! It will fight the monsters with you.";
             case HEALER -> "Your " + name + " is a Healer! It will keep you healthy.";
             case TANK -> "Your " + name + " is a Tank! It will make the monsters chase it.";
-            case DECOY -> "Your " + name + " is a Decoy! The monsters will go for it instead of you.";
         };
     }
 
@@ -529,7 +528,7 @@ public final class ArenaWords {
                 wavesFixed(10), wavesFixed(0), wavesAtEnd(false, 5, 0, false), wavesAtEnd(true, 5, 0, false),
                 wavesAtEnd(true, 5, 10, true), CHAMPIONS_TITLE, championsNone(), creaturesHelp(),
                 roleTaken(ArenaRoles.Role.FIGHTER, "Buddy the Cat"), roleTaken(ArenaRoles.Role.HEALER, "Buddy the Cat"),
-                roleTaken(ArenaRoles.Role.TANK, "Buddy the Cat"), roleTaken(ArenaRoles.Role.DECOY, "Buddy the Cat"));
+                roleTaken(ArenaRoles.Role.TANK, "Buddy the Cat"));
     }
 
     /** Every line the panel and its selectors can say, for a test that reads them all. */

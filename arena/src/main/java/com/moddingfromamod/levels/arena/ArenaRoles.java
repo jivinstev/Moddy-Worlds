@@ -19,7 +19,8 @@ import java.util.UUID;
  *       {@link ArenaCreatures#tankHealth}, or at least {@link ArenaCreatures#tankWidth} wide) draws the monsters near it
  *       and stands up to them;</li>
  *   <li><b>Healer</b>: any other creature that can walk stays by its player and heals him;</li>
- *   <li><b>Decoy</b>: any other creature that cannot walk draws the monsters near it, where it stands.</li>
+ *   <li>and any other creature that cannot walk is a Tank too: it cannot follow anyone to heal him, so it draws the
+ *       monsters near it, where it stands.</li>
  * </ul>
  *
  * <p>Chosen only from what the game itself says about the creature (its attack and health, its size, whether it is a
@@ -35,8 +36,7 @@ final class ArenaRoles {
     enum Role {
         FIGHTER("Fighter", "red"),
         TANK("Tank", "aqua"),
-        HEALER("Healer", "green"),
-        DECOY("Decoy", "gold");
+        HEALER("Healer", "green");
 
         private final String word;
         private final String colour;
@@ -56,9 +56,9 @@ final class ArenaRoles {
             return colour;
         }
 
-        /** True for the two roles that draw the monsters to themselves. */
+        /** True for the role that draws the monsters to itself. */
         boolean draws() {
-            return this == TANK || this == DECOY;
+            return this == TANK;
         }
     }
 
@@ -74,7 +74,10 @@ final class ArenaRoles {
     record Facts(double attack, double maxHealth, double width, boolean monster, boolean canWalk) {
     }
 
-    /** The role a creature with these facts takes. Never null: a creature nothing else fits heals, or is a decoy. */
+    /**
+     * The role a creature with these facts takes. Never null: a creature nothing else fits heals, or, when it cannot
+     * walk to its player, is a Tank where it stands.
+     */
     static Role choose(Facts f, ArenaCreatures n) {
         if (f.monster() || f.attack() >= n.fighterAttack()) {
             return Role.FIGHTER;
@@ -82,7 +85,7 @@ final class ArenaRoles {
         if (f.maxHealth() >= n.tankHealth() || f.width() >= n.tankWidth()) {
             return Role.TANK;
         }
-        return f.canWalk() ? Role.HEALER : Role.DECOY;
+        return f.canWalk() ? Role.HEALER : Role.TANK;
     }
 
     // ── which creatures ─────────────────────────────────────────────────────────────────────────────────────────────

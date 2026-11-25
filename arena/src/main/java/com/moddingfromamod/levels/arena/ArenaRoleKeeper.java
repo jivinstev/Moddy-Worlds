@@ -41,7 +41,7 @@ import org.slf4j.LoggerFactory;
  * <b>The wished creatures' battle roles, carried out in the world</b> ({@link ArenaRoles} decides; this looks and acts).
  * Ticked by {@link ArenaBattle}: during a wave, every creature a player wished into the arena gets its role (a sign
  * above it, one line to its player, once a battle), and does it: a Fighter goes for the wave's monsters, a Healer stays
- * by its player and heals him, a Tank or a Decoy draws the monsters near it and stands up to them.
+ * by its player and heals him, a Tank draws the monsters near it and stands up to them.
  *
  * <p><b>Nothing lasts past the wave.</b> At the wave's end, in a break, when the battle ends and whenever a creature is
  * outside the arena, its role stops completely: its sign and its role tag go, its walk is stopped, the Resistance a tank
@@ -163,7 +163,7 @@ final class ArenaRoleKeeper {
             switch (h.role) {
                 case FIGHTER -> fight(level, m, h, foes);
                 case HEALER -> heal(level, m, h, in);
-                case TANK, DECOY -> taunt(level, m, h, foes);
+                case TANK -> taunt(level, m, h, foes);
             }
         }
         for (Iterator<Map.Entry<UUID, Held>> it = held.entrySet().iterator(); it.hasNext(); ) {
@@ -286,7 +286,7 @@ final class ArenaRoleKeeper {
     }
 
     /**
-     * A Tank or a Decoy: once a second, every monster of the wave near it that no other tank holds turns to it (an angry
+     * A Tank: once a second, every monster of the wave near it that no other tank holds turns to it (an angry
      * cue over it, and a clang), and while it holds any it has a short Resistance, given again while it holds them.
      */
     private void taunt(ServerLevel level, Mob m, Held h, List<LivingEntity> foes) {
