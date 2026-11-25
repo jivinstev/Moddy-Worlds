@@ -82,12 +82,19 @@ class ArenaHandOverTest {
 
     @Test
     void inThePrepRoomAnItemIsTheRealItemAndEverythingElseAHotbarWish() {
-        assertEquals(ArenaHandOver.Answer.KEPT_AS_ITEM, ArenaHandOver.answer(ArenaHandOver.Where.PREP_ROOM, "item", false));
+        for (String kind : List.of("item", "machine", "magic_block")) {
+            assertEquals(ArenaHandOver.Answer.KEPT_AS_ITEM, ArenaHandOver.answer(ArenaHandOver.Where.PREP_ROOM, kind, false),
+                    "the core hands a " + kind + " over as an item");
+        }
+        assertEquals(ArenaHandOver.Answer.LANDS, ArenaHandOver.answer(ArenaHandOver.Where.PREP_ROOM, "supplies", false),
+                "supplies are given to him as always: no recipe makes them again, and no line says they were not kept");
         for (String kind : List.of("creature", "ride", "building", "event")) {
             assertEquals(ArenaHandOver.Answer.KEPT, ArenaHandOver.answer(ArenaHandOver.Where.PREP_ROOM, kind, false), kind);
         }
-        assertEquals(ArenaHandOver.Answer.KEPT, ArenaHandOver.answer(ArenaHandOver.Where.PREP_ROOM, "picture", false),
-                "asked to keep: the core lands what it cannot keep and says so (notKept)");
+        for (String kind : List.of("picture", "rule", "other")) {
+            assertEquals(ArenaHandOver.Answer.KEPT, ArenaHandOver.answer(ArenaHandOver.Where.PREP_ROOM, kind, false),
+                    "asked to keep: the core lands what it cannot keep and says so (notKept): " + kind);
+        }
     }
 
     @Test

@@ -548,7 +548,7 @@ The owner's rule: **a thing you hold is a real item; a thing that happens or app
 
 - **A make finished in the prep room** (the Builder, the Apprentice or the Magician) does not appear beside him. An
   **item** (a sword, a wand, a machine or a magic block the core makes as an item) is handed over as the **real item**,
-  in his inventory. A **creature, ride, building or event** is kept and handed over as a **hotbar wish**, in the first
+  in his inventory; supplies are given to him as they always were. A **creature, ride, building or event** is kept and handed over as a **hotbar wish**, in the first
   empty slot, drawn however the core draws a hotbar wish (the arena never chooses the picture); fired in the arena, it
   appears where he aims, like any hotbar wish.
 - **The hand-over spot shows it**: the finished make shows for a moment (1.5 seconds) over the gold block, then flies to

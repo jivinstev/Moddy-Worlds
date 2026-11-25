@@ -58,17 +58,21 @@ final class ArenaHandOver {
         return aimed && place.arenaReach().contains(aimX, aimZ) ? Where.ARENA : Where.PREP_ROOM;
     }
 
+    /** The kinds the core hands over as a thing he holds: an item, and a machine or magic block (made as an item). */
+    static final java.util.Set<String> HELD = java.util.Set.of("item", "machine", "magic_block");
+
     /**
      * The answer for a new make of {@code kind} (the core's make kind: {@code item}, {@code creature}, {@code ride},
      * {@code building}, {@code event}, ...) finished {@code where}; {@code replay} true for a thing made again from its own
-     * recipe. In the prep room an item is kept as the real item and everything else as a hotbar wish; a kind the core
-     * cannot keep (a picture, a change) lands anyway, and the core says so ({@link #notKeptKind}).
+     * recipe. In the prep room a thing he holds ({@link #HELD}) is kept as the real item and everything else as a hotbar
+     * wish; supplies are given to him as they always are (they are things he holds, and no recipe makes them again). A
+     * kind the core cannot keep (a picture, a rule, a change) lands anyway, and the core says so ({@code notKept}).
      */
     static Answer answer(Where where, String kind, boolean replay) {
-        if (where != Where.PREP_ROOM || replay) {
+        if (where != Where.PREP_ROOM || replay || "supplies".equals(kind)) {
             return Answer.LANDS;
         }
-        return "item".equals(kind) ? Answer.KEPT_AS_ITEM : Answer.KEPT;
+        return HELD.contains(kind) ? Answer.KEPT_AS_ITEM : Answer.KEPT;
     }
 
     /** What the core says when a make the arena asked to keep was not kept ({@code NotKept.Why}, by name). */
