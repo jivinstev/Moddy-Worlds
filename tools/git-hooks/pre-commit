@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
-# PRE-COMMIT: refuse a commit whose staged changes ADD an API key or token, or private work.
+# PRE-COMMIT: refuse a commit whose staged changes ADD an API key or token, private work, or third-party code under a
+# licence that is not on the allow-list (CONTRIBUTING.md).
 #
 # Installed by tools/git-hooks/install.sh with pre-push. Two scans of what the index adds:
 #   * tools/secret-scan.py --staged: every credential shape in tools/secret_patterns.py, and the live secret values of
 #     the environment you commit from (any *_KEY, *_TOKEN, *_SECRET with a long value);
 #   * tools/leak-scan.py over the staged files: the built-in rules, this repository's tools/leak-rules.txt, and your
 #     private forbidden list when one is configured (git config moddy.forbidden, $MODDY_FORBIDDEN_FILE or
-#     ~/.moddy/forbidden.txt).
+#     ~/.moddy/forbidden.txt);
+#   * tools/licence-scan.py --staged: licence wording, ids and provenance off the allow-list, and a foreign copyright
+#     with no THIRD_PARTY.md row.
 # A finding names the file, the line and the kind; never what matched. pre-push scans every outgoing commit again.
 set -uo pipefail
 top="$(git rev-parse --show-toplevel)" || exit 1
-for f in secret-scan.py secret_patterns.py leak-scan.py; do
+for f in secret-scan.py secret_patterns.py leak-scan.py licence-scan.py licence-rules.json; do
     if [ ! -f "$top/tools/$f" ]; then
         echo "pre-commit: tools/$f is missing, so nothing can be checked; refusing the commit" >&2
         exit 1
@@ -33,5 +36,10 @@ if [ "${#staged[@]}" -gt 0 ]; then
         echo "pre-commit: public: take it out of the file, never only out of a later commit." >&2
         rc=1
     fi
+fi
+if ! python3 "$top/tools/licence-scan.py" --repo "$top" --staged >&2; then
+    echo "pre-commit: REFUSED. Code or text from someone else comes in only under an allow-listed licence; anything" >&2
+    echo "pre-commit: else goes to the maintainers first (CONTRIBUTING.md). A foreign copyright needs a THIRD_PARTY.md row." >&2
+    rc=1
 fi
 exit "$rc"

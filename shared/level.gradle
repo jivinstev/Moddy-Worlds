@@ -288,3 +288,21 @@ def checkLevelJar = tasks.register('checkLevelJar') {
     }
 }
 tasks.named('assemble') { dependsOn(checkLevelJar) }
+
+// What this world's jar ships from others carries an allow-listed licence (CONTRIBUTING.md): every library inside its
+// META-INF/jarjar/ and every datapack its datapacks.lock.json pins. Part of `check`, so of `build`.
+def licenceStamp = layout.buildDirectory.file('licence-check.txt')
+def licenceCheck = tasks.register('licenceCheck', Exec) {
+    group = 'verification'
+    description = "What this world's jar bundles from others is on the licence allow-list"
+    def jarFile = tasks.named('jar').flatMap { it.archiveFile }
+    dependsOn tasks.named('jar')
+    def scanner = rootProject.file('../tools/licence-scan.py')
+    inputs.files(jarFile, file('datapacks.lock.json'), scanner, rootProject.file('../tools/licence-rules.json'))
+    outputs.file licenceStamp
+    doFirst {
+        commandLine 'python3', scanner.path, '--bundled', jarFile.get().asFile.path, '--lock', file('datapacks.lock.json').path
+    }
+    doLast { licenceStamp.get().asFile.text = 'licence-scan --bundled passed\n' }
+}
+tasks.named('check') { dependsOn licenceCheck }

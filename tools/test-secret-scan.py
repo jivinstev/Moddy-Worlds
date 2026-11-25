@@ -213,7 +213,7 @@ class Cli(unittest.TestCase):
         # secret rules too), so there the test drives those.
         hooks = "git-hooks"
         shutil.copytree(HERE / hooks, repo / "tools" / hooks)
-        for f in ("leak-scan.py", "leak-rules.txt"):          # this repository's hooks run the leak scan too
+        for f in ("leak-scan.py", "leak-rules.txt", "licence-scan.py", "licence-rules.json"):   # the hooks run these too
             shutil.copy2(HERE / f, repo / "tools" / f)
         self.git(self.tmp, "init", "-q", "-b", "main", str(repo))
         self.git(self.tmp, "init", "-q", "--bare", str(bare))

@@ -5,6 +5,8 @@
 #                    tools/leak-scan.py over every tracked file AND every commit in the history (its built-in rules,
 #                    tools/leak-rules.txt, and the maintainers' private forbidden list when the FORBIDDEN_LIST secret is
 #                    set), then tools/secret-scan.py over the tree and the history. A finding never prints what matched.
+#                    Then tools/licence-scan.py: no third-party code or text under a licence off the allow-list, in the
+#                    tree or any commit, and every foreign copyright registered in THIRD_PARTY.md (CONTRIBUTING.md).
 #
 # Building, testing and gating each world is its Port CI workflow's job (.github/workflows/port-ci-<world>.yml, generated
 # by MMVU's tools/port-ci.py, never edited by hand): on the same events as this workflow (pull requests to main, a
@@ -44,6 +46,7 @@ jobs:
         run: |
           python3 tools/test-leak-scan.py
           python3 tools/test-secret-scan.py
+          python3 tools/test-licence-scan.py
           python3 tools/check-level-jar.py --self-test
           python3 tools/changed-worlds.py --self-test
           python3 tools/core-pins.py --self-test
@@ -69,3 +72,7 @@ jobs:
         run: |
           python3 tools/secret-scan.py --tree
           python3 tools/secret-scan.py --history
+      - name: Licence scan, the tree, the register and the history
+        run: |
+          python3 tools/licence-scan.py --tree
+          python3 tools/licence-scan.py --range -- HEAD
