@@ -1,5 +1,12 @@
-# Release: build a level jar from main and publish it as a GitHub (pre-)release, by hand only
-# (Actions -> Release -> Run workflow). It is the only way a release is made: nothing else here can create one.
+# Release (KEPT FOR NOW): build a level jar from the release branch neoforge-1.21.8 and publish it as a GitHub (pre-)release, by hand only
+# (Actions -> Release -> Run workflow).
+#
+# A world's releases are cut by its Port CI workflow (.github/workflows/port-ci-<world>.yml: a tag
+# <world>-<version>-mc<minecraft>, or Run workflow with release = true; promote = <tag> once a person has played it).
+# This workflow stays until Port CI also does what only it does today: SHA256SUMS beside the jar (tools/play.sh checks
+# it), release notes naming the core release and sha256 to install beside the jar, the World Type and
+# <level>/RELEASE-NOTES.md, the jar's leak scan with the private forbidden list, and wording for this repository's own
+# mods (Port CI's notes call a release an "unofficial port"). Never run it for a version Port CI already released.
 #
 # It builds against the PUBLIC core exactly as <level>/core.lock pins it (never a -PcoreJar override), runs the unit
 # tests, checks the jar holds only the level's own packages, resources and packs (tools/check-level-jar.py), scans
@@ -43,10 +50,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - name: Only from main
-        if: github.ref != 'refs/heads/main'
+      - name: Only from the release branch
+        if: github.ref != 'refs/heads/neoforge-1.21.8'
         run: |
-          echo "::error::a release is built from main only (this run is on ${GITHUB_REF})"
+          echo "::error::a release is built from neoforge-1.21.8 only, main at a release point (this run is on ${GITHUB_REF}); take main into neoforge-1.21.8 first (README: Releases)"
           exit 1
       - uses: actions/checkout@v4
         with:
@@ -105,18 +112,13 @@ jobs:
           echo "core_repo=$(sed -n 's/^core_repo=//p' "$lock")" >> "$GITHUB_OUTPUT"
           echo "core_asset=$(sed -n 's/^core_asset=//p' "$lock")" >> "$GITHUB_OUTPUT"
           echo "core_sha256=$(sed -n 's/^core_sha256=//p' "$lock")" >> "$GITHUB_OUTPUT"
-      - name: The workflow's core pins match the core.lock files
+      - name: Each world's core.lock is its Port CI workflow's pin, inside its core_version_range
         run: python3 tools/core-pins.py --check
-      # BEGIN core pins: written by tools/core-pins.py from */core.lock; edit core.lock, then tools/core-pins.py --write
-      - name: The pinned public core moddingfromamod-1.0.10-mc1.21.8 (arena, isle)
+      - name: The pinned public core (core.lock, which tools/core-pins.py writes from the world's Port CI workflow)
         env:
+          LEVEL: ${{ inputs.level }}
           GH_TOKEN: ${{ secrets.CORE_READ_TOKEN }}
-        run: |
-          mkdir -p "$RUNNER_TEMP/core"
-          curl -fsSL -o "$RUNNER_TEMP/core/moddingfromamod-1.0.10+mc1.21.8.jar" "https://github.com/jivinstev/ModdyTheWishWatch/releases/download/moddingfromamod-1.0.10-mc1.21.8/moddingfromamod-1.0.10+mc1.21.8.jar" || gh release download "moddingfromamod-1.0.10-mc1.21.8" -R "jivinstev/ModdyTheWishWatch" -p "moddingfromamod-1.0.10+mc1.21.8.jar" -D "$RUNNER_TEMP/core" --clobber
-          echo "1fcc5aa8ced4d1e81a67678b56d2504203f813202579063a01660e0cbf8124e9  $RUNNER_TEMP/core/moddingfromamod-1.0.10+mc1.21.8.jar" | sha256sum -c -
-          for w in arena isle; do mkdir -p "$w/.core"; cp "$RUNNER_TEMP/core/moddingfromamod-1.0.10+mc1.21.8.jar" "$w/.core/"; done
-      # END core pins
+        run: tools/fetch-core.sh "$LEVEL"
       - name: Unit tests and the jar (against the pinned core only)
         env:
           LEVEL: ${{ inputs.level }}
