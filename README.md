@@ -31,6 +31,7 @@ licences (each world's `THIRD_PARTY_NOTICES.txt`).
   src/test/java          its unit tests
   playtests/             its real-client playtests (tools/play.sh), and play.props
 playtests/               real-client playtests across SEVERAL worlds in one game (tools/play.sh isle,arena)
+.port/1.21.8/            MMVU's version-branch marker: how Port CI gates a 1.21.8 build (Releases, below)
 shared/                  written once, compiled into EVERY world's jar (never a jar of its own)
   level.gradle           the build every world shares
   src/main/java          the shared level code: Level, LevelPacks, LevelWorldType, LevelClaim
@@ -195,10 +196,9 @@ no operations tooling, no player ids or players' words, no credentials. Every ch
   `./tools/git-hooks/install.sh --forbidden ~/.moddy/forbidden.txt`.
 - **CI** (`.github/workflows/ci.yml`, on pull requests to `main` and by hand): the scanners' self-tests,
   `tools/core-pins.py --check`, the leak scan over the tree and every commit, the secret scan over the tree and the
-  history, and each changed world's `build` (unit tests and the jar check). Each world's **Port CI** workflow
+  history. Each world's build, unit tests, jar check and gates are its **Port CI** workflow's
   (`.github/workflows/port-ci-<world>.yml`, on pull requests to `main`, pushes to `main` that touch the world,
-  `shared/` or the Gradle wrapper, its release tags and by hand) runs the same `build` and then the gates; once its
-  gates can run here (below), CI's world build is dropped.
+  `shared/` or the Gradle wrapper, its release tags and by hand).
 - **The rules**: `tools/leak-scan.py`'s built-in shapes (emails, routable IPs, bucket URLs, every credential shape in
   `tools/secret_patterns.py`, children's-data file names, the private side's packages), plus
   [`tools/leak-rules.txt`](tools/leak-rules.txt) (committed, shapes only), plus the private list (never committed;
@@ -222,9 +222,13 @@ tagged `<world>-<mod_version>-mc<minecraft>` (from `<world>/gradle.properties`) 
    their GitHub login (or MMVU's `tools/port-ci.py promote --fork jivinstev/Moddy-Worlds --mod <world> --tag <tag>
    --played-by <login>`). Nothing becomes a full Release unplayed.
 
-**Not yet:** MMVU's gates have no harness for a Minecraft 1.21.8 checkout that is not a version branch, so today
-every Port CI run of a world goes red at Gate A (`UnknownTarget: minecraft_version='1.21.8'`) after its `build`
-passed, and no Port CI release can be cut. Until MMVU closes that, release with the Release workflow (below).
+What the gates are, for a world: MMVU gates a Minecraft 1.21.8 build through its version-branch route, which
+`.port/1.21.8/branch.properties` turns on (its 1.21.1 harness renamed for 1.21.8, as the core repository does). For
+a NeoGradle (`net.neoforged.gradle.userdev`) build like ours MMVU does not inject its own harness, so Gate A runs the
+world's own unit tests and Gate B boots a headless server with the core and the world and runs the one default
+GameTest; data the server rejects fails it. Each runs twice, `full` and `minimal`. There is **no Gate C**
+(`--gatec none`): MMVU's client verdict comes from its injected harness, which a NeoGradle build does not get, so a
+client would only run until the stall limit; the core's own Gate C is open for the same reason.
 
 A `dep_override` run (Port CI's dependent gate: a candidate core) never releases. Pre-releases made before Port CI
 (by the Release workflow) stay valid and installable as they are.
