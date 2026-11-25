@@ -8,7 +8,7 @@ what the README does not: how to get the work done quickly and what goes wrong.
 
 ```bash
 ./gradlew -p <world> build                 # compile, unit tests, the jar, checkLevelJar, licenceCheck  (seconds once warm)
-tools/play.sh <world> --build --only NAME  # one real-client playtest                                    (2 to 5 minutes)
+tools/play.sh <world> --build --only NAME  # one real-client playtest                                    (about a minute)
 tools/play.sh <world> --build              # every playtest of the world, before a pull request that changes play
 ```
 
@@ -23,11 +23,18 @@ Run it once at the start of any session on a new machine, before the first build
 
 | step | without it | with it |
 |---|---|---|
-| Minecraft's files for the first playtest | 35 to 40 min (one file at a time) | about half a minute (parallel) |
-| the first build | about 17 min, two failures on Maven Central 429s | about 5 min, no retry |
+| the first build | about 17 min, two failures on Maven Central 429s | 3 min 19 s, no retry |
+| the test instance (Minecraft's 4,344 files, Java, NeoForge) | 35 to 40 min (one file at a time) | 1 min 20 s (parallel) |
+| the whole setup, to ready-to-play | about 55 min | 5 min 11 s |
+| a second world on the same machine | | 32 s |
+
+After it, one playtest in a real client took 46 s (Arena) and 48 s (Isle).
 
 It costs no GitHub Actions minutes and stores nothing on GitHub: the files come from the hosts a player's Launcher
-uses. It deliberately does NOT keep a shared copy of Minecraft anywhere (a release asset, a cache, a bucket):
+uses, plus from GitHub: one clone of MMVU, the pinned core's release jar (kept in `<world>/.core`), and the playtest
+carrier, which MMVU looks up again on every `tools/play.sh` run. That lookup asks GitHub's API first and, when the API
+refuses or is rate-limited (it is refused outright in some cloud sessions), reads the release tags over git instead;
+`CARRIER_DIR=<folder>` skips the lookup altogether. It deliberately does NOT keep a shared copy of Minecraft anywhere (a release asset, a cache, a bucket):
 Minecraft's files are not ours to redistribute, and a half-minute download needs no cache.
 
 ## When to give work its own machine

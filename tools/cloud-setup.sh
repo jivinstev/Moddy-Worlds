@@ -19,7 +19,7 @@
 # Then:  tools/play.sh WORLD --build [--only NAME]
 #
 # It uses no GitHub Actions minutes and no GitHub storage: everything comes from the same public hosts a player's
-# Launcher uses, plus two git clones and two release downloads. WHEN A STEP CANNOT RUN it says which and what still
+# Launcher uses, plus from GitHub one clone (MMVU), the pinned core's release jar and the playtest carrier. WHEN A STEP CANNOT RUN it says which and what still
 # works: without step 2 a build may need a retry; without step 5's parallel fetch the installer fetches one file at a
 # time (slow, correct); without MMVU or a display there are no playtests on this machine, so run them on another one
 # (tools/play.sh works on macOS and on any Linux with xvfb) and keep this machine for builds and unit tests.

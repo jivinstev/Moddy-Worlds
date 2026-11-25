@@ -71,8 +71,8 @@ one instance and runs the root `playtests/` instead (worlds side by side: each k
 
 **On a fresh Linux machine** (a cloud coding session, a new VM): `tools/cloud-setup.sh <world>` first. It installs the
 display packages, makes Gradle's downloads reliable behind a proxy, clones MMVU beside this repository, builds the
-world and makes the test instance, with Minecraft's files fetched in parallel. Measured on a 4-CPU cloud machine: the
-Minecraft files take about half a minute this way against 35 to 40 minutes one at a time. It uses no GitHub Actions
+world and makes the test instance, with Minecraft's files fetched in parallel. Measured on a fresh 4-CPU cloud machine: ready to play
+in 5 minutes, against about 55 without it (the installer alone fetches Minecraft's files one at a time). It uses no GitHub Actions
 minutes and no GitHub storage, and each step says what still works when it cannot run (`tools/cloud-setup.sh --help`).
 [CLAUDE.md](CLAUDE.md) says when a separate machine is worth it.
 
