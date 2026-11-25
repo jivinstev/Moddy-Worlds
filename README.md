@@ -89,7 +89,10 @@ of the core). On Port CI's dependent gate (a run with `dep_override`, which swap
 the run sets `PORT_CI_DEP_OVERRIDE` to the coordinates it swapped; when that list names exactly
 `com.moddingfromamod:moddingfromamod`, the build takes the mavenLocal jar unchecked (any other coordinates change
 nothing). Both print a loud warning and mark the jar (the manifest attribute `Moddy-Unpinned-Core`), which
-`tools/check-level-jar.py` refuses; Port CI never releases a `dep_override` run either.
+`tools/check-level-jar.py` refuses; Port CI never releases a `dep_override` run either. A `-PcoreJar` build still
+builds: its own `build`/`assemble` runs `checkLevelJar` with `--allow-unpinned`, which warns and goes on, so
+`./gradlew -p <world> build -PcoreJar=<jar>` gives a marked jar for a local
+test before a core cut. Only the strict check, the one a release runs, refuses that jar.
 
 Every `./gradlew -p <world> build` (and `assemble`) also checks the jar it made (task `checkLevelJar`):
 `tools/check-level-jar.py` (below) and `tools/leak-scan.py` over the jar's contents but its third-party `datapacks/`.
