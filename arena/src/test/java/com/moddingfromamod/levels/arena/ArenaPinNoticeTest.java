@@ -127,5 +127,9 @@ class ArenaPinNoticeTest {
         assertEquals("Meteor", ArenaPinNotice.nameOf("Meteor"));
         assertEquals("", ArenaPinNotice.nameOf("✨ Wish: "));
         assertEquals("", ArenaPinNotice.nameOf(null));
+        assertEquals("Buddy the Golem", ArenaPinNotice.nameOf("\u2728 Wish: Buddy the Golem"));
+        assertEquals("", ArenaPinNotice.nameOf("\u2728 Wish: A meteor that makes a crater!"),
+                "a ready-made's label is a sentence, not a name: the line says This wish");
+        assertEquals("", ArenaPinNotice.nameOf("Wish: A very long name for a thing"));
     }
 }

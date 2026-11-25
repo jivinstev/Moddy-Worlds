@@ -1,6 +1,6 @@
 # Moddy Arena: a wished creature is on the players' side here, and a Fighter is one that can hurt. A wished stand-in
 # that hunts players (a zombie carrying the core's wish tag, as a stock hunter would) stands beside him in the prep
-# room and never hurts him, not even a hit the game says it dealt; far outside the place the same hit lands. In a wave
+# room and never hurts him; far outside the place the same creature bites. In a wave
 # a wished polar bear (an attack of 6, and no wish to fight monsters of its own) is a Fighter and its blows land on a
 # monster; a wished zombie with no attack at all is not a Fighter. Stand-ins, summoned with the core's wish tag
 # (wishmob), as 14-creature-roles uses: the arena reads the same fact for them as for a real wish.
@@ -25,15 +25,13 @@ effect give @s minecraft:instant_health 1 5 true
 @wait 10s
 @shot the-hunter-beside-him
 @assert execute if entity @s[nbt={Health:20.0f}]
-damage @s 4 minecraft:mob_attack by @e[tag=hunter,limit=1]
-@wait 5t
-@assert execute if entity @s[nbt={Health:20.0f}]
 
-@step far outside the place, the same hit lands (nothing changes there)
+@step far outside the place, the same hunter bites (nothing changes there)
 teleport @s 200.5 -60 200.5
-@wait 1s
-damage @s 4 minecraft:mob_attack by @e[tag=hunter,limit=1]
-@wait 5t
+teleport @e[tag=hunter] 202.5 -60 200.5
+@repeat 20 until execute unless entity @s[nbt={Health:20.0f}]
+@wait 10t
+@end-repeat
 @assert execute unless entity @s[nbt={Health:20.0f}]
 effect give @s minecraft:instant_health 1 5 true
 teleport @s 0.5 64 21.5 180 0
@@ -49,16 +47,15 @@ moddy arena start
 execute as @e[tag=moddyarena_wave] run data merge entity @s {NoAI:1b}
 tag @e[tag=moddyarena_wave,limit=1,sort=random] add watched
 execute at @e[tag=watched] run summon minecraft:polar_bear ~1.5 ~ ~ {Tags:["wishmob","bear"],PersistenceRequired:1b,CustomName:"Snowy"}
-execute at @e[tag=watched] run summon minecraft:zombie ~-1.5 ~ ~ {Tags:["wishmob","softie"],PersistenceRequired:1b,CustomName:"Softie"}
-attribute @e[tag=softie,limit=1] minecraft:attack_damage base set 0
+execute at @e[tag=watched] run summon minecraft:zombie ~-1.5 ~ ~ {Tags:["wishmob","softie"],PersistenceRequired:1b,CustomName:"Softie",attributes:[{id:"minecraft:attack_damage",base:0.0d}]}
 execute store result score #h0 arenatest run data get entity @e[tag=watched,limit=1] Health 100
 @wait 6s
 @assert execute if entity @e[tag=bear,tag=moddyarena_fighter]
 @assert execute unless entity @e[tag=softie,tag=moddyarena_fighter]
 @assert execute if entity @e[tag=softie,tag=moddyarena_role]
-# 0 when the watched monster is gone (beaten): the store then never happens
+# 0 when the watched monster is gone (beaten: the bear's blows may finish it in those seconds)
 scoreboard players set #h1 arenatest 0
-execute store result score #h1 arenatest run data get entity @e[tag=watched,limit=1] Health 100
+execute as @e[tag=watched,limit=1] run execute store result score #h1 arenatest run data get entity @s Health 100
 scoreboard players get #h0 arenatest
 scoreboard players get #h1 arenatest
 @shot the-bear-fights

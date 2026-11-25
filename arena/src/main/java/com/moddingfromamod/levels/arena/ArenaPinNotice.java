@@ -114,12 +114,22 @@ final class ArenaPinNotice {
         return 0;
     }
 
-    /** The name a hotbar wish shows without the core's "✨ Wish: " in front ("Dragon"); "your wish" when it has none. */
+    /** The most words a hotbar wish's label may have to be read as its name in "Your ... is locked". */
+    static final int NAME_WORDS = 4;
+
+    /**
+     * The name a hotbar wish shows without the core's "✨ Wish: " in front ("Dragon", "Buddy the Golem"); empty (the
+     * line then says "This wish") when it has none, or when its label is a sentence rather than a name (a ready-made's
+     * "A meteor that makes a crater!": more than {@value #NAME_WORDS} words, or a sentence's mark in it).
+     */
     static String nameOf(String hoverName) {
-        String n = hoverName == null ? "" : hoverName.replace("✨", "").strip();
+        String n = hoverName == null ? "" : hoverName.replace("\u2728", "").strip();
         if (n.startsWith("Wish:")) {
             n = n.substring("Wish:".length()).strip();
         }
-        return n.isEmpty() ? "" : n;
+        if (n.isEmpty() || n.split("\\s+").length > NAME_WORDS || n.matches(".*[!?.].*")) {
+            return "";
+        }
+        return n;
     }
 }

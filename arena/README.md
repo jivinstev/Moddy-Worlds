@@ -448,7 +448,8 @@ ladder starts again. Nothing is hidden: every wished creature has a battle role.
   and prep is the first) tells him so once, as it lands ("On your hotbar, slot 5" is the core's line, this one follows
   it): "Your Meteor is locked in a battle until wave 5 is cleared.", "Your Rock Golem will be weaker at first. It gets
   stronger as you clear waves.", "Your Dragon will be smaller at first. It grows as you clear waves." (a number the core
-  cannot lower: "Your Castle is too much for now. It opens when wave 6 is cleared."). The arena reads his hotbar wishes
+  cannot lower: "Your Castle is too much for now. It opens when wave 6 is cleared."; a wish whose label is a sentence
+  rather than a name, as a ready-made's is, is "This wish"). The arena reads his hotbar wishes
   twice a second through the core's public `WishHotbar.recipeOf` and asks what each makes with
   `MakeFactsLookup.forRecipe`, then judges the facts exactly as a fire is judged (`ArenaPinNotice`, pure): only a
   wish new to him in this prep is told, once (taken off and put back, it is not told again; after a battle, what he

@@ -43,6 +43,7 @@ scoreboard players get #atk0 arenatest
 @expect screen /make a wish/ within 10s
 @click button "My wishes"
 @expect screen My wishes within 10s
+@wait 2s
 @click item "meteor" right
 @expect screen /meteor/ within 10s
 @click item "Add to hotbar"
@@ -69,6 +70,7 @@ kill @e[tag=wishmob]
 @expect screen /make a wish/ within 10s
 @click button "My wishes"
 @expect screen My wishes within 10s
+@wait 2s
 @click item "Golem"
 @expect screen /Golem/ within 10s
 @click item "Add to hotbar"
@@ -88,6 +90,7 @@ kill @e[tag=wishmob]
 @expect screen /make a wish/ within 10s
 @click button "My wishes"
 @expect screen My wishes within 10s
+@wait 2s
 @click item "Lightning Sword"
 @expect screen Lightning Sword within 10s
 @click item "Add to hotbar"
@@ -125,6 +128,10 @@ scoreboard players get #atk1 arenatest
 @assert execute if score #atk1 arenatest = #atk0 arenatest
 
 @step (2) the sword's hotbar wish fired after the step: a new sword, beside the old one, no stronger
+# hotbar slots 7 to 9 emptied (a monster's drop he walked over may lie there), so the new sword lands in slot 7
+item replace entity @s hotbar.6 with minecraft:air
+item replace entity @s hotbar.7 with minecraft:air
+item replace entity @s hotbar.8 with minecraft:air
 @key key.hotbar.6
 @wait 5t
 @key key.use
@@ -148,7 +155,6 @@ item replace entity @s hotbar.7 with minecraft:netherite_sword
 @wait 10t
 execute store result score #net0 arenatest run attribute @s minecraft:attack_damage get 10
 scoreboard players get #net0 arenatest
-kill @e[tag=moddyarena_wave]
 @expect title Wave 3 of 10 within 25s
 @wait 1s
 @key key.hotbar.9
