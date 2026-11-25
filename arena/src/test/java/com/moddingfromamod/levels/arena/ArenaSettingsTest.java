@@ -23,7 +23,7 @@ import org.junit.jupiter.api.Test;
 class ArenaSettingsTest {
 
     private static final List<WorldRuleType> TYPES = List.of(new ArenaRule(), new ArenaWavesRule(null),
-            new ArenaWishesRule());
+            new ArenaWishesRule(), new ArenaCreaturesRule());
 
     /** The bundled rules file's waves: husks 3; husks 5; husks 4 and pillagers 2; ... (10 in the last wave). */
     static ArenaWaves bundled() throws IOException {

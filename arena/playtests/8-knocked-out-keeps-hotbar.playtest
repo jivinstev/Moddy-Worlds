@@ -1,8 +1,9 @@
 # Moddy Arena: a hotbar wish is kept when he is knocked out in a battle. He makes a Fire Sword with the Apprentice in
-# prep and puts it on his hotbar from its page; in the battle he is knocked out, the battle is lost, he comes back in
-# the prep room, and the hotbar wish is back in its slot (not dropped in the arena). Then, in prep again, it makes the
-# sword with one click.
-@intent a player holding a hotbar wish is knocked out in a battle, comes back in the prep room, and the wish is back in its slot and still works
+# prep and puts it on his hotbar from its page; in the battle he is knocked out with lives left, comes back in the prep
+# room with the hotbar wish back in its slot (not dropped in the arena), and the battle goes on: the wish still fires
+# in it. Then he runs out of lives (by command), the battle is lost, and in prep again it makes the sword with one
+# click.
+@intent a player holding a hotbar wish is knocked out in a battle with lives left, comes back in the prep room with the wish in its slot, it still fires in the battle that goes on, and works again after it
 @world flat seed=1
 @continue-on-fail
 
@@ -59,16 +60,32 @@ moddy apprentice a fire sword
 @key key.hotbar.4
 @wait 1s
 @assert execute if entity @e[tag=moddyarena_wave]
-@expect chat knocked out or left within 180s
+@expect chat Knocked out! 2 lives left within 180s
 @wait 2s
 
-@step back in the prep room, with the hotbar wish back in its slot
+@step back in the prep room, with the hotbar wish back in its slot, and the battle goes on
 @assert execute if entity @s[x=-4,y=63,z=17,dx=8,dy=3,dz=8]
 @repeat 40 until execute if items entity @s hotbar.3 minecraft:paper
 @wait 5t
 @end-repeat
 @assert execute if items entity @s hotbar.3 minecraft:paper
-@expect chat The arena is tidy again within 15s
+@assert execute if entity @e[tag=moddyarena_wave]
+# the wish fires in the battle that goes on: it makes the sword again (a kept thing made again)
+@key key.hotbar.4
+@wait 5t
+@key key.use
+@expect chat /Fire Sword( [0-9]+)? is in slot/ within 60s
+@wait 1s
+
+@step out of lives, the battle is lost and the arena is tidied
+kill @s
+@expect chat Knocked out! 1 life left within 10s
+@wait 2s
+kill @s
+@expect chat no lives left within 10s
+@expect chat The arena is tidy again within 20s
+@wait 1s
+@assert execute if items entity @s hotbar.3 minecraft:paper
 # it was not dropped: no paper lies anywhere in the place
 @assert execute unless entity @e[type=minecraft:item,x=-17,y=60,z=-17,dx=34,dy=20,dz=44,nbt={Item:{id:"minecraft:paper"}}]
 @aim look 180 12
@@ -76,17 +93,10 @@ moddy apprentice a fire sword
 @shot back-in-the-prep-room
 
 @step in prep again, the hotbar wish makes the sword
-# the sword he made first is put away into his inventory (a shift-click), so the new one is plainly new
-@key key.inventory
-@expect screen InventoryScreen within 3s
-@click slot 38 shift
-@key key.inventory
-@assert execute unless items entity @s hotbar.2 *
 @key key.hotbar.4
 @wait 5t
 @assert execute if items entity @s weapon.mainhand minecraft:paper
 @key key.use
-@expect chat /Fire Sword( [0-9]+)? is in slot 3/ within 60s
+@expect chat /Fire Sword( [0-9]+)? is in slot/ within 60s
 @wait 1s
-@assert execute if items entity @s hotbar.2 *
 @shot made-again-after

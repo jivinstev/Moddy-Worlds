@@ -70,7 +70,9 @@ class ArenaPlaceTest {
             for (int x = b.x0(); x <= b.x1(); x++) {
                 for (int z = b.z0(); z <= b.z1(); z++) {
                     assertNotNull(m.get(List.of(x, b.y0() - 1, z)), "no hole to the void at " + x + "," + z);
-                    assertNull(m.get(List.of(x, b.y0(), z)), "the inside is clear at " + x + "," + z);
+                    Kind k = m.get(List.of(x, b.y0(), z));
+                    assertTrue(k == null || k == Kind.SELECT_BUTTON, "the inside is clear at " + x + "," + z
+                            + " (but for the control panel's lowest buttons, on the wall)");
                 }
             }
         }
@@ -240,11 +242,14 @@ class ArenaPlaceTest {
     @Test
     void upgradesAreGivenOnceInOrder() {
         assertEquals(ArenaPlace.UPGRADES, ArenaPlace.pendingUpgrades(java.util.Set.of()));
-        assertEquals(List.of(ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS, ArenaPlace.UPGRADE_CONTROL_PANEL),
-                ArenaPlace.pendingUpgrades(java.util.Set.of(ArenaPlace.UPGRADE_START_CONTROL)));
-        assertEquals(List.of(ArenaPlace.UPGRADE_CONTROL_PANEL), ArenaPlace.pendingUpgrades(java.util.Set.of(
-                ArenaPlace.UPGRADE_START_CONTROL, ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS)),
-                "a world from before the panel gets it once");
+        assertEquals(List.of(ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS, ArenaPlace.UPGRADE_CONTROL_PANEL,
+                ArenaPlace.UPGRADE_CHAMPIONS), ArenaPlace.pendingUpgrades(java.util.Set.of(ArenaPlace.UPGRADE_START_CONTROL)));
+        assertEquals(List.of(ArenaPlace.UPGRADE_CONTROL_PANEL, ArenaPlace.UPGRADE_CHAMPIONS),
+                ArenaPlace.pendingUpgrades(java.util.Set.of(ArenaPlace.UPGRADE_START_CONTROL,
+                        ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS)), "a world from before the panel gets it once");
+        assertEquals(List.of(ArenaPlace.UPGRADE_CHAMPIONS), ArenaPlace.pendingUpgrades(java.util.Set.of(
+                ArenaPlace.UPGRADE_START_CONTROL, ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS,
+                ArenaPlace.UPGRADE_CONTROL_PANEL)), "a world from before the Champions board gets it once");
         assertTrue(ArenaPlace.pendingUpgrades(java.util.Set.copyOf(ArenaPlace.UPGRADES)).isEmpty());
     }
 

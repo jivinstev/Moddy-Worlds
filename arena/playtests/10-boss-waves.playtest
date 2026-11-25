@@ -1,0 +1,113 @@
+# Moddy Arena: a ten-wave battle with its two boss waves. He sets WAVES to 10 on the control panel and starts the
+# battle. Waves 1 to 4 are the rules file's; wave 5 is a boss wave: "BOSS WAVE" on the screen, Rumble the Ravager (a
+# named ravager with 150 health) and a small escort, and the boss bar shows the boss's health (one bar, purple: not the
+# wave's count). Waves 6 to 9 are made by the generator (more monsters, new kinds: piglin brutes from wave 7); wave 10
+# is the second boss, Captain Chop (a big vindicator with 200 health). He wins: "All 10 waves cleared".
+# A resistance effect keeps him on his feet; the monsters are removed by command (the fighting itself is
+# 4-battle-won's).
+# play-timeout: 900
+@intent with WAVES at 10 a battle has boss waves at 5 and 10, each with a named boss, a boss bar for its health and a BOSS WAVE title, generated waves between, and beating wave 10 wins
+@world flat seed=1
+
+@step he arrives and sets ten waves
+@expect chat Welcome to Moddy Arena within 90s
+@wait 2s
+difficulty hard
+difficulty normal
+gamemode survival
+effect give @s minecraft:resistance 900 4 true
+effect give @s minecraft:saturation 900 0 true
+scoreboard objectives add arenatest dummy
+teleport @s 0.5 64 21.5 180 0
+@wait 10t
+@key key.forward hold 15t
+@wait 1s
+@aim pos -0.5 64.5 17.1
+@key key.use
+@expect actionbar Waves: 10. A boss comes every 5th wave. within 3s
+@wait 5t
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_waves_value,nbt={text:{text:"10"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_means,nbt={text:{text:"First wave: 3 monsters\nBoss waves: 5, 10\nHotbar wishes: 5 a wave"}}]
+
+@step he starts the battle
+@aim pos 3.5 65.5 17.1
+@key key.use
+@expect chat A battle is starting! 10 waves of monsters within 5s
+@expect chat You each have 3 lives within 1s
+@expect title Wave 1 of 10 within 15s
+
+@step waves 1 to 4
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect chat Wave 1 cleared within 10s
+@expect title Wave 2 of 10 within 20s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title Wave 3 of 10 within 20s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title Wave 4 of 10 within 20s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect chat Wave 4 cleared within 10s
+@expect bossbar BOSS wave 5 of 10 in within 3s
+
+@step wave 5 is a boss wave: Rumble the Ravager, its health on the boss bar
+@expect title BOSS WAVE within 20s
+@expect chat Wave 5 is a boss wave: Rumble the Ravager is here! within 3s
+@wait 1s
+@assert execute if entity @e[type=minecraft:ravager,tag=moddyarena_wave,name="Rumble the Ravager"]
+execute store result score #hp arenatest run attribute @e[type=minecraft:ravager,tag=moddyarena_wave,name="Rumble the Ravager",limit=1] minecraft:max_health get
+@assert execute if score #hp arenatest matches 150
+# the escort: a third of wave 5 (a husk, a pillager, a witch and a vindicator)
+execute store result score #n arenatest if entity @e[tag=moddyarena_wave,type=!minecraft:ravager]
+@assert execute if score #n arenatest matches 4
+@expect bossbar BOSS: Rumble the Ravager (wave 5 of 10) within 3s
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_state,nbt={text:{text:"BOSS wave 5 of 10!"}}]
+# the boss hurt a little, so its bar is seen going down. The picture: from inside the arena, the wave held still
+# (no AI) so it stays in view, and after the chat has faded
+damage @e[type=minecraft:ravager,name="Rumble the Ravager",limit=1] 40 minecraft:player_attack
+execute as @e[tag=moddyarena_wave] run data merge entity @s {NoAI:1b}
+teleport @e[type=minecraft:ravager,name="Rumble the Ravager",limit=1] 0.5 64 2.5 0 0
+teleport @s 0.5 64 13.5 180 5
+@wait 12s
+@expect bossbar BOSS: Rumble the Ravager (wave 5 of 10) within 3s
+@shot boss-wave
+
+@step the boss beaten, the bar shows the escort
+kill @e[type=minecraft:ravager,tag=moddyarena_wave]
+@expect chat You beat Rumble the Ravager! within 3s
+@expect bossbar Wave 5 of 10: 4 monsters left within 3s
+kill @e[tag=moddyarena_wave]
+@expect chat Wave 5 cleared within 10s
+
+@step waves 6 to 9 are made by the generator: more monsters, and piglin brutes from wave 7
+@expect title Wave 6 of 10 within 50s
+@wait 1s
+execute store result score #n arenatest if entity @e[tag=moddyarena_wave]
+@assert execute if score #n arenatest matches 11
+kill @e[tag=moddyarena_wave]
+@expect title Wave 7 of 10 within 20s
+@wait 1s
+@assert execute if entity @e[type=minecraft:piglin_brute,tag=moddyarena_wave]
+kill @e[tag=moddyarena_wave]
+@expect title Wave 8 of 10 within 20s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title Wave 9 of 10 within 20s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect chat Wave 9 cleared within 10s
+
+@step wave 10 is the second boss, Captain Chop, and beating it wins
+@expect title BOSS WAVE within 20s
+@wait 1s
+@assert execute if entity @e[type=minecraft:vindicator,tag=moddyarena_wave,name="Captain Chop"]
+execute store result score #hp arenatest run attribute @e[type=minecraft:vindicator,tag=moddyarena_wave,name="Captain Chop",limit=1] minecraft:max_health get
+@assert execute if score #hp arenatest matches 200
+@expect bossbar BOSS: Captain Chop (wave 10 of 10) within 3s
+kill @e[tag=moddyarena_wave]
+@expect title You won within 10s
+@expect chat All 10 waves are cleared within 5s
+@expect chat Your run: Won all 10 in within 3s
+@expect chat The arena is tidy again within 15s

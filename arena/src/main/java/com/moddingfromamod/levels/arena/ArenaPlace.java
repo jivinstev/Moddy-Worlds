@@ -155,7 +155,9 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
         /** a selector button, on the prep room's side of the board */
         SELECT_BUTTON,
         /** the start button, on the prep room's side of the board */
-        START_BUTTON
+        START_BUTTON,
+        /** the Champions board: the inside of the prep room's back wall ({@link ArenaChampionsLayout}) */
+        CHAMPIONS_BOARD
     }
 
     /** One box to fill. Later fills overwrite earlier ones where they overlap. */
@@ -332,7 +334,21 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
         out.add(new Fill(new Box(0, floorY + 1, wz, 0, floorY + 1, wz), Kind.AIR));
         out.add(new Fill(new Box(0, floorY, wz, 0, floorY, wz), Kind.GATE));
         out.addAll(controlFills());
+        out.addAll(championsFills());
         return out;
+    }
+
+    /** The Champions board on the prep room's back wall ({@link ArenaChampionsLayout}). */
+    public ArenaChampionsLayout champions() {
+        return new ArenaChampionsLayout(this);
+    }
+
+    /**
+     * The Champions board's blocks: over the inside of the prep room's back wall's glass. Part of {@link #fills()}; a
+     * world built before the board existed gains exactly these ({@link #UPGRADE_CHAMPIONS}).
+     */
+    public List<Fill> championsFills() {
+        return champions().fills();
     }
 
     /** The y of the shared wall's window's top row (the control panel's top row). */
@@ -376,9 +392,11 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
      * start control (or of the bare window, in a place that never had one).
      */
     public static final String UPGRADE_CONTROL_PANEL = "control-panel";
+    /** The upgrade that gives a place its Champions board ({@link #championsFills()}), over the back wall's glass. */
+    public static final String UPGRADE_CHAMPIONS = "champions-board";
     /** Every upgrade, in the order a world gets them. A new world gets them all when it is built. */
     public static final List<String> UPGRADES = List.of(UPGRADE_START_CONTROL, UPGRADE_NO_NATURAL_SPAWNS,
-            UPGRADE_CONTROL_PANEL);
+            UPGRADE_CONTROL_PANEL, UPGRADE_CHAMPIONS);
 
     /** The upgrades a world that has had {@code done} still needs, in order. Pure. */
     public static List<String> pendingUpgrades(Set<String> done) {
