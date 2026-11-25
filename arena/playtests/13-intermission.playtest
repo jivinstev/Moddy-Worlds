@@ -1,4 +1,4 @@
-# Moddy Arena: the break between two waves. In prep he makes a house that lands in the arena (a wish that changes the
+# Moddy Arena: the break between two waves. Before the battle he makes a house in the arena (a wish that changes the
 # arena) and a Fire Sword he puts on his hotbar. He sets WAVES to 10 and starts a battle. When a wave is cleared there
 # is a break: the boss bar counts it down (15 seconds after a wave, 45 after the boss wave), the board's start button
 # reads READY and its state line is the break's timer, and the arena mends itself: the house is gone, a hole in the
@@ -21,7 +21,20 @@ gamemode survival
 effect give @s minecraft:resistance 1500 4 true
 effect give @s minecraft:saturation 1500 0 true
 
-@step in prep a house lands in the arena ahead of him
+@step before the battle a house lands in the arena ahead of him
+# he makes it from inside the arena, as in 2-wish-in-the-arena: a house made from the middle of the prep room can stand
+# partly in the prep room, and its garden fence then takes his clicks on the watch and the control panel. He is in
+# survival, so he steps up to the gate first to reach it.
+teleport @s 0.5 64 19.5 180 0
+@wait 10t
+@aim pos 0.5 64.5 16.5
+@key key.use
+@wait 10t
+@assert execute if block 0 64 16 minecraft:oak_fence_gate[open=true]
+@aim look 180 0
+@key key.forward hold 45t
+@wait 10t
+@assert execute if entity @s[z=-15,dz=29]
 @aim look 180 12
 @wait 2s
 moddy apprentice a cozy house
@@ -29,8 +42,18 @@ moddy apprentice a cozy house
 @click slot 0
 @expect chat /is ready/ within 90s
 @wait 3s
-@assert execute unless blocks -4 64 3 4 67 15 -4 200 3 all
+@assert execute unless blocks -15 64 -15 15 67 15 -15 200 -15 all
 @shot a-house-in-the-arena
+# back in the prep room, the gate shut behind him
+teleport @s 0.5 64 19.5 180 0
+@wait 10t
+@aim pos 0.5 64.5 16.5
+@key key.use
+@wait 10t
+@assert execute if block 0 64 16 minecraft:oak_fence_gate[open=false]
+# back where he arrived: within reach of the gate, the gate takes the watch's click (a block is used before the item)
+teleport @s 0.5 64 21.5 180 12
+@wait 10t
 
 @step a Fire Sword, on his hotbar from its page
 moddy apprentice a fire sword
@@ -86,7 +109,7 @@ kill @e[tag=moddyarena_wave]
 @wait 1s
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_start_label,nbt={text:{text:"READY"}}]
 @assert execute if block 0 63 7 minecraft:smooth_sandstone
-@assert execute if blocks -4 64 3 4 67 15 -4 200 3 all
+@assert execute if blocks -15 64 -15 15 67 15 -15 200 -15 all
 @assert execute unless entity @e[type=minecraft:arrow,x=-16,y=60,z=-16,dx=32,dy=20,dz=33]
 @assert execute if entity @e[type=minecraft:cat,x=-16,y=60,z=-16,dx=32,dy=20,dz=33]
 @aim look 180 15
@@ -129,6 +152,9 @@ kill @e[tag=moddyarena_wave]
 @shot the-longer-break
 
 @step in the break he changes his hotbar: the house goes on it from My wishes
+# he turns from the board first, or his click presses READY instead of his watch
+@aim look 0 30
+@wait 5t
 @key key.hotbar.1
 @key key.use
 @expect screen /make a wish/ within 10s
@@ -161,5 +187,5 @@ kill @e[tag=moddyarena_wave]
 @key key.use
 @expect chat /is ready/ within 90s
 @wait 3s
-@assert execute unless blocks -4 64 3 4 67 15 -4 200 3 all
+@assert execute unless blocks -15 64 -15 15 67 15 -15 200 -15 all
 @shot the-house-from-the-hotbar
