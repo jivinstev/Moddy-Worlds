@@ -1,0 +1,171 @@
+# Moddy Arena: every creature he wished into the arena helps in a battle. Before the battle he makes a cat with the
+# Apprentice in the arena; three more wished creatures stand in for what a wish could make (a wolf that bites, a sheep
+# that does not, a camel that is big), each with the tag the core puts on every wished creature, and a cow nobody
+# wished stands beside them. In a wave each wished creature takes ONE role, chosen from what the game says about it,
+# shown above it and told to him once: the wolf is a Fighter and goes for the monsters, the camel is a Tank and the
+# monsters turn to it, the sheep is a Healer and heals him when he is near it and not when he is far. The cow gets
+# nothing. When the wave ends every role stops: no sign, no role tag, no Resistance left on the tank. A creature taken
+# out of the arena in a wave loses its role at once.
+# He stays in the prep room behind the shut gate with Resistance V, so the monsters cannot hurt him; his health is
+# taken by /damage (generic_kill passes Resistance) and natural regeneration is off, so only a heal can raise it.
+# play-timeout: 1500
+@intent in a wave every wished creature in the arena takes one role (Fighter, Healer or Tank) shown above it and told once; a Fighter goes for the monsters, a Tank draws them, a Healer heals him only when near; a mob nobody wished gets nothing; every role stops at the wave's end and outside the arena
+@world flat seed=1
+@continue-on-fail
+
+@step arrive
+@expect chat Welcome to Moddy Arena within 90s
+@wait 2s
+difficulty normal
+gamemode survival
+gamerule naturalRegeneration false
+effect give @s minecraft:resistance 1500 4 true
+scoreboard objectives add hp health
+
+@step before the battle he makes a cat in the arena
+# into the arena through the gate, as in 2-wish-in-the-arena
+teleport @s 0.5 64 19.5 180 0
+@wait 10t
+@aim pos 0.5 64.5 16.5
+@key key.use
+@wait 10t
+@aim look 180 0
+@key key.forward hold 45t
+@wait 10t
+@assert execute if entity @s[z=-15,dz=29]
+@aim look 180 12
+@wait 2s
+moddy apprentice a cat
+@expect screen Container within 10s
+@click slot 0
+@expect chat /is ready/ within 90s
+@wait 3s
+@assert execute if entity @e[tag=wishmob,type=!minecraft:text_display,type=!minecraft:item_display,type=!minecraft:block_display,x=-16,y=60,z=-16,dx=32,dy=20,dz=32]
+@shot his-cat
+
+@step three more wished creatures, and a cow nobody wished
+# SHORTCUT: as a wish could make them; "wishmob" is the tag the core puts on every creature a wish makes. Resistance
+# keeps the wolf and the sheep alive through the test (it is not what the test measures); the camel gets none, so the
+# Resistance it has later is the Tank's own.
+summon minecraft:wolf -2 64 6 {Tags:["wishmob","standin"],PersistenceRequired:1b,CustomName:"Rex"}
+summon minecraft:sheep -3 64 12 {Tags:["wishmob","standin"],PersistenceRequired:1b,CustomName:"Puff"}
+summon minecraft:camel 4 64 9 {Tags:["wishmob","standin"],PersistenceRequired:1b,CustomName:"Hump"}
+summon minecraft:cow -8 64 10 {Tags:["bystander"],PersistenceRequired:1b}
+effect give @e[type=minecraft:wolf,tag=standin] minecraft:resistance 1500 4 true
+effect give @e[type=minecraft:sheep,tag=standin] minecraft:resistance 1500 4 true
+@wait 1s
+@assert execute unless entity @e[tag=moddyarena_role]
+# back in the prep room, the gate shut behind him
+teleport @s 0.5 64 19.5 180 0
+@wait 10t
+@aim pos 0.5 64.5 16.5
+@key key.use
+@wait 10t
+@assert execute if block 0 64 16 minecraft:oak_fence_gate[open=false]
+
+@step he starts the battle; each wished creature takes its role and he is told once
+teleport @s 0.5 64 21.5 180 0
+@wait 10t
+@key key.forward hold 15t
+@wait 1s
+@aim pos 3.5 65.5 17.1
+@key key.use
+@expect chat A battle is starting within 5s
+@expect chat Creatures you wished into the arena help you within 3s
+@expect title Wave 1 of 5 within 15s
+@expect chat Your Rex is a Fighter! It will fight the monsters with you. within 5s
+@expect chat Your Puff is a Healer! It will keep you healthy. within 5s
+@expect chat Your Hump is a Tank! It will make the monsters chase it. within 5s
+# and his own cat, by the name the game gives it
+@expect chat /Your (?!Rex |Puff |Hump ).+ is a (Fighter|Healer|Tank)!/ within 5s
+@wait 1s
+@assert execute if entity @e[type=minecraft:wolf,tag=moddyarena_fighter]
+@assert execute if entity @e[type=minecraft:sheep,tag=moddyarena_healer]
+@assert execute if entity @e[type=minecraft:camel,tag=moddyarena_tank]
+@assert execute if entity @e[tag=wishmob,tag=!standin,tag=moddyarena_role]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_rolesign,nbt={text:{text:"Healer"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_rolesign,nbt={text:{text:"Tank"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_rolesign,nbt={text:{text:"Fighter"}}]
+
+@step the cow nobody wished gets nothing
+@assert execute unless entity @e[type=minecraft:cow,tag=moddyarena_role]
+@assert execute as @e[type=minecraft:cow,tag=bystander] at @s unless entity @e[type=minecraft:text_display,tag=moddyarena_rolesign,distance=..3]
+@aim look 180 15
+@wait 5t
+@shot the-roles-shown
+
+@step the Tank draws the monsters and stands up to them
+# a monster that comes within reach of the camel turns to it: its target is the camel, not him
+@repeat 600 until execute as @e[tag=moddyarena_wave] on target if entity @s[type=minecraft:camel]
+@wait 1t
+@end-repeat
+@assert execute if entity @e[type=minecraft:camel,tag=moddyarena_tank,nbt={active_effects:[{id:"minecraft:resistance"}]}]
+@aim entity @e[type=minecraft:camel,limit=1]
+@wait 5t
+@shot a-tank-holding-monsters
+
+@step the Fighter goes for the monsters
+@repeat 600 until execute as @e[type=minecraft:wolf,tag=moddyarena_fighter] at @s if entity @e[tag=moddyarena_wave,distance=..2.5]
+@wait 1t
+@end-repeat
+@aim entity @e[type=minecraft:wolf,limit=1]
+@wait 3t
+@shot a-fighter-engaging
+
+@step when the wave ends every role stops
+# SHORTCUT: the monsters are not what this tests, so the wave is ended by command
+kill @e[tag=moddyarena_wave]
+@expect chat Wave 1 cleared! within 10s
+@wait 1s
+@assert execute unless entity @e[tag=moddyarena_role]
+@assert execute unless entity @e[type=minecraft:text_display,tag=moddyarena_rolesign]
+@assert execute unless entity @e[type=minecraft:camel,nbt={active_effects:[{id:"minecraft:resistance"}]}]
+@assert execute if entity @e[type=minecraft:camel,tag=standin]
+@assert execute if entity @e[type=minecraft:sheep,tag=standin]
+@aim look 180 15
+@wait 5t
+@shot in-the-break-no-roles
+
+@step in the next wave the roles come back, and he is not told again
+@aim pos 3.5 65.5 17.1
+@wait 5t
+@key key.use
+@expect title Wave 2 of 5 within 8s
+# SHORTCUT: the monsters are held where they appeared, so they leave the healer's test alone
+effect give @e[tag=moddyarena_wave] minecraft:slowness 600 255 true
+@wait 2s
+@assert execute if entity @e[type=minecraft:sheep,tag=moddyarena_healer]
+@assert execute if entity @e[type=minecraft:camel,tag=moddyarena_tank]
+
+@step the Healer does not heal him when he is far from it
+# he stands at the back of the prep room, about ten blocks from the healer waiting at the shut gate
+teleport @s 0.5 64 25.5 180 0
+@wait 1s
+damage @s 6 minecraft:generic_kill
+@wait 6s
+@assert execute if score @s hp matches ..14
+
+@step the Healer heals him when he is near it
+teleport @s 0.5 64 17.5 180 30
+@aim entity @e[type=minecraft:sheep,limit=1]
+@repeat 200 until execute if score @s hp matches 16..
+@wait 1t
+@end-repeat
+@shot a-healer-healing
+@assert execute if score @s hp matches 16..
+
+@step a creature taken out of the arena loses its role at once
+# SHORTCUT: the sheep is put in the prep room, outside the arena
+teleport @e[type=minecraft:sheep,tag=standin] 3.5 64 22.5
+@wait 10t
+@assert execute unless entity @e[type=minecraft:sheep,tag=moddyarena_role]
+@assert execute as @e[type=minecraft:sheep,tag=standin] at @s unless entity @e[type=minecraft:text_display,tag=moddyarena_rolesign,distance=..3]
+@assert execute if entity @e[type=minecraft:camel,tag=moddyarena_tank]
+
+@step the battle ends: nothing is left on anything
+kill @e[tag=moddyarena_wave]
+@expect chat Wave 2 cleared! within 10s
+@wait 1s
+@assert execute unless entity @e[tag=moddyarena_role]
+@assert execute unless entity @e[type=minecraft:text_display,tag=moddyarena_rolesign]
+@assert execute unless entity @e[type=minecraft:camel,nbt={active_effects:[{id:"minecraft:resistance"}]}]
