@@ -413,14 +413,13 @@ worlds only):
 - **In a battle** a typed wish or a new make is refused: "A battle is on, so only the wishes on your hotbar work now.
   New wishes are made in the prep room before a battle." It is the one line he reads (a refused Builder make says no
   other line with it), and typed words that would go to the Apprentice are refused before its page opens.
-- **A child in distress** (the core's safety layer passes the flag) is never refused and never counted.
 - `/moddy wishes` says, in prep, "Magician wishes left before the next battle: 2 of 3." and that Builder and Apprentice
   wishes are free and how many hotbar wishes a wave allows; in a battle, how many he has left this wave and how long
   each rests. The watch's and the wish
   box's titles add " - 2 Magician wishes left", or " - Battle: use your hotbar".
 
 How the arena tells the kinds apart, at the core's charge hooks, each told the core's `WishAsk` (whose wish, its kind
-of magic, its recipe id, its words, distress): a **REPLAY** whose recipe its start named (a hotbar fire, "Make another
+of magic, its recipe id, its words): a **REPLAY** whose recipe its start named (a hotbar fire, "Make another
 one", a recipe button, a left click on a ready-made wish in My wishes) is a kept thing made again, an instant wish in a
 battle; a **Builder** or **Apprentice** make (the Builder's menus, an Apprentice tile, the Apprentice's page for typed
 words, a typed change the Builder carries out) and typed words a kept recipe answers are new wishes with no model,

@@ -107,11 +107,6 @@ public final class WishBankPlugin implements ModdyPlugin {
         }
 
         @Override
-        public void waiveIfEmpty(ServerPlayer player, UUID wishId) {
-            WishBankService.waiveIfEmpty(player, wishId);
-        }
-
-        @Override
         public Paid atPickup(Wish wish) {
             return paid(WishBankService.atPickup(wish));
         }

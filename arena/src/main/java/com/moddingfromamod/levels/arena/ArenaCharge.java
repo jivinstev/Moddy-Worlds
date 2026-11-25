@@ -105,7 +105,7 @@ final class ArenaCharge implements WishCharge {
         ArenaWishPolicy.Kind kind = kindOf(ask);
         ArenaWishPolicy.Phase now = phase;
         ArenaWishes w = wishes.get();
-        ArenaWishPolicy.Decision d = policy.check(ask.player(), now, kind, thingOf(ask), ask.distress(), tick(), w);
+        ArenaWishPolicy.Decision d = policy.check(ask.player(), now, kind, thingOf(ask), tick(), w);
         if (d.allowed()) {
             return Optional.empty();
         }
@@ -129,13 +129,13 @@ final class ArenaCharge implements WishCharge {
         ArenaWishPolicy.Kind kind = kindOf(ask);
         ArenaWishPolicy.Phase now = phase;
         ArenaWishes w = wishes.get();
-        int left = policy.fired(ask.player(), now, kind, thingOf(ask), ask.distress(), tick(), w);
-        if (now != ArenaWishPolicy.Phase.BATTLE || kind != ArenaWishPolicy.Kind.REPLAY || ask.distress()) {
+        int left = policy.fired(ask.player(), now, kind, thingOf(ask), tick(), w);
+        if (now != ArenaWishPolicy.Phase.BATTLE || kind != ArenaWishPolicy.Kind.REPLAY) {
             return Paid.FREE;
         }
         if (left < 0) {
             // two fires in one tick on the last wish: the second is refused here, where the first was counted
-            ArenaWishPolicy.Decision d = policy.check(ask.player(), now, kind, thingOf(ask), false, tick(), w);
+            ArenaWishPolicy.Decision d = policy.check(ask.player(), now, kind, thingOf(ask), tick(), w);
             String line = d.refused() == ArenaWishPolicy.Reason.RESTING ? ArenaWords.resting(d.secondsLeft())
                     : ArenaWords.outOfWishes(w.wishesPerWave());
             return new Paid(true, () -> line);
@@ -176,11 +176,6 @@ final class ArenaCharge implements WishCharge {
     private String nameOf(UUID id) {
         ServerPlayer p = server == null || id == null ? null : server.getPlayerList().getPlayer(id);
         return p == null ? String.valueOf(id) : p.getScoreboardName();
-    }
-
-    @Override
-    public void waiveIfEmpty(ServerPlayer player, UUID wishId) {
-        policy.waive(wishId);
     }
 
     // ── the Magician's pickup ───────────────────────────────────────────────────────────────────────────────────────

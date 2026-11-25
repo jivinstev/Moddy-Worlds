@@ -103,16 +103,6 @@ class ArenaChargeTest {
     }
 
     @Test
-    void aWishFromAChildInDistressIsNeverRefusedNorCounted() {
-        ArenaCharge c = charge(new ArenaWishes(0, 10));
-        c.phase(ArenaWishPolicy.Phase.BATTLE);
-        Wish w = typed();
-        c.waiveIfEmpty(null, w.id());
-        assertFalse(c.atPickup(w).refused());
-        assertEquals(0, c.policy().used(HIM));
-    }
-
-    @Test
     void theCountStartsAgainWhenABattleEnds() {
         ArenaCharge c = charge(ArenaWishes.DEFAULT);
         Wish w = typed();
@@ -178,8 +168,6 @@ class ArenaChargeTest {
                 WishAsk.of(HIM, WishSource.TYPED, WishAsk.Magic.REPLAY).withRecipe("apprentice_cozy_house"))) {
             assertEquals(Optional.of(ArenaWords.battleInstantOnly()), c.refuses(a), String.valueOf(a));
         }
-        assertEquals(Optional.empty(), c.refuses(apprenticePage().withDistress(true)),
-                "a child in distress is never refused");
     }
 
     @Test

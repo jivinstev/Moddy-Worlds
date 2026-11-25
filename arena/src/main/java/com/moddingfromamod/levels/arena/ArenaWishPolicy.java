@@ -24,7 +24,6 @@ import java.util.UUID;
  *       wish and a new Builder make are refused.</li>
  *   <li>When a battle is over ({@link #battleEnded}), every player's Magician count starts again and every cooldown and
  *       wave count is cleared.</li>
- *   <li>A wish from a child in distress is never refused and never counted.</li>
  * </ul>
  *
  * <p>Asking ({@link #check}) changes nothing, as the core's {@code refuses} hook must not; a fire is written down only
@@ -104,8 +103,6 @@ public final class ArenaWishPolicy {
     private final Map<UUID, Integer> used = new HashMap<>();
     /** The Magician wishes counted this prep, by wish id, and whose: a refund gives back exactly these, once. */
     private final Map<UUID, UUID> counted = new HashMap<>();
-    /** Wishes made by a child in distress: never refused, never counted. */
-    private final Set<UUID> waived = new HashSet<>();
     /** player → kept thing → the tick it may fire again. */
     private final Map<UUID, Map<String, Long>> readyAt = new HashMap<>();
     /** player → hotbar wishes fired this wave. */
@@ -115,13 +112,9 @@ public final class ArenaWishPolicy {
      * May this wish start? Changes nothing (the core may ask it more than once for one wish, and while a menu draws).
      * {@code thing} names a kept thing (its recipe), for its cooldown; {@code tick} is the server's tick count.
      */
-    public synchronized Decision check(UUID player, Phase phase, Kind kind, String thing, boolean distress,
-                                       long tick, ArenaWishes w) {
+    public synchronized Decision check(UUID player, Phase phase, Kind kind, String thing, long tick, ArenaWishes w) {
         int u = used.getOrDefault(player, 0);
         int fires = firesLeft(player, w);
-        if (distress) {
-            return new Decision(null, u, w.magicianWishes(), 0, false, fires);
-        }
         if (phase == Phase.BATTLE) {
             if (kind != Kind.REPLAY) {
                 return new Decision(Reason.BATTLE_INSTANT_ONLY, u, w.magicianWishes(), 0, false, fires);
@@ -144,13 +137,12 @@ public final class ArenaWishPolicy {
 
     /**
      * A kept thing really is being fired in a battle (the core's charge, after its rate limiter): it costs one of this
-     * wave's hotbar wishes and starts its rest. Nothing happens in prep, for any other kind, or for a child in distress.
+     * wave's hotbar wishes and starts its rest. Nothing happens in prep, or for any other kind.
      * The hotbar wishes left this wave after it; -1 when it could not be paid (none left, or still resting: the caller
      * then starts nothing).
      */
-    public synchronized int fired(UUID player, Phase phase, Kind kind, String thing, boolean distress, long tick,
-                                  ArenaWishes w) {
-        if (phase != Phase.BATTLE || kind != Kind.REPLAY || distress) {
+    public synchronized int fired(UUID player, Phase phase, Kind kind, String thing, long tick, ArenaWishes w) {
+        if (phase != Phase.BATTLE || kind != Kind.REPLAY) {
             return firesLeft(player, w);
         }
         if (restTicks(player, thing, tick) > 0 || firesLeft(player, w) <= 0) {
@@ -187,12 +179,6 @@ public final class ArenaWishPolicy {
         return thing == null ? "" : thing;
     }
 
-    /** A wish from a child in distress: whatever happens at pickup, it is neither refused nor counted. */
-    public synchronized void waive(UUID wish) {
-        if (wish != null) {
-            waived.add(wish);
-        }
-    }
 
     /**
      * The Magician picks a typed wish up: it starts now, and costs one of this prep's Magician wishes. Refused when
@@ -201,7 +187,7 @@ public final class ArenaWishPolicy {
      */
     public synchronized Decision atPickup(UUID player, UUID wish, Phase phase, ArenaWishes w) {
         int u = used.getOrDefault(player, 0);
-        if (wish != null && (waived.contains(wish) || counted.containsKey(wish))) {
+        if (wish != null && counted.containsKey(wish)) {
             return new Decision(null, u, w.magicianWishes(), 0);
         }
         if (phase == Phase.BATTLE) {
@@ -240,7 +226,6 @@ public final class ArenaWishPolicy {
     public synchronized void battleEnded() {
         used.clear();
         counted.clear();
-        waived.clear();
         readyAt.clear();
         firedThisWave.clear();
     }
