@@ -1,0 +1,64 @@
+# The release line follows main: every change on neoforge-1.21.8 is already on main.
+#
+# main is where every world's work lands. neoforge-1.21.8 is main at a release point: each world's Port CI
+# (port-ci-<world>.yml) builds, gates and releases from it. So a fix lands on main FIRST, and a hotfix the release line
+# needs before the next release point is cherry-picked DOWN from main.
+#
+# This job refuses a push or pull request that brings neoforge-1.21.8 a commit with no equivalent on main. Every
+# non-merge commit on the release line that is not reachable from main is matched by patch-id against main's commits
+# since that commit forked off main, so both ways a change legitimately reaches the release line pass: a commit
+# reachable from main (main fast-forwarded or merged in), and a cherry-pick of a commit that is on main. Merge commits
+# carry no patch of their own and are not judged.
+#
+# Not `git cherry origin/main HEAD`: once main is merged in, the merge-base is main's tip, git cherry has no main commit
+# left to compare with, and every older cherry-pick on the line reads as missing from main.
+#
+# No exception: this repository has no Port CI install manifest (.github/port-install.json), so Port CI writes no
+# commit of its own to the release line.
+#
+# It only reads. A red check here blocks a pull request, and on a push says loudly that the release line has a commit
+# main does not.
+name: Release line follows main
+
+on:
+  push:
+    branches: ["neoforge-1.21.8"]
+  pull_request:
+    branches: ["neoforge-1.21.8"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  follows-main:
+    name: Every release-line commit is on main
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Every release-line commit's patch is on main
+        run: |
+          set -euo pipefail
+          git fetch --no-tags -q origin main
+          mapfile -t commits < <(git rev-list --no-merges --reverse origin/main..HEAD)
+          bad=0
+          if [ "${#commits[@]}" -gt 0 ]; then
+            since="$(git merge-base origin/main "${commits[0]}")"
+            main_ids="$(mktemp)"
+            git log -p --no-merges "$since..origin/main" | git patch-id --stable | cut -d' ' -f1 | sort -u > "$main_ids"
+            for sha in "${commits[@]}"; do
+              id="$(git show --format= -p "$sha" | git patch-id --stable | cut -d' ' -f1)"
+              if [ -n "$id" ] && grep -qxF "$id" "$main_ids"; then
+                continue
+              fi
+              echo "::error::$(git log -1 --format='%h %s' "$sha") is on the release line but not on main. Land it on main first, then merge main into the release line or cherry-pick it down."
+              bad=1
+            done
+          fi
+          if [ "$bad" = 0 ]; then
+            echo "Every commit on this release line is on main (by patch)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$bad"

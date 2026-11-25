@@ -45,13 +45,13 @@ name: Port CI isle (NeoForge 21.8.57 (Minecraft 1.21.8))
 
 on:
   push:
-    branches: ["main"]
+    branches: ["neoforge-1.21.8"]
     tags: ["isle-[0-9]*-mc1.21.8"]
     # one mod of several: a push runs this mod's workflow only when it touches the mod's folder, a folder it
     # builds from or this workflow (GitHub evaluates path filters on branch pushes only, so a release tag still runs)
     paths: ["isle/**", "shared/**", "gradle/**", "gradlew", ".github/workflows/port-ci-isle.yml"]
   pull_request:
-    branches: ["main"]
+    branches: ["neoforge-1.21.8"]
   release:
     types: [released]
   workflow_dispatch:
@@ -444,14 +444,14 @@ jobs:
       # tag, so publish (needs: promote) still finds the tag in the branch's history. A failure here is reported and
       # never stops publish.
       - name: Port CI kit v86 (pinned by sha256)
-        if: ${{ github.ref_name == 'main' && hashFiles('.github/port-install.json') != '' }}
+        if: ${{ github.ref_name == 'neoforge-1.21.8' && hashFiles('.github/port-install.json') != '' }}
         run: |
           curl -fsSL -o "$RUNNER_TEMP/kit.tar.gz" \
             "https://github.com/jivinstev/mc-mod-version-upgrade/releases/download/port-ci-kit-v86/port-ci-kit-v86.tar.gz"
           echo "c2be08983a5d8e453f10a818ed68a4b8f57cb04de6c1f83f408f660806e7b8a0  $RUNNER_TEMP/kit.tar.gz" | sha256sum -c -
           mkdir -p .port-tools && tar -xzf "$RUNNER_TEMP/kit.tar.gz" -C .port-tools
       - name: Refresh the install manifest
-        if: ${{ github.ref_name == 'main' && hashFiles('.github/port-install.json') != '' }}
+        if: ${{ github.ref_name == 'neoforge-1.21.8' && hashFiles('.github/port-install.json') != '' }}
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -465,15 +465,15 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           for attempt in 1 2 3; do              # the branch can move under us: refresh again on its new tip
-            git fetch --no-tags -q origin "main"
-            git checkout -q -B "main" FETCH_HEAD
+            git fetch --no-tags -q origin "neoforge-1.21.8"
+            git checkout -q -B "neoforge-1.21.8" FETCH_HEAD
             python3 .port-tools/tools/port-manifest.py refresh --repo . --tag "$TAG" --commit
             if [ "$(git rev-parse HEAD)" = "$(git rev-parse FETCH_HEAD)" ]; then exit 0; fi
-            if git push -q origin "HEAD:refs/heads/main"; then
+            if git push -q origin "HEAD:refs/heads/neoforge-1.21.8"; then
               echo "Install manifest refreshed for $TAG" >> "$GITHUB_STEP_SUMMARY"; exit 0
             fi
           done
-          echo "::error::could not push the refreshed install manifest to main"; exit 1
+          echo "::error::could not push the refreshed install manifest to neoforge-1.21.8"; exit 1
 
   publish:
     # Upload a promoted Release to Modrinth and CurseForge. needs: promote, so a Claude- or CLI-driven promote
@@ -487,7 +487,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: "main"
+          ref: "neoforge-1.21.8"
           fetch-depth: 0          # tags and history, to prove the tag was built from this branch
       - name: Port CI kit v86 (pinned by sha256)
         run: |
@@ -513,7 +513,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: "main"
+          ref: "neoforge-1.21.8"
       - name: Port CI kit v86 (pinned by sha256)
         run: |
           curl -fsSL -o "$RUNNER_TEMP/kit.tar.gz" \

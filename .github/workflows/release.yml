@@ -1,4 +1,4 @@
-# Release (KEPT FOR NOW): build a level jar from main and publish it as a GitHub (pre-)release, by hand only
+# Release (KEPT FOR NOW): build a level jar from the release branch neoforge-1.21.8 and publish it as a GitHub (pre-)release, by hand only
 # (Actions -> Release -> Run workflow).
 #
 # A world's releases are cut by its Port CI workflow (.github/workflows/port-ci-<world>.yml: a tag
@@ -50,10 +50,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - name: Only from main
-        if: github.ref != 'refs/heads/main'
+      - name: Only from the release branch
+        if: github.ref != 'refs/heads/neoforge-1.21.8'
         run: |
-          echo "::error::a release is built from main only (this run is on ${GITHUB_REF})"
+          echo "::error::a release is built from neoforge-1.21.8 only, main at a release point (this run is on ${GITHUB_REF}); take main into neoforge-1.21.8 first (README: Releases)"
           exit 1
       - uses: actions/checkout@v4
         with:
