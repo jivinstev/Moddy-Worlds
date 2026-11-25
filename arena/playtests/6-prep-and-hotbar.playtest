@@ -141,11 +141,11 @@ moddy wishes
 @expect actionbar /That wish is resting. It is ready again in [0-9]+ seconds?/ within 5s
 @shot resting
 
-@step a new make in the battle is refused
+@step a new make in the battle is refused, in one line, before the Apprentice's page opens
 moddy apprentice a cozy house
-@expect screen Container within 10s
-@click slot 0
 @expect chat only the wishes on your hotbar work now within 10s
+@wait 1s
+@expect screen none within 3s
 @wait 2s
 @shot new-wish-refused
 

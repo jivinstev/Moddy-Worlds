@@ -258,7 +258,7 @@ worlds only):
   more after the next battle. Builder and Apprentice wishes are still free."
 - **In a battle** a typed wish or a new make is refused: "A battle is on, so only the wishes on your hotbar work now.
   New wishes are made in the prep room before a battle." With the Magician off (single player's default), typed words go
-  to the Apprentice, whose page still opens; pressing one of its tiles is the make that is refused.
+  to the Apprentice, and the core asks the arena before its page opens, so in a battle the page does not open.
 - **A child in distress** (the core's safety layer passes the flag) is never refused and never counted.
 - `/moddy wishes` says, in prep, "Magician wishes left before the next battle: 2 of 3." and that Builder and Apprentice
   wishes are free; in a battle, that wishes are fired from the hotbar and how long each rests. The watch's and the wish
@@ -415,7 +415,8 @@ the player kept safe), `5-battle-lost` (knocked out in wave 1 with lives left, b
 on, then out of lives: lost, back in the prep room with his sword, the arena tidied), `6-prep-and-hotbar` (in prep, a
 make from the prep room lands in the arena ahead of it and one made in the arena lands there, and an Apprentice Fire
 Sword goes on the hotbar from its own page in My wishes, by "Add to hotbar"; its hotbar wish is used in the battle and
-makes it again, a second fire at once is refused with the seconds left, a new make is refused with the arena's words;
+makes it again, a second fire at once is refused with the seconds left, a new make is refused with the arena's words
+before the Apprentice's page opens;
 after the battle the hotbar wish is still there and new makes work), `7-creature-in-the-arena` (an Apprentice cat made
 in the arena lands there; made standing outside the place, it is refused and nothing is left),
 `8-knocked-out-keeps-hotbar` (knocked out in a battle holding a hotbar wish, with lives left, he comes back in the prep
@@ -497,8 +498,6 @@ champions) and keeps everything else.
 
 What the public core does not let a world do yet (so the arena does not do it either):
 
-- **An Apprentice page cannot be refused.** Typed words that go to the Apprentice open its page before the core asks
-  the world's charge, so in a battle the page opens and pressing a tile is what is refused.
 - **A refused Builder make also reads "Your wish bank is empty. It fills up again soon."** The core's Builder menus say
   that fixed line whenever the charge refuses a make; the arena's own line is said after it.
 - **The hotbar's sweep shows one second**: a world cannot set the cooldown the slot draws, so the arena's rest is told

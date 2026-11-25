@@ -44,7 +44,7 @@ tp @s 40 -60 0 90 0
 moddy apprentice a cat
 @expect screen Container within 10s
 @click slot 0
-@expect chat /didn't work this time/ within 90s
+@expect chat /can't go there: a wish stays inside the arena and its prep room/ within 90s
 @wait 3s
 # nothing was left round him
 @assert execute unless entity @e[type=!minecraft:player,tag=!moddyarena_panel,tag=!moddyarena_champions,distance=..30]
