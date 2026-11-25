@@ -256,9 +256,13 @@ final class ArenaRoles {
     /** How far above the creature's top its sign starts: over the name plate a named creature carries. */
     static final double SIGN_GAP = 0.6;
     static final double SIGN_GAP_NAMED = 0.95;
-    /** How far apart two signs must be, across and up: closer than this, the later one goes up a row. */
-    static final double SIGN_NEAR = 1.6;
-    static final double SIGN_ROW = 0.75;
+    /**
+     * How far apart two signs must be, across and up: closer than this, the later one goes up a row. Across is about a
+     * sign's width (the widest word, at its size), so two creatures side by side never show their words on top of each
+     * other, even from across the arena; a row is a line's height and a little more.
+     */
+    static final double SIGN_NEAR = 3.4;
+    static final double SIGN_ROW = 0.8;
 
     /** Where a creature's sign floats: from its own height, clear of its name plate when it has one. */
     static double signY(double feetY, double height, boolean named) {

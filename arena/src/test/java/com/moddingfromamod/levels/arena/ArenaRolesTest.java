@@ -213,4 +213,14 @@ class ArenaRolesTest {
         org.junit.jupiter.api.Assertions.assertTrue(ArenaRoles.signLift(0, 0.3, 66.6, placed) >= next + ArenaRoles.SIGN_ROW,
                 "a third goes up again");
     }
+
+    /** Two signs side by side never cover each other: "close" is at least a sign's width, a row at least its height. */
+    @Test
+    void signsAreKeptApartByTheirOwnSize() {
+        for (ArenaRoles.Role r : ArenaRoles.Role.values()) {
+            double wide = ArenaPanel.width(ArenaRoles.signText(r)) * 1.17 * ArenaRoleKeeper.SIGN_SCALE;
+            org.junit.jupiter.api.Assertions.assertTrue(ArenaRoles.SIGN_NEAR >= wide, r + " is " + wide + " wide");
+        }
+        org.junit.jupiter.api.Assertions.assertTrue(ArenaRoles.SIGN_ROW >= ArenaPanel.LINE * ArenaRoleKeeper.SIGN_SCALE * 1.2);
+    }
 }

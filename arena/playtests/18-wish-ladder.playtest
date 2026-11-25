@@ -1,16 +1,19 @@
 # Moddy Arena: the wish ladder, limits that rise as a battle goes on and start again every battle. In prep his wishes
-# are fitted to the first step: /moddy wishes and the WISH LADDER board beside the control panel say it in hearts; a
-# giant dragon from the Apprentice is made smaller and he is told once; the strongest sword comes out as the strongest
-# the step allows (a hit of at most two and a half hearts); a tornado (an event) is made at the first step's size in
-# prep, and the dragon and a ready-made meteor go on his hotbar. In a ten-wave battle the meteor fired from the hotbar is
-# locked with the arena's words until wave 5; clearing wave 2 raises the ladder as a moment at the start of the break (a title, a line
-# of what rose, a fanfare), the board says where the battle is, and the dragon fired after wave 4 comes out bigger;
-# clearing the boss wave opens events, and the meteor fires. The next battle starts at the first step again: the
-# same hotbar dragon comes out small, the meteor is locked again, and no creature from the first battle is left.
+# are fitted to the first step: /moddy wishes and the WISH LADDER board beside the control panel say it, the board in a
+# few big lines read from where he stands; a giant dragon from the Apprentice is made smaller and he is told once, and
+# it stays in the prep room, hurt; the strongest sword comes out as the strongest the step allows (a hit of at most two
+# and a half hearts); a tornado (an event) is made at the first step's size in prep, and the dragon and a ready-made
+# meteor go on his hotbar. In a ten-wave battle the meteor fired from the hotbar is locked with the arena's words until
+# wave 5; clearing wave 2 raises the ladder as a moment at the start of the break (a title, a line of what rose, a
+# fanfare, and the core's one line about his creatures): the dragon in the prep room has more health at once, without
+# being made again, and is just as hurt; the board says where the battle is, and the dragon fired after wave 4 has that
+# step's health; clearing the boss wave opens events, and the meteor fires. After the battle the prep room's dragon is
+# held back to the first step (he is told once), and the next battle starts at the first step again: the same hotbar
+# dragon comes out small, the meteor is locked again, and no creature from the first battle is left in the arena.
 # No model anywhere: the Apprentice's local matcher offers the makes. A resistance effect keeps him on his feet; the
 # monsters are removed by command (the fighting is 4-battle-won's).
 # play-timeout: 1500
-@intent the arena's limits are a battle's: prep makes are fitted to the first step, clearing waves raises the limits as a moment so hotbar wishes come out stronger and a locked event opens, and the next battle starts at the first step again
+@intent the arena's limits are a battle's: prep makes are fitted to the first step, clearing waves raises the limits as a moment so living wished creatures grow and hotbar wishes come out stronger and a locked event opens, and the next battle starts at the first step again with the creatures held back to it
 @world flat seed=1
 @continue-on-fail
 
@@ -30,9 +33,17 @@ moddy wishes
 @expect chat Every battle starts at the first step within 1s
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_ladder]
 
-@step the WISH LADDER board beside the control panel says it in hearts
-teleport @s 0.5 64 19.0 90 0
+@step the WISH LADDER board beside the control panel says it in big words, read from where he stands
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_ladder_where,nbt={text:{text:"Before a battle: step 1"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_ladder_now_1,nbt={text:{text:"Health: 20 hearts"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_ladder_next,nbt={text:{text:"After wave 2: health 30 hearts"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_ladder_locked,nbt={text:{text:"Battle locks: Events, World rules"}}]
+teleport @s 0.5 64 21.5 180 0
+@aim pos -4.9 65.7 19.0
 @wait 10s
+@shot ladder-board-in-prep-from-the-standing-spot
+teleport @s 0.5 64 19.0 90 0
+@wait 2s
 @shot ladder-board-in-prep
 
 @step a giant dragon is made smaller for this world, and he is told once
@@ -49,6 +60,22 @@ moddy apprentice a giant dragon
 execute store result score #sc0 arenatest run attribute @e[tag=wishmob,limit=1,sort=nearest] minecraft:scale get 100
 @assert execute if score #sc0 arenatest matches ..150
 @shot dragon-fitted
+# this dragon stays in the prep room through the battle, held still (SHORTCUT: NoAI, so it never walks into the arena
+# and is cleared at the battle's end), hurt to about half: it is never made again
+tag @e[tag=wishmob,limit=1,sort=nearest] add prepdragon
+data merge entity @e[tag=prepdragon,limit=1] {NoAI:1b}
+teleport @e[tag=prepdragon,limit=1] 3.0 64 24.0
+scoreboard players set #k1000 arenatest 1000
+execute store result score #m0 arenatest run attribute @e[tag=prepdragon,limit=1] minecraft:max_health get 100
+# fitted to the first step: at most 20 hearts (40 health)
+@assert execute if score #m0 arenatest matches 1..4000
+damage @e[tag=prepdragon,limit=1] 8 minecraft:generic
+@wait 5t
+execute store result score #h0 arenatest run data get entity @e[tag=prepdragon,limit=1] Health 100
+scoreboard players operation #r0 arenatest = #h0 arenatest
+scoreboard players operation #r0 arenatest *= #k1000 arenatest
+scoreboard players operation #r0 arenatest /= #m0 arenatest
+@assert execute if score #r0 arenatest matches 1..999
 
 @step the strongest sword comes out as the strongest the first step allows
 moddy apprentice the strongest sword ever
@@ -109,7 +136,7 @@ teleport @s 0.5 64 21.5 180 0
 @wait 10t
 @key key.forward hold 15t
 @wait 1s
-@aim pos -0.5 64.5 17.1
+@aim pos -0.5 65.5 17.1
 @key key.use
 @expect actionbar Waves: 10 within 3s
 @aim pos 3.5 65.5 17.1
@@ -121,13 +148,13 @@ teleport @s 0.5 64 21.5 180 0
 @expect title Wave 1 of 10 within 15s
 
 @step wave 1: the hotbar dragon comes out small, and the meteor is locked with the arena's words
-kill @e[tag=wishmob]
+kill @e[tag=wishmob,tag=!prepdragon]
 @aim look 180 10
 @key key.hotbar.4
 @key key.use
 @expect chat /Dragon is ready/ within 60s
 @wait 2s
-execute store result score #sc1 arenatest run attribute @e[tag=wishmob,limit=1,sort=nearest] minecraft:scale get 100
+execute store result score #sc1 arenatest run attribute @e[tag=wishmob,tag=!prepdragon,limit=1,sort=nearest] minecraft:scale get 100
 @assert execute if score #sc1 arenatest matches ..150
 # battle roles' signs, read from about 5 and about 20 blocks: three wished stand-ins side by side (held still), so
 # their signs must stay clear of one another (the chat faded first)
@@ -160,12 +187,30 @@ kill @e[tag=moddyarena_wave]
 @expect chat Wave 2 cleared within 10s
 @expect title Stronger wishes! within 3s
 @expect chat Your wishes can be stronger now: health up to 30 hearts, hits up to 3 hearts within 3s
+@expect chat Your creatures are stronger now! within 3s
 @wait 10t
 @shot moment-after-wave-2
+@step the dragon made in prep is stronger now, without being made again, and just as hurt
+execute store result score #m2 arenatest run attribute @e[tag=prepdragon,limit=1] minecraft:max_health get 100
+@assert execute if score #m2 arenatest > #m0 arenatest
+@assert execute if score #m2 arenatest matches ..6000
+execute store result score #h2 arenatest run data get entity @e[tag=prepdragon,limit=1] Health 100
+scoreboard players operation #r2 arenatest = #h2 arenatest
+scoreboard players operation #r2 arenatest *= #k1000 arenatest
+scoreboard players operation #r2 arenatest /= #m2 arenatest
+scoreboard players operation #d arenatest = #r2 arenatest
+scoreboard players operation #d arenatest -= #r0 arenatest
+@assert execute if score #d arenatest matches -10..10
 moddy wishes
 @expect chat Wish limits (This battle: 2 waves cleared): health up to 30 hearts within 5s
-teleport @s 0.5 64 19.0 90 0
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_ladder_where,nbt={text:{text:"This battle: 2 waves cleared"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_ladder_now_1,nbt={text:{text:"Health: 30 hearts"}}]
+teleport @s 0.5 64 21.5 180 0
+@aim pos -4.9 65.7 19.0
 @wait 10s
+@shot ladder-board-in-battle-from-the-standing-spot
+teleport @s 0.5 64 19.0 90 0
+@wait 2s
 @shot ladder-board-in-battle
 
 @step after wave 4 the hotbar dragon is fitted to the step the battle is on
@@ -178,12 +223,15 @@ kill @e[tag=moddyarena_wave]
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 4 cleared within 10s
 @expect title Stronger wishes! within 3s
-kill @e[tag=wishmob]
+kill @e[tag=wishmob,tag=!prepdragon]
 @key key.hotbar.4
 @key key.use
 @expect chat /Dragon is ready/ within 60s
 @wait 2s
-execute store result score #sc4 arenatest run attribute @e[tag=wishmob,limit=1,sort=nearest] minecraft:scale get 100
+execute store result score #sc4 arenatest run attribute @e[tag=wishmob,tag=!prepdragon,limit=1,sort=nearest] minecraft:scale get 100
+execute store result score #hm4 arenatest run attribute @e[tag=wishmob,tag=!prepdragon,limit=1,sort=nearest] minecraft:max_health get 100
+# its health is fitted to this step when it is made (at most 40 hearts), and more than the first step allowed
+@assert execute if score #hm4 arenatest > #m0 arenatest
 # fitted to the step now (size at most x2). It is not bigger than in wave 1: the core keeps a Builder make's recipe as
 # it was made, already fitted to the first step in prep, so a later step has nothing more to give it (a core gap)
 @assert execute if score #sc4 arenatest matches ..200
@@ -222,14 +270,19 @@ kill @e[tag=moddyarena_wave]
 kill @e[tag=moddyarena_wave]
 @expect title You won within 10s
 @expect chat The arena is tidy again within 20s
+@expect chat Your creatures are held back a little in this world for now within 5s
 
-@step after the battle: back at the first step, and nothing wished is left in the arena
+@step after the battle: back at the first step, nothing wished is left in the arena, and the prep dragon is held back again
 @wait 1s
 @assert execute unless entity @e[tag=wishmob,x=-15,y=63,z=-15,dx=30,dy=10,dz=30]
+execute store result score #m9 arenatest run attribute @e[tag=prepdragon,limit=1] minecraft:max_health get 100
+@assert execute if score #m9 arenatest = #m0 arenatest
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_ladder_where,nbt={text:{text:"Before a battle: step 1"}}]
 moddy wishes
 @expect chat Wish limits (Before a battle: the first step): health up to 20 hearts within 5s
-teleport @s 0.5 64 19.0 90 0
-@wait 10s
+teleport @s 0.5 64 21.5 180 0
+@aim pos -4.9 65.7 19.0
+@wait 5s
 @shot ladder-board-after-the-battle
 
 @step the next battle starts at the first step again: the hotbar dragon is small and the meteor locked
@@ -249,7 +302,7 @@ teleport @s 0.5 64 21.5 180 0
 @key key.use
 @expect chat /Dragon is ready/ within 60s
 @wait 2s
-execute store result score #sc2 arenatest run attribute @e[tag=wishmob,limit=1,sort=nearest] minecraft:scale get 100
+execute store result score #sc2 arenatest run attribute @e[tag=wishmob,tag=!prepdragon,limit=1,sort=nearest] minecraft:scale get 100
 @assert execute if score #sc2 arenatest matches ..150
 @key key.hotbar.5
 @key key.use

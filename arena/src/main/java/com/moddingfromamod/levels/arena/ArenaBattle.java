@@ -465,9 +465,11 @@ final class ArenaBattle {
             }
             case READY -> {
                 state.battleOn(false);
-                ladderReset(false);   // the battle's ladder is gone with it: prep is the first step again
                 LOG.info("Moddy Arena: battle: IDLE, the arena is ready for the next battle");
                 sayToPlace(ArenaWords.ready());
+                // the battle's ladder is gone with it: prep is the first step again, and the creatures are held back
+                // to it (the core's line about them after the arena's)
+                ladderReset(false);
                 told.clear();
                 if (wishes != null) {
                     wishes.battleEnded();

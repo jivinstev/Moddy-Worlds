@@ -766,14 +766,15 @@ through it and back; the next wave takes him in again; knocked out with lives le
 out of lives he stays in the prep room, and after the battle the gate is the fence gate), `17-on-solid-ground`
 (stone and bedrock under the place and grass round it; a hole torn in the arena's floor and a real TNT blast leave him
 on the bedrock two blocks down, unhurt; a hole under the spawn is put back and a respawn lands on it; teleported far
-below the arena he is put back in the prep room; the place seen from outside, on its base) and `18-wish-ladder` (in prep the first
-step: /moddy wishes and the WISH LADDER board in hearts, a giant dragon made smaller and told once, the strongest sword
-at most a stone sword's hit, a tornado made in prep; the dragon and a ready-made meteor on the hotbar; in a ten-wave
-battle the hotbar meteor (a ready-made event) is locked with the arena's words, wave 2 cleared is the "Stronger wishes!"
-moment, the board says where the battle is, the hotbar dragon fired after wave 4 is fitted to that step, the boss wave
-opens events and the meteor fires; after the battle nothing wished is left in the arena and the next battle starts at
-the first step: the same hotbar dragon small again, the meteor locked again; on the way, three wished stand-ins' role
-signs read from about 5 and 20 blocks). A playtest cannot restart its game,
+below the arena he is put back in the prep room; the place seen from outside, on its base) and `18-wish-ladder` (in prep the first step: /moddy wishes and the WISH LADDER board's big lines, read from where he
+stands; a giant dragon made smaller and told once, then left hurt in the prep room; the strongest sword at most a stone
+sword's hit, a tornado made in prep; the dragon and a ready-made meteor on the hotbar; in a ten-wave battle the hotbar
+meteor (a ready-made event) is locked with the arena's words, wave 2 cleared is the "Stronger wishes!" moment and the
+core's "Your creatures are stronger now!", the prep room's dragon has more health without being made again and is just
+as hurt, the board says where the battle is, the hotbar dragon fired after wave 4 is fitted to that step, the boss wave
+opens events and the meteor fires; after the battle nothing wished is left in the arena, the prep room's dragon is held
+back to the first step and he is told once, and the next battle starts at the first step: the same hotbar dragon small
+again, the meteor locked again; on the way, three wished stand-ins' role signs read from about 5 and 20 blocks). A playtest cannot restart its game,
 so the settings and the champions surviving a restart are `ArenaStateTest` (the saved record) and a dedicated
 server's restart, and so is a world from 0.1.5 upgrading (its panel and its base).
 
