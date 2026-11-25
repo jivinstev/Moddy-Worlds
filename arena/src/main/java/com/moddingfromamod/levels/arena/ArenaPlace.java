@@ -167,7 +167,9 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
         /** the bottom of the base: bedrock, which nothing breaks, so nobody falls further */
         BASE_BEDROCK,
         /** the wish ladder board's blocks, beside the control panel on the prep room's west wall */
-        LADDER_BOARD
+        LADDER_BOARD,
+        /** the hand-over spot: one block of the prep room's floor by its east wall ({@link #handOverSpot}) */
+        HAND_OVER_SPOT
     }
 
     /** One box to fill. Later fills overwrite earlier ones where they overlap. */
@@ -201,6 +203,15 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
     /** The gate's block: in the shared wall, at the middle, at feet height. */
     public int[] gate() {
         return new int[] {0, floorY, sharedWallZ()};
+    }
+
+    /**
+     * True for a block of the gateway between the prep room and the arena: the gate's block and the opening above it.
+     * Looking through it from the prep room, a player looks at the arena ({@link ArenaHandOver}).
+     */
+    public boolean inGateway(int x, int y, int z) {
+        int[] g = gate();
+        return x == g[0] && z == g[2] && (y == g[1] || y == g[1] + 1);
     }
 
     /** Where a player arrives: the middle of the prep room, facing the arena (north). Block coordinates. */
@@ -419,7 +430,27 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
         out.addAll(controlFills());
         out.addAll(championsFills());
         out.addAll(ladderFills());
+        out.addAll(handOverFills());
         return out;
+    }
+
+    /**
+     * The hand-over spot: the block of the prep room's floor in the middle of its east side (the right of a player who
+     * arrives), where a make finished in the prep room shows for a moment before it goes to him ({@link ArenaHandOver}).
+     * Never one of the floor's lights. Block coordinates of the floor block; the make shows just above it.
+     */
+    public int[] handOverSpot() {
+        Box p = prepInside();
+        return new int[] {p.x1(), floorY - 1, (p.z0() + p.z1()) / 2};
+    }
+
+    /**
+     * The hand-over spot's block. Part of {@link #fills()}; a world built before the spot existed gains exactly this
+     * ({@link #UPGRADE_HAND_OVER_SPOT}), only where the floor is still as built.
+     */
+    public List<Fill> handOverFills() {
+        int[] h = handOverSpot();
+        return List.of(new Fill(new Box(h[0], h[1], h[2], h[0], h[1], h[2]), Kind.HAND_OVER_SPOT));
     }
 
     /**
@@ -492,8 +523,10 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
     /** The upgrade that gives a place its wish ladder board ({@link #ladderFills()}), over the west wall's glass. */
     public static final String UPGRADE_LADDER_BOARD = "ladder-board";
     /** Every upgrade, in the order a world gets them. A new world gets them all when it is built. */
+    /** The hand-over spot in the prep room's floor ({@link #handOverFills}). */
+    public static final String UPGRADE_HAND_OVER_SPOT = "hand-over-spot";
     public static final List<String> UPGRADES = List.of(UPGRADE_START_CONTROL, UPGRADE_NO_NATURAL_SPAWNS,
-            UPGRADE_CONTROL_PANEL, UPGRADE_CHAMPIONS, UPGRADE_BASE, UPGRADE_LADDER_BOARD);
+            UPGRADE_CONTROL_PANEL, UPGRADE_CHAMPIONS, UPGRADE_BASE, UPGRADE_LADDER_BOARD, UPGRADE_HAND_OVER_SPOT);
 
     /** The upgrades a world that has had {@code done} still needs, in order. Pure. */
     public static List<String> pendingUpgrades(Set<String> done) {
@@ -543,7 +576,7 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
             }
         }
         m.values().removeIf(k -> k == Kind.PREP_FLOOR || k == Kind.PREP_ROOF || k == Kind.PREP_LIGHT
-                || k == Kind.GROUND);
+                || k == Kind.GROUND || k == Kind.HAND_OVER_SPOT);
         // the prep room's own blocks over the shared wall are not the arena's: mark them so nothing above clears them
         Map<Long, Kind> prep = new HashMap<>();
         for (Fill f : fills()) {

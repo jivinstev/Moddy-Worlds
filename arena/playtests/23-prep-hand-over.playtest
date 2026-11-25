@@ -1,0 +1,161 @@
+# Moddy Arena: the prep room's hand-over. "A thing you hold is a real item; a thing that happens or appears is a wish on
+# your hotbar." A make finished in the prep room does not appear beside him: it shows for a moment on the hand-over spot
+# (the gold block in the floor by the east wall), then flies to him with the game's own pick-up motion and sound, and
+# one action-bar line names it and the slot. A Builder creature goes on his hotbar as a wish and is not in the room; a
+# Builder sword is a real sword; an Apprentice creature and an Apprentice sword likewise. The first time, a longer chat
+# line says the difference between a wish and an item. With the hotbar full a wish goes to his Wish Bag and the line
+# says so. A make aimed into the arena through the gate still lands in the arena. Nothing is charged when a make is
+# kept (his Magician wishes are untouched, Builder and Apprentice wishes are free), and in a battle a fire of the kept
+# creature costs one of the wave's hotbar wishes. No model anywhere: the Builder's pages and the Apprentice's local
+# matcher make everything, and the hotbar replays the kept make's recipe.
+# A resistance effect keeps him on his feet; the monsters are not what this tests, so they are removed by command.
+# play-timeout: 1500
+@intent a make finished in the prep room is handed over on the hand-over spot: a creature as a hotbar wish (none in the room), a sword as the real sword, Builder and Apprentice alike, with one line naming it and the slot, a longer first-time line, the Wish Bag when the hotbar is full; a make aimed into the arena still lands there; keeping charges nothing and a fire in a battle costs one of the wave's wishes
+@world flat seed=1
+@continue-on-fail
+
+@step arrive
+@expect chat Welcome to Moddy Arena within 90s
+@expect chat press Add to hotbar within 10s
+@wait 2s
+difficulty hard
+difficulty normal
+gamemode survival
+effect give @s minecraft:resistance 1500 4 true
+effect give @s minecraft:saturation 1500 0 true
+scoreboard objectives add arenatest dummy
+
+@step the hand-over spot is in the prep room's floor
+# the middle of the prep room's east side (x 4, z 21), one block of its floor, gold
+@assert execute if block 4 63 21 minecraft:gold_block
+@assert execute if block 3 63 21 minecraft:oak_planks
+# he stands in the middle and looks down at the floor toward the spot (east): what he makes now is finished in the
+# prep room, not aimed into the arena
+teleport @s 0.5 64 21.5 -90 35
+@wait 1s
+@shot the-hand-over-spot
+
+@step nothing is charged in prep: his Magician wishes are untouched
+moddy wishes
+@expect chat Magician wishes left before the next battle: 3 of 3 within 5s
+@expect chat Builder and Apprentice wishes are free within 5s
+
+@step a Builder creature made in prep comes to his hotbar, and is not in the room
+# the Builder's first body (a cat), no parts, powers or moves (the core's own validation walks the same pages)
+moddy builder
+@expect screen Wish Builder within 10s
+@click item "A creature"
+@expect screen Pick a body within 5s
+@click slot 0
+@expect screen Parts within 5s
+@click slot 49
+@expect screen Powers within 5s
+@click slot 31
+@expect screen Special moves within 5s
+@click slot 22
+@expect screen /tune your/ within 5s
+@click button "Make it!"
+# the core puts the kept make on his hotbar and says so; the arena shows it on the spot for a moment first
+@expect chat /is on your hotbar/ within 120s
+@wait 10t
+@assert execute if entity @e[type=minecraft:item,tag=moddyarena_handover]
+@shot creature-on-the-spot
+@expect actionbar /is ready! Slot 3\. Use it in the arena\./ within 5s
+@wait 5t
+@shot creature-flew-to-him
+# the hotbar wish is in slot 3 (the watch and the Wish Bag hold the first two)
+@assert execute if items entity @s hotbar.2 minecraft:paper
+# the copy on the spot is gone (it was only shown), and no creature stands anywhere
+@assert execute unless entity @e[type=minecraft:item,tag=moddyarena_handover]
+@assert execute unless entity @e[tag=wishmob]
+# nothing was given twice: no other hotbar wish, no item lying about
+@assert execute unless items entity @s hotbar.3 *
+@assert execute unless entity @e[type=minecraft:item]
+
+@step the first time, a longer line says the difference between a wish and an item
+@expect chat /a thing you hold, like a sword, is a real item/ within 5s
+@wait 1s
+@shot first-time-line
+
+@step a Builder sword made in prep is a real sword in his inventory
+moddy builder
+@expect screen Wish Builder within 10s
+@click item "A magic item"
+@expect screen What is it within 5s
+@click item "A sword"
+@expect screen What does it do within 5s
+@click slot 0
+@expect screen /tune your/ within 10s
+@click button "Make it!"
+@expect actionbar /is ready! It is in your inventory\./ within 120s
+@wait 10t
+@shot builder-sword
+# a real sword, not a hotbar wish: the next free slot holds a sword
+@assert execute if items entity @s hotbar.3 #minecraft:swords
+@assert execute unless entity @e[type=minecraft:item]
+
+@step an Apprentice creature made in prep comes to his hotbar
+moddy apprentice a cat
+@expect screen Container within 10s
+@click slot 0
+@expect actionbar /is ready! Slot 5\. Use it in the arena\./ within 120s
+@wait 5t
+@assert execute if items entity @s hotbar.4 minecraft:paper
+@assert execute unless entity @e[tag=wishmob]
+@shot apprentice-cat
+
+@step an Apprentice sword made in prep is the real sword
+moddy apprentice a fire sword
+@expect screen Container within 10s
+@click slot 0
+@expect actionbar /is ready! It is in your inventory\./ within 120s
+@wait 5t
+@assert execute if items entity @s hotbar.5 #minecraft:swords
+@shot apprentice-sword
+
+@step a make aimed into the arena through the gate still lands in the arena
+# from the prep room he looks north through the gate at the arena's floor: the make is aimed into the arena
+teleport @s 0.5 64 19.5 180 12
+@wait 1s
+moddy apprentice a cat
+@expect screen Container within 10s
+@click slot 0
+@expect chat /is ready/ within 120s
+@wait 2s
+@assert execute if entity @e[tag=wishmob,x=-15,y=60,z=-15,dx=30,dy=20,dz=30]
+@assert execute unless items entity @s hotbar.6 *
+@shot landed-in-the-arena
+kill @e[tag=wishmob]
+
+@step with the hotbar full, it goes to his Wish Bag and the line says so
+execute unless items entity @s hotbar.6 * run item replace entity @s hotbar.6 with minecraft:dirt
+execute unless items entity @s hotbar.7 * run item replace entity @s hotbar.7 with minecraft:dirt
+execute unless items entity @s hotbar.8 * run item replace entity @s hotbar.8 with minecraft:dirt
+teleport @s 0.5 64 21.5 -90 35
+@wait 1s
+moddy apprentice a cat
+@expect screen Container within 10s
+@click slot 0
+@expect actionbar /Your hotbar is full, so it is in your Wish Bag\./ within 120s
+@assert execute unless entity @e[tag=wishmob]
+@shot hotbar-full
+
+@step in a battle a fire of the kept creature costs one of the wave's hotbar wishes
+teleport @s 2.5 64 18.5 180 0
+@aim pos 3.5 65.5 17.1
+@wait 10t
+@key key.use
+@expect chat A battle is starting within 5s
+@expect bossbar Your wishes this wave: 5 of 5 within 5s
+@expect title Wave 1 of 5 within 15s
+@wait 1s
+# the Builder creature's hotbar wish, in slot 3, fired at the arena's floor ahead of him
+@key key.hotbar.3
+@wait 5t
+@aim look 180 25
+@key key.use
+@expect bossbar Your wishes this wave: 4 of 5 within 10s
+@expect chat /is ready/ within 90s
+@wait 2s
+@assert execute if entity @e[tag=wishmob]
+@shot fired-in-the-battle

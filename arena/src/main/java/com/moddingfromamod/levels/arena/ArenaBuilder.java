@@ -47,6 +47,8 @@ final class ArenaBuilder {
             case GROUND -> Blocks.GRASS_BLOCK.defaultBlockState();
             case BASE_FILL -> Blocks.STONE.defaultBlockState();
             case BASE_BEDROCK -> Blocks.BEDROCK.defaultBlockState();
+            // the hand-over spot in the prep room's floor, where a finished make shows before it goes to him
+            case HAND_OVER_SPOT -> Blocks.GOLD_BLOCK.defaultBlockState();
             // on the board to its north, facing into the prep room
             case SELECT_BUTTON, START_BUTTON -> Blocks.STONE_BUTTON.defaultBlockState()
                     .setValue(ButtonBlock.FACE, AttachFace.WALL).setValue(ButtonBlock.FACING, Direction.SOUTH);
@@ -217,6 +219,23 @@ final class ArenaBuilder {
             }
         }
         return set;
+    }
+
+    /**
+     * Sets the hand-over spot in the prep room's floor ({@link ArenaPlace#handOverSpot}), only where the floor is still
+     * as built (oak planks) or is the spot already: the blocks set (0 or 1), or -1 when something else stands there.
+     */
+    static int addHandOverSpot(ServerLevel level, ArenaPlace place) {
+        int[] h = place.handOverSpot();
+        BlockPos at = new BlockPos(h[0], h[1], h[2]);
+        BlockState now = level.getBlockState(at);
+        if (now.is(Blocks.GOLD_BLOCK)) {
+            return 0;
+        }
+        if (!now.is(Blocks.OAK_PLANKS)) {
+            return -1;
+        }
+        return put(level, at, ArenaPlace.Kind.HAND_OVER_SPOT, Block.UPDATE_ALL) ? 1 : 0;
     }
 
     /** Puts back the floor under the world spawn (the arrival spot) if it is missing; true when it was. */

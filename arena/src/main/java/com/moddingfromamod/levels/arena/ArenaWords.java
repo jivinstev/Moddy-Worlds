@@ -956,4 +956,44 @@ public final class ArenaWords {
         }
         return out;
     }
+
+    // ── the hand-over in the prep room ({@link ArenaHandOver}) ──────────────────────────────────────────────────────
+
+    /**
+     * The action bar, when a make finished in the prep room reaches him: what it is and where it went. {@code name} is
+     * its hotbar wish's name or the item's ("Dragon"); empty when it has none. {@code slot} is 0 to 8 (shown 1 to 9). Says
+     * nothing of whether it is held back in a battle: the pin notice says that, once.
+     */
+    public static String handOverReady(String name, ArenaHandOver.Went went, int slot) {
+        boolean item = went == ArenaHandOver.Went.REAL_ITEM;
+        String your = name == null || name.isBlank() ? (item ? "Your item" : "Your wish") : "Your " + name.strip();
+        return switch (went) {
+            case HOTBAR -> your + " is ready! Slot " + (slot + 1) + ". Use it in the arena.";
+            case WISH_BAG -> your + " is ready! Your hotbar is full, so it is in your Wish Bag.";
+            case REAL_ITEM -> your + " is ready! It is in your inventory.";
+        };
+    }
+
+    /** Chat, the first time a make is handed over to him in this world: the difference between a wish and an item. */
+    public static String handOverFirst() {
+        return "In the prep room, what you make comes to you. A thing you hold, like a sword, is a real item: it goes in"
+                + " your inventory. A thing that appears or happens, like a creature, a building or an event, is a wish"
+                + " on your hotbar: aim and use it in the arena to make it appear. Each use costs one of the wave's"
+                + " hotbar wishes.";
+    }
+
+    /**
+     * Chat, when the arena asked to keep a make and it was not kept ({@code kind} the core's: {@code picture},
+     * {@code creature}, ...): one short, honest line.
+     */
+    public static String handOverNotKept(String kind, ArenaHandOver.NotKeptWhy why) {
+        return switch (why) {
+            case NO_REPLAY_RECIPE -> "picture".equals(kind)
+                    ? "Your picture went up where you aimed: a picture cannot be kept as a wish."
+                    : "That one happened right away: it cannot be kept as a wish.";
+            case A_CHANGE -> "Your change was made where your thing stands.";
+            case NOTHING_TAUGHT -> "The Magician had nothing to put on your hotbar this time, so nothing was made.";
+            case OTHER -> "That one could not be kept as a wish.";
+        };
+    }
 }
