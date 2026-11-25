@@ -1,9 +1,32 @@
 # Moddy Arena
 
-A Moddy world (mod id `moddyarena`) that runs on the public Moddy core: a lit prep room beside a walled arena, in an
-empty sky. The battle arena control panel on the prep room's wall sets how many monsters a wave brings, how hard they
-are and how many waves there are (5, 10, 15, 20 or Endless), and its button starts a battle: waves of monsters that
-start easy and get harder, a boss every 5th wave, never player against player. Each player has 3 lives in a battle.
+## How to play
+
+1. **Install** the Moddy core jar and the Moddy Arena jar in a NeoForge 1.21.8 game (the arena's
+   [release notes](../../../releases) name the core it was built for).
+2. **Create World**, open the **World** tab and pick **World Type: Moddy Arena first**, then choose your game mode on
+   the **Game** tab. (Either order makes the same world; this one is simply the easy one to remember.)
+3. **Play it in Survival.** Creative is not much fun here: the monsters do not go for a player in Creative and he
+   cannot be knocked out, so the waves, the lives and the boss fights stop meaning anything. (A Creative player who is in
+   the place when a battle starts still counts as one of its fighters, and his run still goes on the Champions board
+   today.) A player in Spectator is never a fighter, and a fighter who turns to Spectator is out of that battle.
+4. Keep the game's own difficulty above **Peaceful**: on Peaceful monsters vanish as soon as they come, so the button
+   says "Battles need the game's difficulty above Peaceful: on Peaceful, monsters vanish as soon as they come." and no
+   battle starts. (The arena's own Easy, Normal, Hard and Extreme are picked on its control panel.)
+5. In the prep room, make wishes with the Builder or the Apprentice and put them on your hotbar (My wishes, a wish's
+   page, **Add to hotbar**). On the control panel pick the **difficulty** (it sets how many monsters come) and the
+   **waves**, then press **START BATTLE**. When a wave comes the gate shuts and you are taken into the arena; fight with
+   your hotbar wishes, rest in the breaks, and try to get on the Champions board.
+
+The rest of this page is how it all works.
+
+## What it is
+
+A Moddy world (mod id `moddyarena`) that runs on the public Moddy core: a lit prep room beside a walled arena, standing
+on the ground. The battle arena control panel on the prep room's wall sets how hard the monsters are (the difficulty,
+which also sets how many a wave brings) and how many waves there are (5, 10, 15, 20 or Endless), and its button starts
+a battle: waves of monsters that start easy and get harder, a boss every 5th wave, never player against player. While a
+wave is on the gate is shut with iron bars: nobody gets in or out. Each player has 3 lives in a battle.
 The Champions board on the prep room's back wall shows the best runs at the settings on the panel. Wishes are made in the prep room (or the arena) before a battle and put on the hotbar; in a battle only
 the hotbar's wishes work, one click each, with a rest between fires and 5 fires a wave. What is not built yet is listed at the end.
 
@@ -19,23 +42,35 @@ place once, around x 0, z 0, standing at y 64:
   >
   > Get ready in the prep room: make things, then put them on your hotbar. Open one in My wishes and press Add to hotbar.
   >
-  > The battle arena control panel is on the wall: pick the monsters, the difficulty and the waves, then press START
-  > BATTLE. In a battle, only the wishes on your hotbar work, and you have 3 lives. The Champions board is on the back
-  > wall.
+  > The battle arena control panel is on the wall: pick the difficulty and the waves, then press START BATTLE. When a
+  > wave comes the gate shuts and you are taken into the arena. Only your hotbar wishes work in a battle, and you have
+  > 3 lives. The Champions board is on the back wall.
 - **The arena**: 31 by 31 inside, a smooth sandstone floor, stone brick walls 4 high with a polished andesite rim on top
   that overhangs one block inward, so nothing climbs out.
-- **The gate**: an oak fence gate in the middle of the wall the two share (a player opens it; a mob cannot).
+- **The gate**: an oak fence gate in the middle of the wall the two share (a player opens it; a mob cannot). **While a
+  wave is on it is iron bars** (below, "The gate in a battle"): nobody can open them, and everyone can see through.
 - **The battle arena control panel**: the rest of that wall, across the prep room's width, is a black board facing the
   prep room (below). The arena is seen through the gate.
 - **The Champions board**: the prep room's back wall (behind a player who arrives) is a black board facing into the
   room (below).
 
 The world spawn is the arrival spot, facing the arena, so a respawn lands there too. Game mode is never changed.
-Everything stands on nothing: there is no ground below, and both rooms are closed, so nothing falls out of them.
+
+**It stands on the ground.** A world made with the World Type is flat grassland (bedrock, stone, dirt and grass, its
+top at y 63, the floors' level; the void biome, no structures, no features), so the place stands on real ground. Under
+the place itself, and 2 blocks round it, the arena always builds its own **base** (`ArenaPlace.baseFills`): the floors
+(and grass round them) on a layer of stone, on a layer of **bedrock**. So a blast that breaks the floor drops a player
+2 blocks at most, onto bedrock, never out of the world; this holds in any world the arena is switched on in (a
+server's flat or void world too), and a world built before the base gains it on its next start (the upgrade
+`ground-base`). The walls and floors are not unbreakable: a wish may still tear the arena up, and it is mended (below).
+**Nobody is lost under it**: the floor under the world spawn is put back within a second whenever it is missing (and
+the prep room's floor is mended where it has holes, with the arena), and a player who still falls out under the place
+(more than a few blocks below the base) is put back in the prep room unharmed, with "Whoops, you fell out! Back to the
+prep room." on his action bar; it never costs a life. A wave's monster that falls out is put back in the arena.
 
 **No mob comes on its own.** When an arena world is first built, its game rule `doMobSpawning` is set to false, once
-(nothing else spawns in a void world, and the arena floor is dark at night, so without it monsters, phantoms and
-patrols would turn up). It is this world's rule only, and a player may set it back; the arena never sets it again.
+(the arena floor and the ground round it are dark at night, so without it monsters, phantoms and patrols would turn
+up). It is this world's rule only, and a player may set it back; the arena never sets it again.
 Mob spawners, spawn eggs, `/summon`, breeding and wished creatures are not affected.
 
 ## The battle arena control panel
@@ -47,20 +82,21 @@ a stock client draws them). Seen from the prep room:
 ```
   [                BATTLE ARENA CONTROL PANEL                 ]     the title, in gold, over the whole board
   [          Best for Steve: wave 7 in 3:12                   ]     the best of whoever pressed a button last
-  [-]    MONSTERS    [+]  .  |  .      START BATTLE                 [-] [+]: stone buttons on blue blocks
-          5                  |     Ready! Press START.
-  [-]   DIFFICULTY   [+]  .  gate  .   [  (o)  ]                    (o): the start button, on green blocks 3 by 1
-         Normal              |
-  [-]     WAVES      [+]     gate   First wave: 3 monsters
-           5                 |      Boss wave: 5
+  [-]   DIFFICULTY   [+]  .  |  .      START BATTLE                 [-] [+]: stone buttons on blue blocks
+         Normal              |     Ready! Press START.
+  [-]     WAVES      [+]    bars   [  (o)  ]                        (o): the start button, on green blocks 3 by 1
+           5               gate
+     First wave: 3 monsters gate    Boss wave: 5
+                                    Hotbar wishes: 5 a wave
 ```
 
-- **Monsters**: how many monsters a wave brings, a number from 1 to 10, **5 by default**, with a down button left of it
-  and an up button right of it.
-- **Difficulty**: Easy, Normal, Hard or Extreme, **Normal by default**, with its own down and up buttons.
+- **Difficulty**: Easy, Normal, Hard or Extreme, **Normal by default**, with a down button left of it and an up button
+  right of it. It sets how hard the monsters are **and how many come** (below); there is no separate monsters setting.
 - **Waves**: how many waves a battle has: 5, 10, 15, 20 or **Endless** (waves until the fighters lose), **5 by
-  default**. Under the start button the board says what the settings mean: the first wave's monsters and the boss
-  waves ("Boss waves: 5, 10", or "A boss every 5 waves" for Endless).
+  default**, with its own down and up buttons.
+- **First wave**, under the two selectors, in big letters: how many monsters the first wave brings at this difficulty
+  ("First wave: 3 monsters"). Under the start button the board says the boss waves ("Boss waves: 5, 10", or "A boss
+  every 5 waves" for Endless) and the hotbar wishes a wave.
 - **START BATTLE**: the start button, on its green blocks, at eye height to the right of the gate, with the battle's
   state under the label: "Ready! Press START.", "Battle on: wave 2 of 5", "Break: wave 3 in 12s", "Break: BOSS wave 5
   in 9s", "BOSS wave 5 of 5!", "Battle on: wave 12" (Endless), "You won!", "Battle lost", "Tidying the arena...". In a
@@ -70,28 +106,35 @@ a stock client draws them). Seen from the prep room:
   yet"); before anyone has pressed one, the only player in the world's.
 
 Pressing a selector changes the number or the word on the board at once, plays a note (rising with the value; a low
-one when nothing changed) and says one line on the presser's action bar, such as "Monsters: 6. The first wave has 4
-monsters.", "Difficulty: Hard. Tougher monsters, and strong ones sooner." or "Waves: Endless. They keep coming until
-you lose!"; at either end it says so ("Monsters is already the biggest.", "Easy is already the easiest.", "Endless is
-already the most."). **During a battle** (from the button to the tidy) the selectors change nothing and say "A battle
+one when nothing changed) and says one line on the presser's action bar, such as "Difficulty: Hard. More monsters, and
+tougher. First wave: 4 monsters." or "Waves: Endless. They keep coming until you lose!"; at either end it says so
+("Easy is already the easiest.", "Endless is already the most."). **During a battle** (from the button to the tidy) the selectors change nothing and say "A battle
 is on. Change the settings when it is over." A battle keeps the settings it started with.
 
 The settings are saved with the world (`data/moddyarena_place.dat`, below) and survive a restart; a world saved before
-the panel reads as 5 monsters, Normal and 5 waves, and one saved before the WAVES selector as 5 waves.
+the panel reads as Normal and 5 waves, and one saved before the WAVES selector as 5 waves. Until 0.1.6 the panel had a
+third selector, MONSTERS (1 to 10); a world saved then keeps its difficulty and waves, its monsters number is not read,
+and on its next start its panel loses the MONSTERS buttons and is laid out as above.
 
-### What monsters does
+### How many monsters: the difficulty decides
 
-The rules file's `arena_waves` are the base waves. The monsters setting multiplies every group's count by monsters /
-5, rounded (half up), keeping at least 1 of each kind a wave has, and never more than 40 monsters a wave (the biggest
-group gives one back until it fits). So **5 is the rules file's waves exactly**. With the default waves:
+The rules file's `arena_waves` are the base waves. Each difficulty carries its own **wave size**, on the scale the old
+MONSTERS selector had (1 to 10, where 5 is the rules file's waves exactly): every group's count is multiplied by wave
+size / 5, rounded (half up), keeping at least 1 of each kind a wave has, and never more than 40 monsters a wave (the
+biggest group gives one back until it fits). The sizes go with each difficulty's health, and the first wave grows by
+one monster each step; the old scale's ends (1: one of each kind, a wave that is hardly a fight; 10: twice the rules
+file's) are left for a rules file to pick (`waveSizes`, below). With the default waves:
 
-| monsters | 1 | 2 | 3 | 4 | **5** | 6 | 7 | 8 | 9 | 10 |
-|---|---|---|---|---|---|---|---|---|---|---|
-| first wave | 1 | 1 | 2 | 2 | **3** | 4 | 4 | 5 | 5 | 6 |
+| difficulty | wave size | x the rules file's counts | first wave | 5th wave's monsters (before its boss escort is taken) |
+|---|---|---|---|---|
+| Easy | 3 | x0.6 | 2 | 6 |
+| **Normal** | **5** | **x1** | **3** | **10** |
+| Hard | 6 | x1.2 | 4 | 12 |
+| Extreme | 8 | x1.6 | 5 | 16 |
 
-### What the difficulty does
+### What else the difficulty does
 
-A difficulty changes **which** mobs come and **how tough** they are, never how many (the monsters setting does that).
+A difficulty also changes **which** mobs come and **how tough** they are.
 Each is a row of data in `ArenaDifficulty`: a health multiplier for every wave mob and boss (an attribute modifier on
 its most health) and swaps, "this kind comes as that kind from wave N on", the first that fits (a group is swapped
 once, never twice). The count stays: one husk becomes one vindicator.
@@ -120,7 +163,7 @@ hand-written list. For wave `n` after the rules file's last wave `L` (which brin
 - **how tough**: their most health times `min(2.5, 1 + 0.04 * (n - L))` (wave 10: x1.2, wave 20: x1.6, from wave 43:
   x2.5), so it rises slowly and stops.
 
-The monsters setting and the difficulty then apply as to any wave, and a wave never brings more than 40, so an
+The difficulty's wave size and its swaps then apply as to any wave, and a wave never brings more than 40, so an
 Endless battle never has more than 41 monsters alive (a boss wave's boss and its escort are far fewer). A rules file
 can author up to 100 waves itself, and can tune the generator (`generator`, below).
 
@@ -158,14 +201,14 @@ the middle of the room, turned round:
 
 ```
   [                   ARENA CHAMPIONS                     ]   the title, in gold
-  [             Normal, 5 waves, 5 monsters               ]   the settings these champions played at
+  [                   Normal, 5 waves                     ]   the settings these champions played at
   [ 1.  (face)  Steve              Won all 5      3:12    ]
   [ 2.  (face)  Alex               Wave 4         2:40    ]
   [ 3. ... 4. ... 5. ...                                  ]
 ```
 
-It shows the top 5 **at the settings on the control panel now** (the difficulty, the number of waves and the
-monsters), so players race at the same game: fastest to beat 5 waves on Normal is a race of its own, and so is Easy;
+It shows the top 5 **at the settings on the control panel now** (the difficulty and the number of waves; the
+difficulty brings its own number of monsters), so players race at the same game: fastest to beat 5 waves on Normal is a race of its own, and so is Easy;
 pressing a selector switches the board at once ("No champions here yet. Be the first!" at settings nobody has played).
 Each row: the place, the player's **face** (a vanilla player head on an item display, carrying his profile, so a stock
 client draws his skin; a profile with no skin, as in an offline game, draws a default one), his name, how far he got
@@ -196,35 +239,60 @@ them.
    battle at a time: pressing during one says "A battle is already on. Wait for it to end."
 2. **The countdown**: "A battle is starting! 5 waves of monsters. The first comes in 5 seconds. You each have 3
    lives." A boss bar, "Wave 1 of 5 in 5 seconds", shows to everyone in the place, and the seconds count down above
-   the hotbar. The battle brings the waves the panel's monsters, difficulty and waves make of the rules file's.
-3. **A wave**: its monsters appear at once on the arena floor, spread out and at least 8 blocks from any player. The
-   title says "Wave 1 of 5", "Here they come!", and the boss bar "Wave 1 of 5: 3 monsters left", emptying as they fall.
-   The players who are in the place when the countdown ends are the battle's **fighters**.
-4. **A wave is cleared** when none of its monsters is left, and **a break** comes before the next wave: "Wave 1
-   cleared! Break time: the next wave comes in 15 seconds. Change your hotbar in the prep room, or press READY on the
-   board." (below). A monster that gets out of the place (past the walls, or below the floor) is
-   removed and counts as cleared, so a battle can always finish. A monster that follows a player into the prep room
-   through an open gate is still in the battle.
+   the hotbar, and "When a wave comes, the gate shuts and everyone fighting is taken into the arena. It opens again in
+   the break." The battle brings the waves the panel's difficulty and waves make of the rules file's.
+3. **A wave**: the players who are in the place when the countdown ends are the battle's **fighters**. Every fighter
+   who is not in the arena (waiting in the prep room, say) is moved just inside the gate, facing in ("The gate is shut.
+   Fight!" on his action bar), **the gate shuts** (below), and the wave's monsters appear at once on the arena floor,
+   spread out and at least 8 blocks from any player. The title says "Wave 1 of 5", "Here they come!", and the boss bar
+   "Wave 1 of 5: 3 monsters left", emptying as they fall.
+4. **A wave is cleared** when none of its monsters is left, and **a break** comes before the next wave, with the gate
+   open again: "Wave 1 cleared! Break time: the gate is open, and the next wave comes in 15 seconds. Change your hotbar
+   in the prep room, or press READY on the board." (below). A wave's monster that is somehow outside the arena (in the
+   prep room, the gateway, or fallen out under the place) is put back in the arena; one nowhere near the place is
+   removed and counts as cleared, so a battle can always finish.
 5. **Won**: the last wave cleared (an Endless battle is never won: it goes on until the fighters lose). "You won!", "All 5 waves cleared.", and in chat "You won the battle! All 5 waves are
    cleared. The arena will be tidied for the next battle."
 6. **Lost**, in either of two ways, with "Battle lost" and a line in chat ending "Press the button in the prep room to
    try again.":
    - **every fighter is out**: out of lives, logged out, gone from the place (or a spectator). **Each fighter has 3
      lives** (the rules' `lives`): knocked out with lives left, he comes back in the prep room (the arena's home) with
-     his hotbar wishes, the chat says "Knocked out! 2 lives left. You are back in the prep room: go get them!", his
-     action bar says "2 lives left" once he is on his feet, and **the battle goes on** (the wave he fell in carries on;
-     he walks back in through the gate). Knocked out of his last life ("Knocked out, and no lives left. You are out of
-     this battle."), he is out of that battle. On your own, that loses it; with friends, the battle goes on while one
+     his hotbar wishes, the chat says "Knocked out! 2 lives left. You are back in the prep room for a moment, then back
+     in the arena: go get them!", and **the battle goes on**: on his feet, his action bar counts "2 lives left. Back
+     into the arena in 3...", 2, 1, and he is moved back just inside the gate ("Back in the arena. Fight!") while the
+     wave is still on (in a break he simply walks in). Knocked out of his last life ("Knocked out, and no lives left.
+     You are out of this battle."), he is out of that battle: he stays in the prep room and can watch through the bars. On your own, that loses it; with friends, the battle goes on while one
      fighter is still in.
    - **time ran out**: a wave lasted longer than its limit (3 minutes by default), so a monster stuck somewhere can
      never hold a battle up forever.
 7. **The arena is tidied** 5 seconds later, then "The arena is tidy again. Press the button in the prep room to start a
-   battle." **A battle's end clears the arena**: every block in it is put back as it was built (floor, walls, rim,
-   board, gate; a panel button knocked off is put back), anything standing in it is cleared to the sky (including whatever was wished into it during the
+   battle." **A battle's end clears the arena**: every block in it is put back as it was built (the base under it,
+   floor, walls, rim, board, gate; a panel button knocked off is put back; holes in the prep room's floor filled), anything standing in it is cleared to the sky (including whatever was wished into it during the
    battle), and every thing in it that is not a player goes: monsters, drops, experience, arrows, wished creatures and
    things. Kept: players, a pet someone owns, anything carrying a player, and **a player's own things**: what a
    fighter dropped when he was knocked out, and what a player threw, are carried to the prep room's middle (where he
    comes back) rather than cleared. The prep room and everything in it, and players' inventories, are never touched.
+
+### The gate in a battle
+
+`ArenaGate` (pure, unit-tested) decides; the battle carries it out.
+
+- **While a wave is on the gate is shut**: the gateway (the gate's block and the opening above it) is **iron bars**,
+  which nobody can open (a fence gate opens by hand) and everyone can see through. No monster gets out and no fighter
+  either. In the countdown, in a break between waves and when no battle is on it is the oak fence gate, as built (put
+  back closed after a wave), so he may go to the prep room in a break to change his hotbar. Bars broken during a wave
+  are put back within a second.
+- **When a wave starts** (the first, and after each break), every fighter on his feet who is not in the arena is moved
+  just inside the gate, facing in, with "The gate is shut. Fight!". So pressing START in the prep room and waiting
+  there is fine: he is taken in. A player who is not fighting is never moved, unless he stands in the gateway itself
+  as it shuts: then he steps to the prep room's side.
+- **Knocked out with lives left**, he is back in the prep room; after a count of 3 seconds on his action bar he is
+  moved back in, if the wave is still on. **Out of lives**, he stays in the prep room behind the bars.
+- **Monsters** outside the arena during a wave are put back inside; a wished creature outside it loses its battle role,
+  as before. Spectators and players in the prep room who are not fighting are untouched.
+- The gateway is the gate again when the battle ends (won, lost, or ended by a restart in the middle of one: the
+  arena's reset puts back the fence gate), and the mend between waves and the battle's reset both ask `ArenaGate`
+  what the gateway should be, so they never disagree.
 
 ### The break between two waves
 
@@ -239,7 +307,8 @@ them.
   thing's page, "Add to hotbar" (or "Take off hotbar"). New wishes are still made only between battles; a hotbar wish
   fires in the break and counts toward the next wave's hotbar wishes.
 - **The arena mends itself** as the break begins, so a wish that tore it up does not spoil the next wave: every block
-  of it is put back as it was built, by the same reset as the battle's end (a hole in the floor filled, a house or a
+  of it is put back as it was built, by the same reset as the battle's end (a hole in the floor filled down to the
+  base's bedrock, holes in the prep room's floor filled, a house or a
   wall wished into it cleared to the sky, a panel button knocked off put back), and "The arena is mended for the next
   wave." is said when anything was. Of the things in it, the break tidies what a fight leaves flying or falling: arrows
   and other thrown things, lit TNT, falling blocks, lingering potion clouds, evoker fangs. It **keeps** what the
@@ -425,21 +494,26 @@ Everything here is tunable, and **these first values are guesses** to be tuned b
 wave (`bossBreatherSeconds`, 3 to 300 s; without it 30 s, or the other break if that is longer) and how long
 one wave may last before the battle is lost (30 to 1800 s). A wrong table refuses the file whole, in words; a change
 applies from the next battle. No rule, no battle ("This arena has no waves in its rules, so a battle cannot start.").
-These are the base waves: the control panel's wave size and difficulty are applied on top of them (5 and Normal are
-these waves exactly).
+These are the base waves: the difficulty's wave size and swaps are applied on top of them (Normal is these waves
+exactly).
 
-Six optional keys let a world fix or limit the control panel; without them **the player chooses**:
+Optional keys set the difficulties' wave sizes, and fix or limit the control panel; without them each difficulty brings
+its own wave size and **the player chooses**:
 
 | key | value | what it does |
 |---|---|---|
-| `waveSize` | 1 to 10 | fixes the monsters: their buttons change nothing and say "This arena's rules keep monsters at 3." |
-| `maxWaveSize` | 1 to 10 | the most monsters the player may pick ("This arena's rules let monsters go up to 6.") |
+| `waveSizes` | an object, `{"easy": 2, "hard": 7}`: any of the four difficulties, each 1 to 10 | that difficulty's wave size (5 is these waves exactly); a difficulty not named keeps its own (3, 5, 6, 8) |
+| `waveSize` | 1 to 10 | the wave size of **every** difficulty (the key of the old MONSTERS selector, read as before: it fixed the monsters, and since there is no selector now it is every difficulty's size); not with `waveSizes` |
+| `maxWaveSize` | 1 to 10 | the biggest wave size any difficulty brings (the old selector's limit, read the same way) |
 | `difficulty` | `easy`, `normal`, `hard`, `extreme` | fixes the difficulty, the same way |
 | `maxDifficulty` | `easy`, `normal`, `hard`, `extreme` | the hardest difficulty the player may pick |
 | `waveCount` | a multiple of 5 from 5 to 995, or `"endless"` | fixes the number of waves |
 | `maxWaveCount` | a multiple of 5 from 5 to 995 | the most waves the player may pick (no Endless then); over 20 it is the last step (30: 5, 10, 15, 20, 30) |
 
-A key and its `max` are not given together (the file is refused, saying so). A number of waves that is not a multiple
+A key and its `max` are not given together, nor `waveSize` and `waveSizes` (the file is refused, saying so; so is a
+`waveSizes` that names something other than a difficulty or a size outside 1 to 10). The two old keys are kept rather
+than refused because they are cheap to read and a world's rules file written for 0.1.5 then still works and means
+nearly what it meant. A number of waves that is not a multiple
 of 5 is refused ("a boss comes every 5th wave"). A saved choice above a later limit is brought down to it.
 
 Three more optional keys:
