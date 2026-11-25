@@ -21,8 +21,8 @@ import java.util.regex.Pattern;
  *                         boss wave)
  * @param waveSeconds      how long one wave may last before the battle is lost (so a stuck mob cannot hang it)
  * @param waves            the waves, in order (at least one)
- * @param limits           what the rule fixes or limits about the control panel's wave size, difficulty and number
- *                         of waves ({@link ArenaSettings.Limits}; by default the player chooses)
+ * @param limits           what the rule fixes or limits about the control panel's difficulty and number of waves,
+ *                         and the difficulties' wave sizes ({@link ArenaSettings.Limits}; by default the player chooses)
  * @param bossEvery        every how many waves a boss wave comes ({@link ArenaBosses}; 0: never)
  * @param generator        what makes the waves past the last written one ({@link ArenaGenerator})
  * @param lives            how many times each player may be knocked out in a battle and come back (1 to 10)
@@ -149,8 +149,8 @@ public record ArenaWaves(int countdownSeconds, int breatherSeconds, int waveSeco
 
     private static final Pattern ID = Pattern.compile("[a-z0-9_.-]+:[a-z0-9_./-]+");
     private static final Set<String> KEYS = Set.of("countdownSeconds", "breatherSeconds", "waveSeconds", "waves",
-            "waveSize", "maxWaveSize", "difficulty", "maxDifficulty", "waveCount", "maxWaveCount", "bossEvery",
-            "generator", "lives", "bossBreatherSeconds");
+            "waveSize", "maxWaveSize", "waveSizes", "difficulty", "maxDifficulty", "waveCount", "maxWaveCount",
+            "bossEvery", "generator", "lives", "bossBreatherSeconds");
 
     /** Why {@code id} cannot be a wave mob, in words ("wave 2: " is the caller's), or null when it can. */
     static String mobProblem(String id, Predicate<String> living) {
@@ -190,8 +190,8 @@ public record ArenaWaves(int countdownSeconds, int breatherSeconds, int waveSeco
         for (String key : p.keySet()) {
             if (!key.startsWith("_") && !KEYS.contains(key)) {
                 return fail("unknown param '" + key + "' (countdownSeconds, breatherSeconds, waveSeconds, waves,"
-                        + " waveSize, maxWaveSize, difficulty, maxDifficulty, waveCount, maxWaveCount, bossEvery,"
-                        + " generator, lives, bossBreatherSeconds)");
+                        + " waveSize, maxWaveSize, waveSizes, difficulty, maxDifficulty, waveCount, maxWaveCount,"
+                        + " bossEvery, generator, lives, bossBreatherSeconds)");
             }
         }
         int[] t = new int[3];

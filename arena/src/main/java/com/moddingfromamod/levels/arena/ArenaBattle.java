@@ -106,6 +106,12 @@ final class ArenaBattle {
     private ArenaDifficulty battleDifficulty = ArenaDifficulty.DEFAULT;
     /** The wished creatures' battle roles, during a wave ({@link ArenaRoles}). */
     private final ArenaRoleKeeper roles;
+    /** Fighters knocked out with lives left in this wave, to be moved back in when they are on their feet. */
+    private final Set<UUID> knockedOut = new HashSet<>();
+    /** Of those, the ones back on their feet outside the arena: the ticks until each is moved in. */
+    private final Map<UUID, Integer> backIn = new HashMap<>();
+    /** Whether the gateway was last set shut (null: not set yet in this run of the server). */
+    private Boolean gateSetShut;
     private long ticks;
 
     ArenaBattle(MinecraftServer server, ArenaPlace place, ArenaState state, ArenaCharge wishes) {
@@ -172,16 +178,19 @@ final class ArenaBattle {
         reached.clear();
         fighterNames.clear();
         tellLives.clear();
+        knockedOut.clear();
+        backIn.clear();
         boss = null;
         told.clear();
         waveMobs.clear();
         ready.clear();
         roles.battleStarted(ArenaCreaturesRule.creaturesOf(com.moddingfromamod.world.WorldRulesService.current()));
-        LOG.info("Moddy Arena: battle: COUNTDOWN, started by {}: {} waves, the first in {} s (monsters {}, difficulty"
+        LOG.info("Moddy Arena: battle: COUNTDOWN, started by {}: {} waves, the first in {} s (wave size {}, difficulty"
                 + " {}; the first wave {} mobs; boss waves {}; {} lives)", by, ArenaWords.wavesValue(waves.count()),
-                waves.countdownSeconds(), settings.size(), settings.difficulty().word(), waves.size(1),
+                waves.countdownSeconds(), waves.waveSize(), settings.difficulty().word(), waves.size(1),
                 waves.bossWaves(20), waves.lives());
         sayToPlace(ArenaWords.started(waves.count(), waves.countdownSeconds(), waves.lives()));
+        sayToPlace(ArenaWords.gateRule());
         sayToPlace(ArenaWords.creaturesHelp());
         updateBar();
         return null;
@@ -203,6 +212,7 @@ final class ArenaBattle {
     void tick() {
         ticks++;
         ServerLevel level = level();
+        safetyNet(level);
         for (ArenaPanel.Control c : board.pressed(level)) {
             if (c == ArenaPanel.Control.START) {
                 pressed(level);
@@ -231,6 +241,8 @@ final class ArenaBattle {
         if (ev != null) {
             handle(level, ev);
         }
+        keepGate(level, ev != null);
+        backInTheArena(level);
         if (ev != null || ticks % 10 == 0) {
             updateBar();
         }
@@ -314,7 +326,8 @@ final class ArenaBattle {
      */
     private int mend(ServerLevel level) {
         long t0 = System.nanoTime();
-        int blocks = ArenaBuilder.reset(level, place) + Math.max(0, ArenaBuilder.addControl(level, place));
+        int blocks = ArenaBuilder.reset(level, place, ArenaGate.shut(match.phase()))
+                + Math.max(0, ArenaBuilder.addControl(level, place)) + ArenaBuilder.mendPrepFloor(level, place);
         int loose = tidyBetweenWaves(level);
         LOG.info("Moddy Arena: battle: the arena is mended for the next wave ({} blocks set, {} loose things removed)"
                 + " in {} ms", blocks, loose, (System.nanoTime() - t0) / 1_000_000);
@@ -364,6 +377,8 @@ final class ArenaBattle {
                     LOG.info("Moddy Arena: battle: the fighters are {}, {} lives each", names(fighters.keySet()),
                             lives);
                 }
+                moveFightersIn(level);
+                keepGate(level, true);
                 ArenaRun run = match.table();
                 ArenaBosses.Boss b = run.boss(ev.wave());
                 int n = spawnWave(level, run.wave(ev.wave()), run.health(ev.wave()));
@@ -414,7 +429,9 @@ final class ArenaBattle {
             }
             case RESET -> {
                 long t0 = System.nanoTime();
-                int blocks = ArenaBuilder.reset(level, place);
+                int blocks = ArenaBuilder.reset(level, place, ArenaGate.shut(match.phase()));
+                gateSetShut = false;
+                blocks += ArenaBuilder.mendPrepFloor(level, place);
                 int panelBlocks = ArenaBuilder.addControl(level, place);   // a button knocked off its board, put back
                 if (panelBlocks > 0) {
                     blocks += panelBlocks;
@@ -472,6 +489,9 @@ final class ArenaBattle {
                     LOG.info("Moddy Arena: battle: {} was knocked out; {} lives left", p.getScoreboardName(), f[1]);
                     p.sendSystemMessage(Component.literal(ArenaWords.knockedOut(f[1])));
                     tellLives.add(p.getUUID());
+                    if (match.phase() == ArenaMatch.Phase.WAVE) {
+                        knockedOut.add(p.getUUID());
+                    }
                 } else {
                     out = "was knocked out of his last life";
                     p.sendSystemMessage(Component.literal(ArenaWords.outOfLives()));
@@ -490,6 +510,161 @@ final class ArenaBattle {
             }
         }
         return fighters.size();
+    }
+
+    // ── the ground ──────────────────────────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Nobody is lost under the place: the floor under the world spawn is put back when it is missing (every second), and
+     * a player who fell out under the place (past the base, {@link ArenaPlace#fellOut}) is put back in the prep room,
+     * unharmed, with one line. It costs no life: a life is lost only by being knocked out.
+     */
+    private void safetyNet(ServerLevel level) {
+        if (ticks % ArenaMatch.TICKS_PER_SECOND == 0 && ArenaBuilder.keepSpawnFloor(level, place)) {
+            LOG.info("Moddy Arena: the floor under the world spawn was missing; put back");
+        }
+        for (ServerPlayer p : level.players()) {
+            if (p.isSpectator() || !p.isAlive() || !place.fellOut(p.getX(), p.getY(), p.getZ())) {
+                continue;
+            }
+            ArenaBuilder.keepSpawnFloor(level, place);
+            int[] a = place.arrival();
+            p.stopRiding();
+            p.teleportTo(level, a[0] + 0.5, a[1], a[2] + 0.5, Set.of(), ArenaPlace.ARRIVAL_YAW, 0f, true);
+            p.fallDistance = 0;
+            p.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+            p.clearFire();
+            p.sendOverlayMessage(Component.literal(ArenaWords.fellOut()));
+            LOG.info("Moddy Arena: {} fell out under the place; put back in the prep room", p.getScoreboardName());
+        }
+    }
+
+    // ── the gate ────────────────────────────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Keeps the gateway as the battle wants it ({@link ArenaGate#shut}): iron bars while a wave is on, the fence gate
+     * otherwise. Set at once when that changes ({@code now}), and looked at again every second (so bars broken in a
+     * wave come back, and bars left by a stop in the middle of one go).
+     */
+    private void keepGate(ServerLevel level, boolean now) {
+        boolean shut = ArenaGate.shut(match.phase());
+        if (!now && gateSetShut != null && gateSetShut == shut && ticks % ArenaMatch.TICKS_PER_SECOND != 0) {
+            return;
+        }
+        if (shut && !Boolean.TRUE.equals(gateSetShut)) {
+            standOutOfTheGateway(level);
+        }
+        int set = ArenaBuilder.gate(level, place, shut);
+        if (set > 0) {
+            LOG.info("Moddy Arena: battle: the gate is {} ({} blocks set)", shut ? "shut: iron bars for the wave"
+                    : "open: the fence gate again", set);
+        }
+        gateSetShut = shut;
+    }
+
+    /** Before the bars go in: a player standing in the gateway who is not fighting steps to the prep room's side. */
+    private void standOutOfTheGateway(ServerLevel level) {
+        for (ServerPlayer p : level.players()) {
+            if (!p.isSpectator() && !fighters.containsKey(p.getUUID())
+                    && ArenaGate.inGateway(place, p.getX(), p.getZ(), p.getBbWidth() / 2)
+                    && p.getY() < place.floorY() + 2 && p.getY() > place.floorY() - 1) {
+                double[] o = ArenaGate.outside(place);
+                p.teleportTo(level, o[0], o[1], o[2], Set.of(), p.getYRot(), p.getXRot(), true);
+            }
+        }
+    }
+
+    /** When a wave starts: every fighter on his feet who is not inside the arena is moved in, and told. */
+    private void moveFightersIn(ServerLevel level) {
+        backIn.clear();
+        knockedOut.clear();
+        for (UUID id : fighters.keySet()) {
+            ServerPlayer p = server.getPlayerList().getPlayer(id);
+            if (p != null && onFeet(p) && !ArenaGate.inArena(place, p.getX(), p.getY(), p.getZ())) {
+                moveIn(level, p, ArenaWords.gateShut());
+            }
+        }
+    }
+
+    /**
+     * During a wave, a fighter knocked out with lives left who is back on his feet outside the arena (in the prep room,
+     * where he comes back) counts {@value ArenaGate#BACK_IN_SECONDS} seconds on his action bar, with his lives, and is
+     * then moved in. Once the wave is over (or he went in himself) nothing more happens: in a break he walks in, and the
+     * next wave takes him in.
+     */
+    private void backInTheArena(ServerLevel level) {
+        if (knockedOut.isEmpty()) {
+            return;
+        }
+        boolean waveOn = match.phase() == ArenaMatch.Phase.WAVE;
+        var it = knockedOut.iterator();
+        while (it.hasNext()) {
+            UUID id = it.next();
+            ServerPlayer p = server.getPlayerList().getPlayer(id);
+            int[] f = fighters.get(id);
+            if (p == null || f == null || !waveOn) {
+                backIn.remove(id);
+                it.remove();
+                continue;
+            }
+            boolean inArena = ArenaGate.inArena(place, p.getX(), p.getY(), p.getZ());
+            Integer left = backIn.get(id);
+            switch (ArenaGate.act(true, false, onFeet(p), inArena, left == null ? -1 : left)) {
+                case START_COUNT -> {
+                    backIn.put(id, ArenaGate.BACK_IN_TICKS);
+                    tellLives.remove(id);
+                    p.sendOverlayMessage(Component.literal(ArenaWords.backInCount(f[1],
+                            ArenaGate.BACK_IN_SECONDS)));
+                }
+                case COUNT -> {
+                    int now = left - 1;
+                    backIn.put(id, now);
+                    if (now > 0 && now % ArenaMatch.TICKS_PER_SECOND == 0) {
+                        p.sendOverlayMessage(Component.literal(ArenaWords.backInCount(f[1],
+                                ArenaGate.secondsLeft(now))));
+                    }
+                }
+                case MOVE -> {
+                    backIn.remove(id);
+                    it.remove();
+                    moveIn(level, p, ArenaWords.backIn());
+                }
+                case STOP_COUNT -> {
+                    backIn.remove(id);
+                    if (inArena && onFeet(p)) {
+                        it.remove();            // he went in by himself
+                    }
+                }
+                case NONE -> {
+                    if (inArena && onFeet(p)) {
+                        it.remove();            // on his feet in the arena: nothing to do (a knock-out is a body there)
+                    }
+                }
+            }
+        }
+    }
+
+    /** Moves a fighter just inside the gate, facing into the arena, with one short line on his action bar. */
+    private void moveIn(ServerLevel level, ServerPlayer p, String words) {
+        double[] in = ArenaGate.inside(place);
+        p.stopRiding();
+        p.teleportTo(level, in[0], in[1], in[2], Set.of(), ArenaGate.INSIDE_YAW, 0f, true);
+        p.fallDistance = 0;
+        p.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+        p.sendOverlayMessage(Component.literal(words));
+        LOG.info("Moddy Arena: battle: {} moved into the arena, just inside the gate", p.getScoreboardName());
+    }
+
+    private static boolean onFeet(ServerPlayer p) {
+        return p.isAlive() && !p.isDeadOrDying() && !p.isSpectator();
+    }
+
+    private List<double[]> playerSpots(ServerLevel level) {
+        List<double[]> players = new ArrayList<>();
+        for (ServerPlayer p : level.players()) {
+            players.add(new double[] {p.getX(), p.getZ()});
+        }
+        return players;
     }
 
     /** A fighter back on his feet after a knock-out is told his lives on the action bar, once. */
@@ -714,11 +889,27 @@ final class ArenaBattle {
             Entity e = level.getEntity(it.next());
             if (e == null || !e.isAlive()) {
                 it.remove();
-            } else if (!place.keeps(e.getX(), e.getY(), e.getZ())) {
-                LOG.info("Moddy Arena: battle: a {} left the arena at {} {} {}; removed, and counted as cleared",
-                        EntityType.getKey(e.getType()), (int) e.getX(), (int) e.getY(), (int) e.getZ());
-                e.discard();
-                it.remove();
+                continue;
+            }
+            switch (ArenaGate.mob(place, e.getX(), e.getY(), e.getZ())) {
+                case REMOVE -> {
+                    LOG.info("Moddy Arena: battle: a {} left the arena at {} {} {}; removed, and counted as cleared",
+                            EntityType.getKey(e.getType()), (int) e.getX(), (int) e.getY(), (int) e.getZ());
+                    e.discard();
+                    it.remove();
+                }
+                case PUT_BACK -> {
+                    if (match.phase() == ArenaMatch.Phase.WAVE) {
+                        int[] spot = ArenaSpawns.pick(place, playerSpots(level), 1, level.getRandom().nextLong()).get(0);
+                        LOG.info("Moddy Arena: battle: a {} was outside the arena at {} {} {}; put back inside at {} {}",
+                                EntityType.getKey(e.getType()), (int) e.getX(), (int) e.getY(), (int) e.getZ(),
+                                spot[0], spot[1]);
+                        e.teleportTo(spot[0] + 0.5, place.floorY(), spot[1] + 0.5);
+                        e.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+                    }
+                }
+                case KEEP -> {
+                }
             }
         }
         return waveMobs.size();

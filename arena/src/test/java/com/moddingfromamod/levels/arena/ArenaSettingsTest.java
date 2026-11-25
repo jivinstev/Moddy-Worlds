@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-/** The control panel's wave size and difficulty: how they change the waves, and what the rules may fix or limit. */
+/** The control panel's difficulty (and the wave size it brings): how they change the waves, and what the rules may fix or limit. */
 class ArenaSettingsTest {
 
     private static final List<WorldRuleType> TYPES = List.of(new ArenaRule(), new ArenaWavesRule(null),
@@ -52,8 +52,9 @@ class ArenaSettingsTest {
     @Test
     void theDefaultsAreTodaysWavesExactly() throws IOException {
         ArenaWaves base = bundled();
-        assertEquals(new ArenaSettings(5, ArenaDifficulty.NORMAL), ArenaSettings.DEFAULT);
-        assertEquals(base, ArenaSettings.DEFAULT.apply(base), "size 5 on Normal changes nothing");
+        assertEquals(new ArenaSettings(ArenaDifficulty.NORMAL), ArenaSettings.DEFAULT);
+        assertEquals(5, ArenaSettings.DEFAULT.size(base.limits()), "Normal brings wave size 5");
+        assertEquals(base, ArenaSettings.DEFAULT.apply(base), "Normal changes nothing");
         assertEquals(List.of(3, 10), List.of(base.firstAndLastSize()[0], base.firstAndLastSize()[1]));
     }
 
@@ -92,17 +93,56 @@ class ArenaSettingsTest {
     }
 
     @Test
-    void theReadmesTableOfFirstAndLastWaves() throws IOException {
+    void eachDifficultyBringsItsOwnWaveSizeAndTheReadmesTable() throws IOException {
         ArenaWaves base = bundled();
+        List<Integer> sizes = new ArrayList<>();
         List<Integer> first = new ArrayList<>();
         List<Integer> last = new ArrayList<>();
-        for (int s = ArenaSettings.MIN_SIZE; s <= ArenaSettings.MAX_SIZE; s++) {
-            int[] fl = new ArenaSettings(s, ArenaDifficulty.NORMAL).apply(base).firstAndLastSize();
+        for (ArenaDifficulty d : ArenaDifficulty.values()) {
+            ArenaSettings s = new ArenaSettings(d);
+            sizes.add(s.size(base.limits()));
+            int[] fl = s.apply(base).firstAndLastSize();
             first.add(fl[0]);
             last.add(fl[1]);
         }
-        assertEquals(List.of(1, 1, 2, 2, 3, 4, 4, 5, 5, 6), first);
-        assertEquals(List.of(4, 5, 6, 8, 10, 12, 14, 16, 18, 20), last);
+        assertEquals(List.of(3, 5, 6, 8), sizes, "Easy, Normal, Hard, Extreme");
+        assertEquals(List.of(2, 3, 4, 5), first, "one more in the first wave each step");
+        assertEquals(List.of(6, 10, 12, 16), last);
+        for (int i = 1; i < ArenaDifficulty.values().length; i++) {
+            assertTrue(ArenaDifficulty.values()[i].size() > ArenaDifficulty.values()[i - 1].size(),
+                    "a harder difficulty always brings more");
+        }
+        // every wave of a battle of 20, and of 100 Endless waves, at the hardest: never more than a wave may bring
+        ArenaRun extreme = new ArenaSettings(ArenaDifficulty.EXTREME, ArenaSettings.ENDLESS).run(base);
+        for (int n = 1; n <= 100; n++) {
+            assertTrue(extreme.size(n) <= ArenaWaves.MAX_PER_WAVE + 1, "wave " + n);
+        }
+    }
+
+    @Test
+    void theRulesMaySetTheWaveSizes() {
+        Limits own = Limits.parse(Map.of("waveSizes", Map.of("easy", 2, "hard", 9))).limits();
+        assertEquals(2, own.sizeFor(ArenaDifficulty.EASY));
+        assertEquals(5, own.sizeFor(ArenaDifficulty.NORMAL), "a difficulty not named keeps its own");
+        assertEquals(9, own.sizeFor(ArenaDifficulty.HARD));
+        assertEquals(8, own.sizeFor(ArenaDifficulty.EXTREME));
+        assertEquals(Map.of("waveSizes", Map.of("easy", 2, "hard", 9)), own.toParams());
+        assertEquals(own, Limits.parse(own.toParams()).limits(), "its params read back the same");
+        // the old keys still read: waveSize is every difficulty's, maxWaveSize caps every difficulty's
+        Limits fixed = Limits.parse(Map.of("waveSize", 4)).limits();
+        for (ArenaDifficulty d : ArenaDifficulty.values()) {
+            assertEquals(4, fixed.sizeFor(d));
+        }
+        Limits capped = Limits.parse(Map.of("maxWaveSize", 5)).limits();
+        assertEquals(List.of(3, 5, 5, 5), List.of(capped.sizeFor(ArenaDifficulty.EASY),
+                capped.sizeFor(ArenaDifficulty.NORMAL), capped.sizeFor(ArenaDifficulty.HARD),
+                capped.sizeFor(ArenaDifficulty.EXTREME)));
+        assertEquals(Map.of("maxWaveSize", 5), capped.toParams());
+        // and what is refused, in words
+        assertTrue(Limits.parse(Map.of("waveSize", 4, "waveSizes", Map.of("easy", 2))).problem().contains("not both"));
+        assertTrue(Limits.parse(Map.of("waveSizes", Map.of("nightmare", 2))).problem().contains("nightmare"));
+        assertTrue(Limits.parse(Map.of("waveSizes", Map.of("easy", 11))).problem().contains("1 to 10"));
+        assertTrue(Limits.parse(Map.of("waveSizes", 3)).problem().contains("object"));
     }
 
     @Test
@@ -119,43 +159,35 @@ class ArenaSettingsTest {
     @Test
     void stepsMoveOneAtATimeAndStopAtTheEnds() {
         ArenaSettings s = ArenaSettings.DEFAULT;
-        assertEquals(new ArenaSettings.Step(new ArenaSettings(6, ArenaDifficulty.NORMAL), Result.CHANGED),
-                s.stepSize(true, Limits.NONE));
-        assertEquals(new ArenaSettings.Step(new ArenaSettings(4, ArenaDifficulty.NORMAL), Result.CHANGED),
-                s.stepSize(false, null));
-        assertEquals(Result.AT_END, new ArenaSettings(10, ArenaDifficulty.NORMAL).stepSize(true, null).result());
-        assertEquals(Result.AT_END, new ArenaSettings(1, ArenaDifficulty.NORMAL).stepSize(false, null).result());
-        assertEquals(ArenaDifficulty.HARD, s.stepDifficulty(true, null).settings().difficulty());
+        assertEquals(new ArenaSettings.Step(new ArenaSettings(ArenaDifficulty.HARD), Result.CHANGED),
+                s.stepDifficulty(true, Limits.NONE));
         assertEquals(ArenaDifficulty.EASY, s.stepDifficulty(false, null).settings().difficulty());
-        assertEquals(Result.AT_END, new ArenaSettings(5, ArenaDifficulty.EASY).stepDifficulty(false, null).result());
-        assertEquals(Result.AT_END, new ArenaSettings(5, ArenaDifficulty.EXTREME).stepDifficulty(true, null).result());
-        assertEquals(5, s.stepDifficulty(true, null).settings().size(), "a difficulty step keeps the size");
-        assertEquals(new ArenaSettings(10, ArenaDifficulty.NORMAL), new ArenaSettings(99, null), "clamped");
+        assertEquals(Result.AT_END, new ArenaSettings(ArenaDifficulty.EASY).stepDifficulty(false, null).result());
+        assertEquals(Result.AT_END, new ArenaSettings(ArenaDifficulty.EXTREME).stepDifficulty(true, null).result());
+        assertEquals(6, s.stepDifficulty(true, null).settings().size(null), "a step harder brings more monsters");
+        assertEquals(5, s.stepDifficulty(true, null).settings().waves(), "a difficulty step keeps the waves");
+        assertEquals(ArenaSettings.DEFAULT, new ArenaSettings(null), "no difficulty is the default");
     }
 
     @Test
     void theRulesMayFixOrLimitEach() {
-        Limits fixed = new Limits(3, 10, ArenaDifficulty.HARD, ArenaDifficulty.EXTREME);
-        ArenaSettings s = new ArenaSettings(8, ArenaDifficulty.EASY);
-        assertEquals(new ArenaSettings(3, ArenaDifficulty.HARD), s.within(fixed));
-        assertEquals(Result.FIXED, s.stepSize(true, fixed).result());
-        assertEquals(3, s.stepSize(true, fixed).settings().size());
+        Limits fixed = new Limits(null, 10, ArenaDifficulty.HARD, ArenaDifficulty.EXTREME);
+        ArenaSettings s = new ArenaSettings(ArenaDifficulty.EASY);
+        assertEquals(new ArenaSettings(ArenaDifficulty.HARD), s.within(fixed));
         assertEquals(Result.FIXED, s.stepDifficulty(false, fixed).result());
-        Limits capped = new Limits(null, 6, null, ArenaDifficulty.HARD);
-        assertEquals(new ArenaSettings(6, ArenaDifficulty.HARD),
-                new ArenaSettings(9, ArenaDifficulty.EXTREME).within(capped));
-        assertEquals(Result.AT_END, new ArenaSettings(6, ArenaDifficulty.HARD).stepSize(true, capped).result());
-        assertEquals(Result.AT_END, new ArenaSettings(6, ArenaDifficulty.HARD).stepDifficulty(true, capped).result());
-        assertEquals(Result.CHANGED, new ArenaSettings(6, ArenaDifficulty.HARD).stepSize(false, capped).result());
-        assertEquals(new ArenaSettings(5, ArenaDifficulty.NORMAL), ArenaSettings.DEFAULT.within(null));
+        Limits capped = new Limits(null, 10, null, ArenaDifficulty.HARD);
+        assertEquals(new ArenaSettings(ArenaDifficulty.HARD), new ArenaSettings(ArenaDifficulty.EXTREME).within(capped));
+        assertEquals(Result.AT_END, new ArenaSettings(ArenaDifficulty.HARD).stepDifficulty(true, capped).result());
+        assertEquals(Result.CHANGED, new ArenaSettings(ArenaDifficulty.HARD).stepDifficulty(false, capped).result());
+        assertEquals(ArenaSettings.DEFAULT, ArenaSettings.DEFAULT.within(null));
     }
 
     @Test
     void savedValuesReadBackAndUnknownOnesAreTheDefaults() {
-        assertEquals(new ArenaSettings(7, ArenaDifficulty.HARD), ArenaSettings.of(7, "hard"));
-        assertEquals(new ArenaSettings(7, ArenaDifficulty.HARD), ArenaSettings.of(7, " HARD "));
+        assertEquals(new ArenaSettings(ArenaDifficulty.HARD, 10), ArenaSettings.of("hard", 10));
+        assertEquals(new ArenaSettings(ArenaDifficulty.HARD), ArenaSettings.of(" HARD ", null));
         assertEquals(ArenaSettings.DEFAULT, ArenaSettings.of(null, null), "a world saved before the panel");
-        assertEquals(ArenaSettings.DEFAULT, ArenaSettings.of(5, "nightmare"));
+        assertEquals(ArenaSettings.DEFAULT, ArenaSettings.of("nightmare", null));
         assertNull(ArenaDifficulty.byId("nightmare"));
         assertSame(ArenaDifficulty.EXTREME, ArenaDifficulty.byId("extreme"));
     }

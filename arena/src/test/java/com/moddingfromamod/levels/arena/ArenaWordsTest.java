@@ -28,18 +28,21 @@ class ArenaWordsTest {
             assertTrue(l.length() <= 80, "one short action-bar line: " + l);
         }
         ArenaRun def = ArenaSettings.DEFAULT.run(base);
-        assertEquals(java.util.List.of("First wave: 3 monsters", "Boss wave: 5"), ArenaWords.sizeMeans(def));
-        assertEquals(java.util.List.of("First wave: 3 monsters", "Boss wave: 5", "Hotbar wishes: 5 a wave"),
-                ArenaWords.sizeMeans(def, 5), "the panel says the hotbar wishes a wave");
-        assertEquals(java.util.List.of("First wave: 3 monsters", "Boss waves: 5, 10, 15, 20"),
-                ArenaWords.sizeMeans(new ArenaSettings(5, ArenaDifficulty.NORMAL, 20).run(base)));
-        assertEquals(java.util.List.of("First wave: 3 monsters", "A boss every 5 waves"),
-                ArenaWords.sizeMeans(new ArenaSettings(5, ArenaDifficulty.NORMAL, 0).run(base)));
-        assertEquals("Monsters: 10. The first wave has 6 monsters.",
-                ArenaWords.sizeChanged(10, new ArenaSettings(10, ArenaDifficulty.NORMAL).run(base)));
+        assertEquals("First wave: 3 monsters", ArenaWords.firstWave(def));
+        assertEquals(java.util.List.of("Boss wave: 5"), ArenaWords.means(def));
+        assertEquals(java.util.List.of("Boss wave: 5", "Hotbar wishes: 5 a wave"),
+                ArenaWords.means(def, 5), "the panel says the hotbar wishes a wave");
+        assertEquals(java.util.List.of("Boss waves: 5, 10, 15, 20"),
+                ArenaWords.means(new ArenaSettings(ArenaDifficulty.NORMAL, 20).run(base)));
+        assertEquals(java.util.List.of("A boss every 5 waves"),
+                ArenaWords.means(new ArenaSettings(ArenaDifficulty.NORMAL, 0).run(base)));
+        assertEquals("First wave: 5 monsters",
+                ArenaWords.firstWave(new ArenaSettings(ArenaDifficulty.EXTREME).run(base)));
+        assertEquals("Difficulty: Hard. More monsters, and tougher. First wave: 4 monsters.",
+                ArenaWords.difficultyChanged(ArenaDifficulty.HARD, new ArenaSettings(ArenaDifficulty.HARD).run(base)));
         assertEquals("Waves: Endless. They keep coming until you lose!", ArenaWords.wavesChanged(0));
         assertEquals("Waves: 10. A boss comes every 5th wave.", ArenaWords.wavesChanged(10));
-        assertEquals("Difficulty: Hard. Tougher monsters, and strong ones sooner.",
+        assertEquals("Difficulty: Hard. More monsters, and tougher.",
                 ArenaWords.difficultyChanged(ArenaDifficulty.HARD));
         assertEquals("Battle on: wave 2 of 5", ArenaWords.panelState(ArenaMatch.Phase.WAVE, 2, 5));
         assertEquals("BOSS wave 5 of 5!", ArenaWords.panelState(ArenaMatch.Phase.WAVE, 5, 5, true));
@@ -56,7 +59,7 @@ class ArenaWordsTest {
             }
         }
         assertEquals("Endless", ArenaWords.panel(ArenaPanel.Words.WAVES_VALUE,
-                new ArenaSettings(5, ArenaDifficulty.NORMAL, 0), def, ArenaMatch.Phase.IDLE, 0, 0, false, null).get(0));
+                new ArenaSettings(ArenaDifficulty.NORMAL, 0), def, ArenaMatch.Phase.IDLE, 0, 0, false, null).get(0));
     }
 
     @Test
@@ -67,7 +70,8 @@ class ArenaWordsTest {
                 ArenaWords.started(1, 5, 1));
         assertEquals("Wave 12: 4 monsters left", ArenaWords.barWave(12, 0, 4));
         assertEquals("BOSS: King Husk (wave 20 of 20)", ArenaWords.barBoss("King Husk", 20, 20));
-        assertEquals("Knocked out! 2 lives left. You are back in the prep room: go get them!",
+        assertEquals("Knocked out! 2 lives left. You are back in the prep room for a moment, then back in the arena:"
+                + " go get them!",
                 ArenaWords.knockedOut(2));
     }
 }

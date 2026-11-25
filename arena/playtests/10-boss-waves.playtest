@@ -22,12 +22,13 @@ teleport @s 0.5 64 21.5 180 0
 @wait 10t
 @key key.forward hold 15t
 @wait 1s
-@aim pos -0.5 64.5 17.1
+@aim pos -0.5 65.5 17.1
 @key key.use
 @expect actionbar Waves: 10. A boss comes every 5th wave. within 3s
 @wait 5t
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_waves_value,nbt={text:{text:"10"}}]
-@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_means,nbt={text:{text:"First wave: 3 monsters\nBoss waves: 5, 10\nHotbar wishes: 5 a wave"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_first_wave,nbt={text:{text:"First wave: 3 monsters"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_means,nbt={text:{text:"Boss waves: 5, 10\nHotbar wishes: 5 a wave"}}]
 
 @step he starts the battle
 @aim pos 3.5 65.5 17.1

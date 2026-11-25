@@ -36,17 +36,17 @@ class ArenaStateTest {
                 "it gets its control panel once");
         JsonElement saved = write(s);
         assertEquals(ArenaState.VERSION, saved.getAsJsonObject().get("v").getAsInt(), "saved again as the new version");
-        assertEquals(5, saved.getAsJsonObject().get("waveSize").getAsInt());
+        assertTrue(saved.getAsJsonObject().get("waveSize") == null, "no monsters size is saved any more");
         assertEquals("normal", saved.getAsJsonObject().get("difficulty").getAsString());
     }
 
     @Test
     void theSettingsSurviveASaveAndALoad() {
         ArenaState s = read(BEFORE_THE_PANEL);
-        s.settings(new ArenaSettings(9, ArenaDifficulty.EXTREME));
+        s.settings(new ArenaSettings(ArenaDifficulty.EXTREME, 15));
         assertTrue(s.isDirty(), "a change is saved");
         ArenaState again = read(write(s).toString());
-        assertEquals(new ArenaSettings(9, ArenaDifficulty.EXTREME), again.settings());
+        assertEquals(new ArenaSettings(ArenaDifficulty.EXTREME, 15), again.settings());
         assertEquals(ArenaState.VERSION, again.readVersion());
         assertEquals(s.upgrades(), again.upgrades());
         assertEquals(s.built(), again.built());
@@ -56,17 +56,17 @@ class ArenaStateTest {
     @Test
     void aDifficultyThisJarDoesNotKnowReadsAsTheDefaultAndIsReported() {
         ArenaState s = read("{\"v\":2,\"waveSize\":3,\"difficulty\":\"nightmare\"}");
-        assertEquals(new ArenaSettings(3, ArenaDifficulty.NORMAL), s.settings());
+        assertEquals(new ArenaSettings(ArenaDifficulty.NORMAL), s.settings());
         assertEquals("nightmare", s.unknownDifficulty());
-        assertEquals(new ArenaSettings(10, ArenaDifficulty.NORMAL), read("{\"v\":2,\"waveSize\":40}").settings(),
-                "a size out of range is brought into it");
+        assertEquals(ArenaSettings.DEFAULT, read("{\"v\":2,\"waveSize\":40}").settings(),
+                "an old saved size is not read: the difficulty brings its own");
     }
 
     @Test
     void aVersionTwoRecordReadsFiveWavesAndNoChampions() {
         ArenaState s = read("{\"v\":2,\"waveSize\":7,\"difficulty\":\"hard\",\"upgrades\":[\"control-panel\"]}");
         assertEquals(2, s.readVersion());
-        assertEquals(new ArenaSettings(7, ArenaDifficulty.HARD, 5), s.settings());
+        assertEquals(new ArenaSettings(ArenaDifficulty.HARD, 5), s.settings());
         assertTrue(s.champions().isEmpty());
         assertTrue(ArenaPlace.pendingUpgrades(s.upgrades()).contains(ArenaPlace.UPGRADE_CHAMPIONS),
                 "it gets its Champions board once");
@@ -75,14 +75,14 @@ class ArenaStateTest {
     @Test
     void theWavesAndTheChampionsSurviveASaveAndALoad() {
         ArenaState s = read(BEFORE_THE_PANEL);
-        s.settings(new ArenaSettings(4, ArenaDifficulty.EASY, 0));
+        s.settings(new ArenaSettings(ArenaDifficulty.EASY, 0));
         ArenaChampions.Key k = ArenaChampions.Key.of(s.settings());
         String id = "00000000-0000-0000-0000-000000000001";
         assertEquals(1, s.record(id, "Steve", k, new ArenaChampions.Reach(12, false, false, 2400)));
         assertEquals(0, s.record(id, "Steve", k, new ArenaChampions.Reach(0, true, false, 0)), "no wave: no run");
         ArenaState again = read(write(s).toString());
         assertEquals(ArenaState.VERSION, again.readVersion());
-        assertEquals(new ArenaSettings(4, ArenaDifficulty.EASY, 0), again.settings());
+        assertEquals(new ArenaSettings(ArenaDifficulty.EASY, 0), again.settings());
         assertEquals(s.champions(), again.champions());
         ArenaChampions.Entry e = ArenaChampions.bestOf(again.champions(), id, k);
         assertEquals("Steve", e.name());
@@ -94,5 +94,30 @@ class ArenaStateTest {
         assertEquals(0, saved.getAsJsonObject().get("waveCount").getAsInt(), "Endless is saved as 0");
         assertTrue(saved.toString().matches("[^\\x00-\\x1f]*"), "plain");
         assertTrue(!saved.toString().contains("text"), "nothing a player typed: ids, names and scores only");
+    }
+
+    /** A version 3 record (0.1.5): its monsters size is dropped, and its champions are kept by difficulty and waves. */
+    @Test
+    void aVersionThreeRecordDropsTheSizeAndMigratesItsChampions() {
+        String steve = "00000000-0000-0000-0000-000000000001";
+        String old = "{\"v\":3,\"waveSize\":8,\"difficulty\":\"hard\",\"waveCount\":10,\"champions\":["
+                + "{\"id\":\"" + steve + "\",\"name\":\"Steve\",\"difficulty\":\"hard\",\"waves\":10,\"size\":5,"
+                + "\"wave\":6,\"ticks\":4000,\"seq\":1},"
+                + "{\"id\":\"" + steve + "\",\"name\":\"Steve\",\"difficulty\":\"hard\",\"waves\":10,\"size\":8,"
+                + "\"wave\":9,\"cleared\":true,\"ticks\":9000,\"seq\":2},"
+                + "{\"id\":\"" + steve + "\",\"name\":\"Steve\",\"difficulty\":\"easy\",\"waves\":5,\"size\":1,"
+                + "\"wave\":5,\"won\":true,\"cleared\":true,\"ticks\":3000,\"seq\":3}],\"runs\":3}";
+        ArenaState s = read(old);
+        assertEquals(3, s.readVersion());
+        assertEquals(new ArenaSettings(ArenaDifficulty.HARD, 10), s.settings(), "the size is gone, nothing else");
+        assertEquals(2, s.champions().size(), "his best at Hard 10, and his Easy 5");
+        ArenaChampions.Entry hard = ArenaChampions.bestOf(s.champions(), steve, new ArenaChampions.Key("hard", 10));
+        assertEquals(9, hard.wave(), "the furthest wave of the two");
+        assertTrue(ArenaChampions.bestOf(s.champions(), steve, new ArenaChampions.Key("easy", 5)).won());
+        JsonElement saved = write(s);
+        assertEquals(ArenaState.VERSION, saved.getAsJsonObject().get("v").getAsInt());
+        assertTrue(!saved.toString().contains("waveSize") && !saved.toString().contains("\"size\""),
+                "a save has no size any more: " + saved);
+        assertEquals(s.champions(), read(saved.toString()).champions());
     }
 }
