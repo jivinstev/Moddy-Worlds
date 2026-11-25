@@ -27,7 +27,7 @@ gamemode survival
 @key key.hotbar.3
 @wait 5t
 # the lives page as given: its number is the rules' lives (3 in the arena's own rules), filled in from the arena's charge
-@assert execute if data entity @s SelectedItem.components."minecraft:written_book_content".pages[{raw:"Lives\n\nYou have 3 lives in a battle.\n\nKnocked out? You go back to the prep room with your hotbar, and run back in!"}]
+@assert execute if data entity @s SelectedItem.components."minecraft:written_book_content".pages[{raw:"Lives\n\nYou have 3 lives in a battle.\n\nKnocked out? You go back to the prep room with your hotbar. Soon you are back in the arena!"}]
 @key key.use
 @expect screen /book/ within 5s
 @wait 10t

@@ -174,7 +174,10 @@ kill @e[tag=moddyarena_wave]
 @shot the-longer-break
 
 @step in the break he changes his hotbar: the house goes on it from My wishes
-# he turns from the board first, or his click presses READY instead of his watch
+# the boss wave took him into the arena, just inside the gate; he goes back to the prep room (by command) and turns
+# from the board, or his click opens the gate or presses READY instead of his watch
+teleport @s 0.5 64 19.5 0 30
+@wait 10t
 @aim look 0 30
 @wait 5t
 @key key.hotbar.1

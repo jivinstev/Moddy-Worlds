@@ -51,7 +51,9 @@ moddy apprentice a cat
 summon minecraft:wolf -2 64 6 {Tags:["wishmob","standin"],PersistenceRequired:1b,CustomName:"Rex"}
 summon minecraft:sheep -3 64 12 {Tags:["wishmob","standin"],PersistenceRequired:1b,CustomName:"Puff"}
 summon minecraft:camel 4 64 9 {Tags:["wishmob","standin"],PersistenceRequired:1b,CustomName:"Hump"}
-summon minecraft:cow -8 64 10 {Tags:["bystander"],PersistenceRequired:1b}
+# the cow stands still (no AI), so the healers that follow him (the wave takes him just inside the gate) are never
+# counted as near it by chance
+summon minecraft:cow -8 64 10 {Tags:["bystander"],PersistenceRequired:1b,NoAI:1b}
 effect give @e[type=minecraft:wolf,tag=standin] minecraft:resistance 1500 4 true
 effect give @e[type=minecraft:sheep,tag=standin] minecraft:resistance 1500 4 true
 @wait 1s
