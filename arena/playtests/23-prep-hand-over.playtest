@@ -89,6 +89,8 @@ moddy builder
 @shot film-14
 @wait 3t
 @expect actionbar /is ready! Slot 3\. Use it in the arena\./ within 5s
+# the first time, a longer chat line says the difference between a wish and an item (said with the line above)
+@expect chat /A thing you hold, like a sword, is a real item/ within 5s
 @wait 5t
 @shot creature-flew-to-him
 # the hotbar wish is in slot 3 (the watch and the Wish Bag hold the first two)
@@ -100,10 +102,12 @@ moddy builder
 @assert execute unless items entity @s hotbar.3 *
 @assert execute unless entity @e[type=minecraft:item]
 
-@step the first time, a longer line says the difference between a wish and an item
-@expect chat /a thing you hold, like a sword, is a real item/ within 5s
-@wait 1s
+@step the first-time line is in his chat
+@key key.chat
+@wait 10t
 @shot first-time-line
+@key key.keyboard.escape
+@wait 10t
 
 @step a Builder sword made in prep is a real sword in his inventory
 moddy builder
@@ -112,6 +116,23 @@ moddy builder
 @expect screen What is it within 5s
 @click item "A sword"
 @expect screen What does it do within 5s
+# this world's Builder offers a sword one power, "Turn things into...": what it turns, then into what
+@click item "Turn things into"
+@expect screen Turn what within 5s
+@wait 10t
+@click slot 0
+@wait 10t
+@click item "Done"
+@expect screen Into what within 5s
+@wait 10t
+# in this world it offers only Find: a search box, as the core's own Builder playtest uses it
+@click item "Find"
+@expect screen /find/ within 5s
+@type "stone"
+@click button "Find it!"
+@expect screen /one of these/ within 15s
+@wait 10t
+@shot builder-into-what
 @click slot 0
 @expect screen /tune your/ within 10s
 @click button "Make it!"
@@ -156,6 +177,10 @@ moddy apprentice a cat
 kill @e[tag=wishmob]
 
 @step with the hotbar full, it goes to his Wish Bag and the line says so
+execute unless items entity @s hotbar.2 * run item replace entity @s hotbar.2 with minecraft:dirt
+execute unless items entity @s hotbar.3 * run item replace entity @s hotbar.3 with minecraft:dirt
+execute unless items entity @s hotbar.4 * run item replace entity @s hotbar.4 with minecraft:dirt
+execute unless items entity @s hotbar.5 * run item replace entity @s hotbar.5 with minecraft:dirt
 execute unless items entity @s hotbar.6 * run item replace entity @s hotbar.6 with minecraft:dirt
 execute unless items entity @s hotbar.7 * run item replace entity @s hotbar.7 with minecraft:dirt
 execute unless items entity @s hotbar.8 * run item replace entity @s hotbar.8 with minecraft:dirt
