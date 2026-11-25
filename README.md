@@ -189,7 +189,7 @@ The rules a world jar keeps:
    keys).
 4. Give it its Port CI workflow, the same command as the other worlds' with its own folder (MMVU's
    `tools/port-ci.py --repo . --mod-dir <world> --also-path shared --also-path gradle --also-path gradlew --dep-jar
-   <the same core pin as another world's workflow> --branch <.github/port-ci-branch> --gatec … --no-commit`;
+   <the same core pin as another world's workflow> --branch <.github/port-ci-branch> --gatec launch,spawn --no-commit`;
    `port-ci.py args --file .github/workflows/port-ci-arena.yml` prints the arena's), then
    `python3 tools/core-pins.py --write` (its `core.lock` from that workflow) and `--check`. Commit both. Add a row
    to the table above.
@@ -261,12 +261,22 @@ GitHub login (or MMVU's `tools/port-ci.py promote --fork jivinstev/Moddy-Worlds 
 ### What the gates are
 
 MMVU gates a Minecraft 1.21.8 build through its version-branch route, which `.port/1.21.8/branch.properties` turns on
-(its 1.21.1 harness renamed for 1.21.8, as the core repository does). For a NeoGradle (`net.neoforged.gradle.userdev`)
-build like ours MMVU does not inject its own harness, so Gate A runs the world's own unit tests and Gate B boots a
-headless server with the core and the world and runs the one default GameTest; data the server rejects fails it. Each
-runs twice, `full` and `minimal`. There is **no Gate C** (`--gatec none`): MMVU's client verdict comes from its
-injected harness, which a NeoGradle build does not get. **Worlds' real-client coverage stays with its playtests
-(`tools/play.sh`, above) until MMVU #298 lands**; run them before promoting.
+(its 1.21.1 harness renamed for 1.21.8, as the core repository does). From Port CI kit v87 on, MMVU wires its gate
+harness into a NeoGradle (`net.neoforged.gradle.userdev`) build like ours, for the run only (nothing is committed here).
+Each world's workflow then proves, twice (`full` and `minimal`; a world has no optional mods, so the two run the same
+mods):
+
+- **Gate A**: the world's own unit tests plus MMVU's harness tests (mixin-config integrity), the data and payload
+  audits.
+- **Gate B**: a headless server with the core and the world loads every data file (a rejected one fails it) and runs
+  the harness's GameTests.
+- **Gate C** (`--gatec launch,spawn`): a real client under Xvfb and Mesa's software OpenGL with the core and the world
+  reaches the title screen (`launch`), then creates a single-player world and ticks it for 200 ticks without a crash
+  (`spawn`). A world adds no creatures of its own, so `spawn` summons none ("0 entity types"); what it proves is the
+  world loading and ticking in a real client.
+
+None of this plays a world: a level's preset, its waves or its rules are not reached. **Gameplay stays with the
+playtests, run by hand with `tools/play.sh` (above)**, before promoting; they never run in Actions.
 
 A `dep_override` run (Port CI's dependent gate: a candidate core) never releases. The pre-releases made before Port CI
 (by the Release workflow, up to arena and isle 0.1.6) stay valid and installable as they are.
