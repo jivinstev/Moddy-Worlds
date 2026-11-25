@@ -4,11 +4,14 @@
 #   no-private-work  tools/leak-scan.py over every tracked file AND every commit in the history (its built-in rules,
 #                    tools/leak-rules.txt, and the maintainers' private forbidden list when the FORBIDDEN_LIST secret is
 #                    set), then tools/secret-scan.py over the tree and the history. A finding never prints what matched.
+#                    Then tools/licence-scan.py: no third-party code or text under a licence off the allow-list, in the
+#                    tree or any commit, and every foreign copyright registered in THIRD_PARTY.md (CONTRIBUTING.md).
 #   worlds           which worlds the change touches (tools/changed-worlds.py: a world's own folder builds that world;
 #                    shared/, tools/, .github/ or the Gradle wrapper build them all; a manual run builds them all)
 #   world            for each of them: the pinned core jar (the generated core-pin step, sha256-checked), its unit tests and
-#                    its jar, tools/check-level-jar.py over that jar (only its own packages, resources and packs), and
-#                    the leak scan over the jar's contents.
+#                    its jar, its licenceCheck (what the jar bundles is on the licence allow-list),
+#                    tools/check-level-jar.py over that jar (only its own packages, resources and packs), and the leak
+#                    scan over the jar's contents.
 #
 # Light on purpose while the repository is private (its Actions minutes are limited): pull requests to main and a manual
 # run (Actions -> CI -> Run workflow), nothing on a push to a feature branch, and a newer push to a PR cancels the older run.
@@ -44,6 +47,7 @@ jobs:
         run: |
           python3 tools/test-leak-scan.py
           python3 tools/test-secret-scan.py
+          python3 tools/test-licence-scan.py
           python3 tools/check-level-jar.py --self-test
           python3 tools/changed-worlds.py --self-test
           python3 tools/core-pins.py --self-test
@@ -69,6 +73,10 @@ jobs:
         run: |
           python3 tools/secret-scan.py --tree
           python3 tools/secret-scan.py --history
+      - name: Licence scan, the tree, the register and the history
+        run: |
+          python3 tools/licence-scan.py --tree
+          python3 tools/licence-scan.py --range -- HEAD
 
 
   worlds:
@@ -116,10 +124,10 @@ jobs:
           echo "1fcc5aa8ced4d1e81a67678b56d2504203f813202579063a01660e0cbf8124e9  $RUNNER_TEMP/core/moddingfromamod-1.0.10+mc1.21.8.jar" | sha256sum -c -
           for w in arena isle; do mkdir -p "$w/.core"; cp "$RUNNER_TEMP/core/moddingfromamod-1.0.10+mc1.21.8.jar" "$w/.core/"; done
       # END core pins
-      - name: Unit tests and the jar
+      - name: Unit tests, the jar and what it bundles
         env:
           WORLD: ${{ matrix.world }}
-        run: ./gradlew --no-daemon -p "$WORLD" test jar
+        run: ./gradlew --no-daemon -p "$WORLD" test jar licenceCheck
       - name: The jar holds only the world
         env:
           WORLD: ${{ matrix.world }}

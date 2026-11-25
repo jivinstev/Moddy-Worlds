@@ -14,7 +14,8 @@ Each world has its own page, for players first: how to install it, make the worl
 | Moddy Arena | **[arena/README.md](arena/README.md)** | `moddyarena` | a lit prep room beside a walled arena, on the ground: pick the difficulty (it sets how many monsters come) and the number of waves (5 to 20, or Endless), then fight waves of monsters, with a boss every 5th wave, behind a gate that shuts while a wave is on, with the wishes on your hotbar (5 fires a wave) and 3 lives, a break between waves to change them, and a Champions board of the best runs |
 
 Minecraft 1.21.8, NeoForge 21.8.57, Java 21. Licence: [MPL-2.0](LICENSE). Third-party datapacks keep their own
-licences (each world's `THIRD_PARTY_NOTICES.txt`).
+licences (each world's `THIRD_PARTY_NOTICES.txt`). What third-party code and text may come in, and how it is checked:
+[CONTRIBUTING.md](CONTRIBUTING.md); the register of third-party files: [THIRD_PARTY.md](THIRD_PARTY.md).
 
 ## Layout
 
@@ -35,7 +36,7 @@ shared/                  written once, compiled into EVERY world's jar (never a 
   src/main/java          the shared level code: Level, LevelPacks, LevelWorldType, LevelClaim
   resources/META-INF     neoforge.mods.toml (templated) and the World Type listener's access transformer
 tools/                   new-world.sh (the scaffold), play.sh, fetch-core.sh, core-pins.py, check-level-jar.py (incl. the stock-client rule),
-                         changed-worlds.py, the leak and secret scans and the git hooks
+                         changed-worlds.py, the leak, secret and licence scans and the git hooks
 ```
 
 The shared Java code is written in `com.moddingfromamod.levels.shared` and each world's build compiles a copy into
