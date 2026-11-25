@@ -134,19 +134,20 @@ moddy wishes
 @assert execute if items entity @s hotbar.2 *
 @shot fired-from-the-hotbar
 
-@step at once again: it rests, and says how long
-# past the core's own one-second sweep, well inside the arena's ten-second rest
+@step at once again: it rests, and its slot's sweep shows the arena's rest
+# past the core's own one-second sweep, well inside the arena's ten-second rest: the slot still sweeps, and a click
+# makes nothing (the sword is not made again: slot 5, where a second one would go, stays empty)
 @wait 2s
 @key key.use
-@expect actionbar /That wish is resting. It is ready again in [0-9]+ seconds?/ within 5s
+@wait 2s
+@assert execute unless items entity @s hotbar.4 *
 @shot resting
 
-@step a new make in the battle is refused
+@step a new make in the battle is refused, in one line, before the Apprentice's page opens
 moddy apprentice a cozy house
-@expect screen Container within 10s
-@click slot 0
 @expect chat only the wishes on your hotbar work now within 10s
 @wait 2s
+@expect screen none within 3s
 @shot new-wish-refused
 
 @step he wins the battle with the sword his hotbar made
@@ -189,7 +190,7 @@ moddy apprentice a cozy house
 @key key.mouse.left
 @wait 12t
 @end-repeat
-@expect title Wave 5 of 5 within 20s
+@expect title BOSS WAVE within 20s
 @wait 1s
 @repeat each @e[tag=moddyarena_wave] max 60 until execute unless entity {it}
 @aim entity {it}

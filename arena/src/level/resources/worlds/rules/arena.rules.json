@@ -17,7 +17,8 @@
       "type": "arena_waves",
       "params": {
         "countdownSeconds": 5,
-        "breatherSeconds": 10,
+        "breatherSeconds": 15,
+        "bossBreatherSeconds": 45,
         "waveSeconds": 180,
         "waves": [
           [{"mob": "minecraft:husk", "count": 3}],
@@ -33,7 +34,22 @@
       "type": "arena_wishes",
       "params": {
         "magicianWishes": 3,
-        "cooldownSeconds": 10
+        "cooldownSeconds": 10,
+        "wishesPerWave": 5
+      }
+    },
+    {
+      "id": "wished-creatures-help",
+      "type": "arena_creatures",
+      "params": {
+        "fighterAttack": 3,
+        "tankHealth": 40,
+        "tankWidth": 1.3,
+        "healAmount": 2,
+        "healSeconds": 4,
+        "healRadius": 6,
+        "tauntRadius": 8,
+        "tankResistance": 1
       }
     },
     {
@@ -60,5 +76,5 @@
       }
     }
   ],
-  "_notes": "What Moddy Arena allows. arena_place (the arena's own rule type): the fighting floor's width inside its walls, the prep room's width, and the arena wall's height, in blocks; odd widths, arena 15 to 63, prep room 5 to 15 and smaller than the arena, wall 3 to 8. They are read when the place is first built and kept with it after that. arena_waves (the arena's own rule type): a battle's waves, in order, each a list of {mob, count} spawned at once on the arena floor (1 to 20 waves; a count 1 to 20; at most 40 mobs a wave); countdownSeconds before the first wave (3 to 60), breatherSeconds between waves (3 to 120), waveSeconds a wave may last before the battle is lost (30 to 1800). First values are guesses, to be tuned by playing. Any living mob id is accepted except those that cannot stay in the arena (fliers, climbers, teleporters, creepers, silverfish; the file is refused, saying why). These are the base waves: the battle arena control panel in the prep room scales every count by the wave size the player picks (1 to 10; 5 is these waves exactly) and its difficulty (easy, normal, hard, extreme; normal is these waves exactly) swaps mob kinds and sets their health. Optional keys fix or limit those choices: waveSize (1 to 10) or maxWaveSize, difficulty or maxDifficulty (a key or its max, not both); without them the player chooses. A change applies to the next battle. arena_wishes (the arena's own rule type): magicianWishes, how many Magician wishes each player may make between two battles (0 to 20; counted when the Magician starts one, given back when it fails, is stopped or is undone; Builder and Apprentice wishes are always free), and cooldownSeconds, how long a kept thing rests after it is fired from the hotbar in a battle (1 to 120). In a battle only kept things fired again (the hotbar, Make another one) work. First values are guesses. base_reach: a wish lands only inside the arena and its prep room (from the prep room: the prep room, or the arena straight ahead through the gate; from anywhere else: the arena), never outside the place and never in the Nether or the End. The clamp: a power at most 60 s and never forever, one stack of each item and 2 kinds a wish, 2 XP levels a wish; shortened or shrunk and said, never refused. Schema: the core's WorldRules.parse."
+  "_notes": "What Moddy Arena allows. arena_place (the arena's own rule type): the fighting floor's width inside its walls, the prep room's width, and the arena wall's height, in blocks; odd widths, arena 15 to 63, prep room 5 to 15 and smaller than the arena, wall 3 to 8. They are read when the place is first built and kept with it after that. arena_waves (the arena's own rule type): a battle's waves, in order, each a list of {mob, count} spawned at once on the arena floor (1 to 100 waves; a count 1 to 20; at most 40 mobs a wave); countdownSeconds before the first wave (3 to 60), breatherSeconds, the break after a wave (3 to 120), and bossBreatherSeconds, the longer break after a boss wave (3 to 300; without it, 30 or breatherSeconds if longer), in which the fighters may change their hotbars in the prep room and press READY on the board to end it sooner; the arena mends itself in each break, waveSeconds a wave may last before the battle is lost (30 to 1800). First values are guesses, to be tuned by playing. Any living mob id is accepted except those that cannot stay in the arena (fliers, climbers, teleporters, creepers, silverfish; the file is refused, saying why). These are the base waves: the battle arena control panel in the prep room scales every count by the monsters the player picks (1 to 10; 5 is these waves exactly), its difficulty (easy, normal, hard, extreme; normal is these waves exactly) swaps mob kinds and sets their health, and its waves (5, 10, 15, 20 or endless; 5 by default) say how many waves a battle has: past these, waves are made from the wave's number by the generator (optional key generator: addPerWave 0 to 5, healthPerWave 0 to 0.5, maxHealth 1 to 5, kinds [{mob, from, weight}]). Every bossEvery-th wave (optional, 0 or 2 to 50, default 5) is a boss wave: a named boss and a small escort. Each player has lives lives in a battle (optional, 1 to 10, default 3). Optional keys fix or limit the panel's choices: waveSize (1 to 10) or maxWaveSize, difficulty or maxDifficulty, waveCount (a multiple of 5 up to 995, or \"endless\") or maxWaveCount (a multiple of 5) (a key or its max, not both); without them the player chooses. A change applies to the next battle. arena_wishes (the arena's own rule type): magicianWishes, how many Magician wishes each player may make between two battles (0 to 20; counted when the Magician starts one, given back when it fails, is stopped or is undone; Builder and Apprentice wishes are always free), cooldownSeconds, how long a kept thing rests after it is fired from the hotbar in a battle (1 to 120), and wishesPerWave, how many hotbar wishes each player may fire in one wave (1 to 50; every fire costs one, and the count starts again when a wave is cleared). In a battle only kept things fired again (the hotbar, Make another one) work. First values are guesses. arena_creatures (the arena's own rule type, every key optional): during a wave every creature a player wished into the arena takes one battle role, chosen from what the game says about it: a Fighter (its own attack at least fighterAttack, 0.5 to 50, or a monster) goes for the wave's monsters; a Tank (most health at least tankHealth, 10 to 1000, or at least tankWidth blocks wide, 0.5 to 5) draws the monsters within tauntRadius blocks (3 to 16) and has Resistance level tankResistance (0 to 3) while it holds them; any other creature that walks is a Healer, healing each fighter within healRadius blocks (2 to 16) by healAmount (0.5 to 4) at most every healSeconds (2 to 20), all his healers together, never more than 1 health a second; one that cannot walk is a Tank where it stands. A role stops at the wave's end and outside the arena. base_reach: a wish lands only inside the arena and its prep room (from the prep room: the prep room, or the arena straight ahead through the gate; from anywhere else: the arena), never outside the place and never in the Nether or the End. The clamp: a power at most 60 s and never forever, one stack of each item and 2 kinds a wish, 2 XP levels a wish; shortened or shrunk and said, never refused. Schema: the core's WorldRules.parse."
 }

@@ -17,22 +17,37 @@ import java.util.regex.Pattern;
  * game's registry in play, anything in a test).
  *
  * @param countdownSeconds the seconds between pressing the start button and the first wave
- * @param breatherSeconds  the seconds between a wave cleared and the next one
+ * @param breatherSeconds  the break between a wave cleared and the next one, in seconds (after a wave that is not a
+ *                         boss wave)
  * @param waveSeconds      how long one wave may last before the battle is lost (so a stuck mob cannot hang it)
  * @param waves            the waves, in order (at least one)
- * @param limits           what the rule fixes or limits about the control panel's wave size and difficulty
- *                         ({@link ArenaSettings.Limits}; by default the player chooses)
+ * @param limits           what the rule fixes or limits about the control panel's wave size, difficulty and number
+ *                         of waves ({@link ArenaSettings.Limits}; by default the player chooses)
+ * @param bossEvery        every how many waves a boss wave comes ({@link ArenaBosses}; 0: never)
+ * @param generator        what makes the waves past the last written one ({@link ArenaGenerator})
+ * @param lives            how many times each player may be knocked out in a battle and come back (1 to 10)
+ * @param bossBreatherSeconds the break after a boss wave, in seconds: longer, after the hardest fight
  */
 public record ArenaWaves(int countdownSeconds, int breatherSeconds, int waveSeconds, List<Wave> waves,
-                         ArenaSettings.Limits limits) {
+                         ArenaSettings.Limits limits, int bossEvery, ArenaGenerator generator, int lives,
+                         int bossBreatherSeconds) {
 
     public static final int MIN_COUNTDOWN = 3;
     public static final int MAX_COUNTDOWN = 60;
     public static final int MIN_BREATHER = 3;
     public static final int MAX_BREATHER = 120;
+    public static final int MAX_BOSS_BREATHER = 300;
+    /** The break after a boss wave when the rules name none: at least this, and never shorter than the other break. */
+    public static final int DEFAULT_BOSS_BREATHER = 30;
     public static final int MIN_WAVE_SECONDS = 30;
     public static final int MAX_WAVE_SECONDS = 1800;
-    public static final int MAX_WAVES = 20;
+    public static final int MAX_WAVES = 100;
+    /** A boss wave every 5th wave, by default. */
+    public static final int DEFAULT_BOSS_EVERY = 5;
+    public static final int MAX_BOSS_EVERY = 50;
+    /** Each player's lives in a battle, by default. */
+    public static final int DEFAULT_LIVES = 3;
+    public static final int MAX_LIVES = 10;
     public static final int MAX_GROUPS = 10;
     public static final int MAX_COUNT = 20;
     /** The most mobs one wave may bring, all groups together. */
@@ -57,6 +72,19 @@ public record ArenaWaves(int countdownSeconds, int breatherSeconds, int waveSeco
     public ArenaWaves {
         waves = List.copyOf(waves);
         limits = limits == null ? ArenaSettings.Limits.NONE : limits;
+        generator = generator == null ? ArenaGenerator.DEFAULT : generator;
+    }
+
+    /** A table with these limits, and the default bosses, generator and lives. */
+    public ArenaWaves(int countdownSeconds, int breatherSeconds, int waveSeconds, List<Wave> waves,
+                      ArenaSettings.Limits limits) {
+        this(countdownSeconds, breatherSeconds, waveSeconds, waves, limits, DEFAULT_BOSS_EVERY, ArenaGenerator.DEFAULT,
+                DEFAULT_LIVES, defaultBossBreather(breatherSeconds));
+    }
+
+    /** The break after a boss wave when the rules name none: {@link #DEFAULT_BOSS_BREATHER}, or the other break if longer. */
+    public static int defaultBossBreather(int breatherSeconds) {
+        return Math.min(MAX_BOSS_BREATHER, Math.max(DEFAULT_BOSS_BREATHER, breatherSeconds));
     }
 
     /** A table whose control panel the player chooses freely. */
@@ -66,7 +94,14 @@ public record ArenaWaves(int countdownSeconds, int breatherSeconds, int waveSeco
 
     /** The same timings and limits with other waves (what the wave size and the difficulty make of them). */
     public ArenaWaves withWaves(List<Wave> other) {
-        return new ArenaWaves(countdownSeconds, breatherSeconds, waveSeconds, other, limits);
+        return new ArenaWaves(countdownSeconds, breatherSeconds, waveSeconds, other, limits, bossEvery, generator,
+                lives, bossBreatherSeconds);
+    }
+
+    /** The same table with boss waves every {@code every} waves (0: none). */
+    public ArenaWaves withBossEvery(int every) {
+        return new ArenaWaves(countdownSeconds, breatherSeconds, waveSeconds, waves, limits, every, generator, lives,
+                bossBreatherSeconds);
     }
 
     /** How many mobs the first wave brings and how many the last does: what the control panel shows. */
@@ -114,7 +149,23 @@ public record ArenaWaves(int countdownSeconds, int breatherSeconds, int waveSeco
 
     private static final Pattern ID = Pattern.compile("[a-z0-9_.-]+:[a-z0-9_./-]+");
     private static final Set<String> KEYS = Set.of("countdownSeconds", "breatherSeconds", "waveSeconds", "waves",
-            "waveSize", "maxWaveSize", "difficulty", "maxDifficulty");
+            "waveSize", "maxWaveSize", "difficulty", "maxDifficulty", "waveCount", "maxWaveCount", "bossEvery",
+            "generator", "lives", "bossBreatherSeconds");
+
+    /** Why {@code id} cannot be a wave mob, in words ("wave 2: " is the caller's), or null when it can. */
+    static String mobProblem(String id, Predicate<String> living) {
+        if (!ID.matcher(id).matches()) {
+            return "'" + id + "' is not a mob id (such as minecraft:husk)";
+        }
+        String why = REFUSED.get(id);
+        if (why != null) {
+            return id + " cannot be an arena mob: it " + why;
+        }
+        if (living != null && !living.test(id)) {
+            return id + " is not a living mob the game knows";
+        }
+        return null;
+    }
 
     /** A mob id as the table names it: lower case, {@code minecraft:} when no namespace is given. Pure. */
     static String normalId(String raw) {
@@ -139,7 +190,8 @@ public record ArenaWaves(int countdownSeconds, int breatherSeconds, int waveSeco
         for (String key : p.keySet()) {
             if (!key.startsWith("_") && !KEYS.contains(key)) {
                 return fail("unknown param '" + key + "' (countdownSeconds, breatherSeconds, waveSeconds, waves,"
-                        + " waveSize, maxWaveSize, difficulty, maxDifficulty)");
+                        + " waveSize, maxWaveSize, difficulty, maxDifficulty, waveCount, maxWaveCount, bossEvery,"
+                        + " generator, lives, bossBreatherSeconds)");
             }
         }
         int[] t = new int[3];
@@ -211,7 +263,38 @@ public record ArenaWaves(int countdownSeconds, int breatherSeconds, int waveSeco
         if (lim.problem() != null) {
             return fail(lim.problem());
         }
-        return new Parsed(new ArenaWaves(t[0], t[1], t[2], waves, lim.limits()), null);
+        int boss = DEFAULT_BOSS_EVERY;
+        if (p.get("bossEvery") != null) {
+            Integer b = whole(p.get("bossEvery"));
+            if (b == null || b < 0 || b == 1 || b > MAX_BOSS_EVERY) {
+                return fail("bossEvery must be 0 (no boss waves) or a whole number from 2 to " + MAX_BOSS_EVERY
+                        + ", not " + p.get("bossEvery"));
+            }
+            boss = b;
+        }
+        int lives = DEFAULT_LIVES;
+        if (p.get("lives") != null) {
+            Integer l = whole(p.get("lives"));
+            if (l == null || l < 1 || l > MAX_LIVES) {
+                return fail("lives must be a whole number from 1 to " + MAX_LIVES + ", not " + p.get("lives"));
+            }
+            lives = l;
+        }
+        int bossBreather = defaultBossBreather(t[1]);
+        if (p.get("bossBreatherSeconds") != null) {
+            Integer b = whole(p.get("bossBreatherSeconds"));
+            if (b == null || b < MIN_BREATHER || b > MAX_BOSS_BREATHER) {
+                return fail("bossBreatherSeconds must be a whole number of seconds from " + MIN_BREATHER + " to "
+                        + MAX_BOSS_BREATHER + ", not " + p.get("bossBreatherSeconds"));
+            }
+            bossBreather = b;
+        }
+        ArenaGenerator.Parsed gen = ArenaGenerator.parse(p.get("generator"), living);
+        if (gen.problem() != null) {
+            return fail(gen.problem());
+        }
+        return new Parsed(new ArenaWaves(t[0], t[1], t[2], waves, lim.limits(), boss, gen.generator(), lives,
+                bossBreather), null);
     }
 
     /** The table as plain values, the shape {@link #parse} reads (what the rule type hands the core). */
@@ -233,6 +316,18 @@ public record ArenaWaves(int countdownSeconds, int breatherSeconds, int waveSeco
         out.put("waveSeconds", waveSeconds);
         out.put("waves", ws);
         out.putAll(limits.toParams());
+        if (bossEvery != DEFAULT_BOSS_EVERY) {
+            out.put("bossEvery", bossEvery);
+        }
+        if (!generator.equals(ArenaGenerator.DEFAULT)) {
+            out.put("generator", generator.toParams());
+        }
+        if (lives != DEFAULT_LIVES) {
+            out.put("lives", lives);
+        }
+        if (bossBreatherSeconds != defaultBossBreather(breatherSeconds)) {
+            out.put("bossBreatherSeconds", bossBreatherSeconds);
+        }
         return out;
     }
 

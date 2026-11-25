@@ -7,7 +7,8 @@
 #   * a workflow artifact with the jar and SHA256SUMS, always;
 #   * a release tagged <level>-<mod_version>-mc<minecraft_version> (e.g. isle-0.1.0-mc1.21.8) carrying the jar and
 #     SHA256SUMS, a PRE-release unless prerelease is unticked. Its notes name the core release and sha256 it was built
-#     against, which is the core a player installs beside it. An existing tag is never overwritten: bump mod_version.
+#     against, which is the core a player installs beside it, then <level>/RELEASE-NOTES.md when the level has one.
+#     An existing tag is never overwritten: bump mod_version.
 #
 # Secrets: CORE_READ_TOKEN (Contents: read on the core's repository) while that repository is private;
 # FORBIDDEN_LIST (optional) as in ci.yml.
@@ -174,6 +175,7 @@ jobs:
             echo
             echo "Then Create World -> World tab -> World Type: $(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["generator.'"$MODID"'.'"$LEVEL"'"])' "$LEVEL/src/level/resources/assets/$MODID/lang/en_us.json")."
             [ -n "$PRE" ] && { echo; echo "Pre-release until played by a person."; }
+            if [ -f "$LEVEL/RELEASE-NOTES.md" ]; then echo; cat "$LEVEL/RELEASE-NOTES.md"; fi
           } > notes.md
           gh release create "$TAG" dist/*.jar dist/SHA256SUMS --target "$GITHUB_SHA" --title "$TAG" --notes-file notes.md $PRE
           echo "Released $TAG" >> "$GITHUB_STEP_SUMMARY"

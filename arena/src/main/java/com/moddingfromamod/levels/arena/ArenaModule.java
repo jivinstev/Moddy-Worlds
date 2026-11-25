@@ -10,11 +10,19 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.WrittenBookContent;
 import net.minecraft.world.level.gamerules.GameRules;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +50,8 @@ public final class ArenaModule implements WorldModule {
     private ArenaBattle battle;
     /** Read by the core from any thread (a Magician pickup comes on an agent thread). */
     private volatile ArenaCharge charge;
+    /** Players who arrived for the first time, and the tick until which the core's guide book is looked for. */
+    private final Map<UUID, Long> guideDue = new HashMap<>();
 
     @Override
     public String id() {
@@ -61,6 +71,7 @@ public final class ArenaModule implements WorldModule {
             state.markBuilt(place);
             state.markUpgraded(ArenaPlace.UPGRADE_START_CONTROL);   // fills() carries the panel, which replaced it
             state.markUpgraded(ArenaPlace.UPGRADE_CONTROL_PANEL);
+            state.markUpgraded(ArenaPlace.UPGRADE_CHAMPIONS);
             LOG.info("Moddy Arena: built the place ({}): {} blocks in {} ms", place.describe(), set,
                     (System.nanoTime() - t0) / 1_000_000);
         } else {
@@ -78,9 +89,11 @@ public final class ArenaModule implements WorldModule {
             LOG.warn("Moddy Arena: control panel: the saved difficulty '{}' is not one this arena knows; it is {}",
                     state.unknownDifficulty(), ArenaDifficulty.DEFAULT.word());
         }
-        LOG.info("Moddy Arena: control panel: wave size {}, difficulty {}{}", state.settings().size(),
-                state.settings().difficulty().word(), state.readVersion() < ArenaState.VERSION
-                        ? " (this world was saved before the panel: the defaults)" : "");
+        LOG.info("Moddy Arena: control panel: monsters {}, difficulty {}, waves {}{}; {} champion entries",
+                state.settings().size(), state.settings().difficulty().word(),
+                ArenaWords.wavesValue(state.settings().waves()), state.readVersion() < ArenaState.VERSION
+                        ? " (this world was saved by an older arena: what it lacks is the default)" : "",
+                state.champions().size());
         int[] a = place.arrival();
         BlockPos spawn = new BlockPos(a[0], a[1], a[2]);
         var respawn = level.getRespawnData();
@@ -95,7 +108,7 @@ public final class ArenaModule implements WorldModule {
                     p.getY(), p.getZ());
         });
         ArenaCharge c = ArenaCharge.of(server);
-        battle = new ArenaBattle(server, place, state, c::battleEnded);
+        battle = new ArenaBattle(server, place, state, c);
         c.phase(ArenaWishPolicy.phaseOf(battle.match().phase()));
         charge = c;
         ArenaWishes w = ArenaWishesRule.wishesOf(rulesAtStart());
@@ -129,6 +142,16 @@ public final class ArenaModule implements WorldModule {
                     }
                     LOG.info("Moddy Arena: the place was missing its battle arena control panel; added it on the wall"
                             + " beside the gate ({} blocks)", set);
+                }
+                case ArenaPlace.UPGRADE_CHAMPIONS -> {
+                    int set = ArenaBuilder.addChampions(level, place);
+                    if (set < 0) {
+                        LOG.warn("Moddy Arena: the place has no Champions board, and something stands where it goes"
+                                + " (the prep room's back wall); it is not added.");
+                        continue;
+                    }
+                    LOG.info("Moddy Arena: the place was missing its Champions board; added it on the prep room's"
+                            + " back wall ({} blocks)", set);
                 }
                 case ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS -> {
                     level.getGameRules().set(GameRules.SPAWN_MOBS, false, server);
@@ -166,6 +189,9 @@ public final class ArenaModule implements WorldModule {
 
     @Override
     public void onTick() {
+        if (!guideDue.isEmpty()) {
+            shelveGuides();
+        }
         ArenaBattle b = battle;
         if (b != null) {
             b.tick();
@@ -215,7 +241,62 @@ public final class ArenaModule implements WorldModule {
         ServerLevel level = s.overworld();
         player.teleportTo(level, a[0] + 0.5, a[1], a[2] + 0.5, Set.of(), ArenaPlace.ARRIVAL_YAW, 0f, true);
         player.fallDistance = 0;
+        guideDue.put(player.getUUID(), (long) s.getTickCount() + ArenaGuide.SHELVE_TICKS);
         LOG.info("Moddy Arena: {} arrived in the prep room", player.getScoreboardName());
+    }
+
+    /**
+     * The core gives the Arena Guide on a first arrival, into the first free slot, which is on the hotbar. Once, for the
+     * copy given then, the arena moves it into his bag ({@link ArenaGuide#bagSlot}): the hotbar is for the wishes he
+     * fights with. A copy he asks for later, or moves back himself, is left where it is.
+     */
+    private void shelveGuides() {
+        MinecraftServer s = server;
+        if (s == null) {
+            guideDue.clear();
+            return;
+        }
+        long now = s.getTickCount();
+        for (Iterator<Map.Entry<UUID, Long>> it = guideDue.entrySet().iterator(); it.hasNext(); ) {
+            Map.Entry<UUID, Long> e = it.next();
+            ServerPlayer p = s.getPlayerList().getPlayer(e.getKey());
+            if (p == null || now > e.getValue()) {
+                it.remove();
+                continue;
+            }
+            var inv = p.getInventory();
+            int book = -1;
+            for (int i = 0; i < ArenaGuide.HOTBAR; i++) {
+                if (isGuide(inv.getItem(i))) {
+                    book = i;
+                    break;
+                }
+            }
+            if (book < 0) {
+                continue;
+            }
+            boolean[] empty = new boolean[ArenaGuide.BAG_END];
+            for (int i = 0; i < empty.length; i++) {
+                empty[i] = inv.getItem(i).isEmpty();
+            }
+            int to = ArenaGuide.bagSlot(book, empty);
+            if (to >= 0) {
+                inv.setItem(to, inv.getItem(book));
+                inv.setItem(book, ItemStack.EMPTY);
+                p.containerMenu.broadcastChanges();
+                LOG.info("Moddy Arena: {}'s Arena Guide went from hotbar slot {} into his bag", p.getScoreboardName(),
+                        book + 1);
+            }
+            it.remove();
+        }
+    }
+
+    private static boolean isGuide(ItemStack st) {
+        if (!st.is(Items.WRITTEN_BOOK)) {
+            return false;
+        }
+        WrittenBookContent c = st.get(DataComponents.WRITTEN_BOOK_CONTENT);
+        return c != null && ArenaGuide.TITLE.equals(c.title().raw()) && ArenaGuide.AUTHOR.equals(c.author());
     }
 
     /**
