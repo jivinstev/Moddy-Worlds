@@ -25,8 +25,8 @@
   ],
   "dependencies": [
     {
-      "modrinth": null,
-      "curseforge": null,
+      "modrinth": "moddy-the-wish-watch",
+      "curseforge": "moddy-the-wish-watch",
       "type": "required",
       "modid": "moddingfromamod"
     }
