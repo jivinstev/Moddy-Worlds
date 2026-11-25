@@ -102,7 +102,10 @@ teleport @s 0.5 64 17.5 180 10
 @shot the-roles-shown
 
 @step the Tank draws the monsters and stands up to them
-# a monster that comes within reach of the camel turns to it: its target is the camel, not him
+# a monster that comes within reach of the camel turns to it: its target is the camel, not him. SHORTCUT: the camel
+# is put 3 blocks from one of the monsters (toward the middle), since they may gather by the shut gate, out of its
+# reach
+execute at @e[tag=moddyarena_wave,limit=1] facing 0.5 64 0.5 run teleport @e[type=minecraft:camel,tag=standin] ^ ^ ^3
 @repeat 600 until execute as @e[tag=moddyarena_wave] on target if entity @s[type=minecraft:camel]
 @wait 1t
 @end-repeat
