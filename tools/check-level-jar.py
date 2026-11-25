@@ -18,7 +18,13 @@ split package), and the store reviews what it ships. This checks, entry by entry
     THIRD_PARTY_NOTICES.txt and this repository's licence (LICENSE_<modid>);
   * no nested jar (META-INF/jarjar/), no secret-shaped or private file name (an .env, a key, a store file);
   * no package the pinned core jar also carries (FML refuses a split package), checked when the core jar is in
-    <level>/.core/ (tools/fetch-core.sh puts it there; CI and the release do).
+    <level>/.core/ (tools/fetch-core.sh puts it there; CI and the release do);
+  * NOTHING A STOCK CLIENT CANNOT DRAW (the vanilla-client principle, README "A stock client is all a player needs"):
+    no client-only code but the one host-side piece every world shares (the World Type picker that ticks its packs,
+    <level>/shared/LevelWorldType, and the @Mod class's Dist check that registers it); no custom network channel or
+    payload; no registered block, item, entity type, menu or other registry entry (DeferredRegister, RegisterEvent);
+    and no client resource under assets/<modid>/ but its lang/ (the World Type's name on the host's Create World
+    screen). Each finding names the class or file and what it referenced.
 
 Exit 0 clean, 1 findings (each named), 2 the jar or the lock could not be read.
 """
@@ -77,6 +83,53 @@ def allowed(name, level, cfg, folders):
     return "a file outside the level's resources"
 
 
+# ── the vanilla-client principle ─────────────────────────────────────────────────────────────────────────────────────
+# What a class may not reference (raw names in its constant pool), and the small list of classes allowed to.
+CLIENT_REFS = (b"net/minecraft/client/", b"net/neoforged/neoforge/client/", b"com/mojang/blaze3d/",
+               b"net/neoforged/api/distmarker/OnlyIn")
+DIST_REF = b"net/neoforged/api/distmarker/Dist"
+NETWORK_REFS = (b"net/neoforged/neoforge/network/", b"CustomPacketPayload",
+                b"net/minecraft/network/protocol/common/custom/")
+REGISTRY_REFS = (b"net/neoforged/neoforge/registries/DeferredRegister", b"net/neoforged/neoforge/registries/RegisterEvent",
+                 b"net/neoforged/neoforge/registries/DeferredHolder", b"net/minecraft/world/inventory/MenuType",
+                 b"net/neoforged/neoforge/registries/NewRegistryEvent")
+MOD_ANNOTATION = b"Lnet/neoforged/fml/common/Mod;"
+
+
+def host_side_class(name, level):
+    """The one client piece every world may carry: the shared World Type picker (and its inner classes)."""
+    base = f"com/moddingfromamod/levels/{level}/shared/LevelWorldType"
+    return name == base + ".class" or name.startswith(base + "$")
+
+
+def vanilla_client_findings(z, names, level, modid):
+    """What in a world jar a stock client could not draw, or that only a client-side mod could use; each named."""
+    out = []
+    for n in names:
+        if n.startswith(f"assets/{modid}/") and not n.endswith("/") and not n.startswith(f"assets/{modid}/lang/"):
+            out.append(f"{n}: a client resource (a stock client never gets a mod's assets; only lang/, for the "
+                       f"host's World Type name, is allowed)")
+        if not n.endswith(".class"):
+            continue
+        b = z.read(n)
+        host = host_side_class(n, level)
+        for ref in CLIENT_REFS:
+            if ref in b and not host:
+                out.append(f"{n}: references client-only code ({ref.decode()}); only the shared World Type picker"
+                           f" ({level}/shared/LevelWorldType) may")
+        if DIST_REF in b and not host and MOD_ANNOTATION not in b:
+            out.append(f"{n}: checks the client side (Dist); only the @Mod class may, to register the World Type"
+                       f" picker")
+        for ref in NETWORK_REFS:
+            if ref in b:
+                out.append(f"{n}: a custom network channel or payload ({ref.decode()}): a stock client has none")
+        for ref in REGISTRY_REFS:
+            if ref in b:
+                out.append(f"{n}: registers content ({ref.decode()}): a custom block, item, entity or menu is"
+                           f" something a stock client cannot draw")
+    return out
+
+
 def check(jar, level, cfg=None, core=None):
     cfg = level_config(level) if cfg is None else cfg
     packs = json.loads(pathlib.Path(cfg["lock"]).read_text())["packs"]
@@ -102,6 +155,7 @@ def check(jar, level, cfg=None, core=None):
                 cls = line.split("#", 1)[0].strip()
                 if cls and not any(cls.replace(".", "/").startswith(p) for p in cfg["packages"]):
                     findings.append(f"META-INF/services/…ModdyPlugin: {cls} is not one of the level's classes")
+        findings += vanilla_client_findings(z, names, level, cfg["modid"])
         if "META-INF/neoforge.mods.toml" in names:
             toml = z.read("META-INF/neoforge.mods.toml").decode()
             if f'modId="{cfg["modid"]}"' not in toml:
@@ -147,7 +201,13 @@ def self_test():
                 "worlds/isle.json": "{}", "worlds/rules/isle.rules.json": "{}", "THIRD_PARTY_NOTICES.txt": "",
                 "com/moddingfromamod/isle/IslePlugin.class": "", "datapacks/pack_a/pack.mcmeta": "",
                 "datapacks/level_marker/pack.mcmeta": "",
-                "data/moddingfromamod/structure/isle/starter_island.nbt": ""}
+                "data/moddingfromamod/structure/isle/starter_island.nbt": "",
+                "assets/moddyisle/lang/en_us.json": "{}",
+                "com/moddingfromamod/levels/isle/IsleMod.class": "Lnet/neoforged/fml/common/Mod;"
+                                                                 "net/neoforged/api/distmarker/Dist",
+                "com/moddingfromamod/levels/isle/shared/LevelWorldType.class":
+                    "net/minecraft/client/gui/screens/worldselection/CreateWorldScreen",
+                "com/moddingfromamod/levels/isle/shared/LevelWorldType$1.class": "net/neoforged/neoforge/client/event"}
         bad_extra = {"com/moddingfromamod/wish/Wish.class": "a class outside",
                      "com/moddingfromamod/isle/IslandGameTest.class": "a test class",
                      "datapacks/other/pack.mcmeta": "a datapack folder",
@@ -163,6 +223,20 @@ def self_test():
             return p
 
         assert check(jar(good, "good.jar"), "isle", cfg) == [], check(jar(good, "good.jar"), "isle", cfg)
+        # the vanilla-client principle: each of these trips it, by name
+        client = {"com/moddingfromamod/isle/Hud.class": ("net/minecraft/client/gui/Gui", "client-only code"),
+                  "com/moddingfromamod/isle/Side.class": ("net/neoforged/api/distmarker/Dist", "checks the client"),
+                  "com/moddingfromamod/isle/Net.class": ("net/neoforged/neoforge/network/event/Register",
+                                                         "network channel"),
+                  "com/moddingfromamod/isle/Blocks.class": ("net/neoforged/neoforge/registries/DeferredRegister",
+                                                            "registers content"),
+                  "com/moddingfromamod/levels/isle/shared/Level.class": ("com/mojang/blaze3d/systems/RenderSystem",
+                                                                         "client-only code")}
+        for k, (body, want) in client.items():
+            got = check(jar({**good, k: body}, "cl.jar"), "isle", cfg)
+            assert any(k in f and want in f for f in got), (k, got)
+        got = check(jar({**good, "assets/moddyisle/textures/item/x.png": ""}, "tx.jar"), "isle", cfg)
+        assert any("textures" in f and "client resource" in f for f in got), got
         for k, want in bad_extra.items():
             got = check(jar({**good, k: ""}, "bad.jar"), "isle", cfg)
             assert any(k in f and want in f for f in got), (k, got)

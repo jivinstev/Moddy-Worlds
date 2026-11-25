@@ -22,7 +22,7 @@ moddy apprentice a cozy house
 
 @step he presses the top tile and it is refused
 @click slot 0
-@expect chat /didn't work this time/ within 90s
+@expect chat /can't go there: a wish stays inside the arena and its prep room/ within 90s
 @wait 2s
 # nothing stands on the ground round him (compared with the empty sky at y 200)
 @assert execute if blocks 20 -60 -15 39 -50 15 20 200 -15 all

@@ -39,6 +39,8 @@ final class ArenaBuilder {
             case PANEL_BOARD -> Blocks.CONCRETE.black().defaultBlockState();
             case PANEL_SELECT -> Blocks.CONCRETE.lightBlue().defaultBlockState();
             case PANEL_START -> Blocks.CONCRETE.lime().defaultBlockState();
+            // the Champions board on the prep room's back wall
+            case CHAMPIONS_BOARD -> Blocks.CONCRETE.black().defaultBlockState();
             // on the board to its north, facing into the prep room
             case SELECT_BUTTON, START_BUTTON -> Blocks.STONE_BUTTON.defaultBlockState()
                     .setValue(ButtonBlock.FACE, AttachFace.WALL).setValue(ButtonBlock.FACING, Direction.SOUTH);
@@ -101,6 +103,31 @@ final class ArenaBuilder {
             if (!same) {
                 level.setBlock(at, want, Block.UPDATE_ALL);
                 set++;
+            }
+        }
+        return set;
+    }
+
+    /**
+     * Gives a place built without one its Champions board ({@link ArenaPlace#championsFills()}): over the prep room's
+     * back wall, only where it is still the glass it was built of (or the board), so nothing a player put there is
+     * replaced. Returns how many blocks were set, or -1 when something stood in the way (then nothing is placed).
+     * Running it again on a place that has its board sets nothing.
+     */
+    static int addChampions(ServerLevel level, ArenaPlace place) {
+        Box b = place.champions().board();
+        for (int x = b.x0(); x <= b.x1(); x++) {
+            for (int y = b.y0(); y <= b.y1(); y++) {
+                BlockState now = level.getBlockState(new BlockPos(x, y, b.z0()));
+                if (!now.is(Blocks.GLASS) && !now.is(Blocks.CONCRETE.black())) {
+                    return -1;
+                }
+            }
+        }
+        int set = 0;
+        for (int x = b.x0(); x <= b.x1(); x++) {
+            for (int y = b.y0(); y <= b.y1(); y++) {
+                set += put(level, new BlockPos(x, y, b.z0()), ArenaPlace.Kind.CHAMPIONS_BOARD, Block.UPDATE_ALL) ? 1 : 0;
             }
         }
         return set;
