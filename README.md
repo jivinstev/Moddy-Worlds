@@ -37,7 +37,7 @@ shared/                  written once, compiled into EVERY world's jar (never a 
   level.gradle           the build every world shares
   src/main/java          the shared level code: Level, LevelPacks, LevelWorldType, LevelClaim
   resources/META-INF     neoforge.mods.toml (templated) and the World Type listener's access transformer
-tools/                   new-world.sh (the scaffold), play.sh, fetch-core.sh, core-pins.py, check-level-jar.py (incl. the stock-client rule),
+tools/                   new-world.sh (the scaffold), play.sh, cloud-setup.sh (a fresh machine, ready to play), fetch-core.sh, core-pins.py, check-level-jar.py (incl. the stock-client rule),
                          changed-worlds.py, the leak, secret and licence scans and the git hooks
 ```
 
@@ -68,6 +68,13 @@ this checkout, or `--jars DIR`) beside the pinned core in a throwaway instance, 
 in a real client (macOS, or headless Linux under Xvfb). `tools/play.sh isle,arena --build` installs several worlds in
 one instance and runs the root `playtests/` instead (worlds side by side: each keeps its own mode). See
 `tools/play.sh --help`.
+
+**On a fresh Linux machine** (a cloud coding session, a new VM): `tools/cloud-setup.sh <world>` first. It installs the
+display packages, makes Gradle's downloads reliable behind a proxy, clones MMVU beside this repository, builds the
+world and makes the test instance, with Minecraft's files fetched in parallel. Measured on a 4-CPU cloud machine: the
+Minecraft files take about half a minute this way against 35 to 40 minutes one at a time. It uses no GitHub Actions
+minutes and no GitHub storage, and each step says what still works when it cannot run (`tools/cloud-setup.sh --help`).
+[CLAUDE.md](CLAUDE.md) says when a separate machine is worth it.
 
 ## Build
 
