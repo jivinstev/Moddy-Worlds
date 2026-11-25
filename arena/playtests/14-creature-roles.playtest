@@ -51,8 +51,7 @@ moddy apprentice a cat
 summon minecraft:wolf -2 64 6 {Tags:["wishmob","standin"],PersistenceRequired:1b,CustomName:"Rex"}
 summon minecraft:sheep -3 64 12 {Tags:["wishmob","standin"],PersistenceRequired:1b,CustomName:"Puff"}
 summon minecraft:camel 4 64 9 {Tags:["wishmob","standin"],PersistenceRequired:1b,CustomName:"Hump"}
-# the cow stands still (no AI), so the healers that follow him (the wave takes him just inside the gate) are never
-# counted as near it by chance
+# the cow stands still (no AI)
 summon minecraft:cow -8 64 10 {Tags:["bystander"],PersistenceRequired:1b,NoAI:1b}
 effect give @e[type=minecraft:wolf,tag=standin] minecraft:resistance 1500 4 true
 effect give @e[type=minecraft:sheep,tag=standin] minecraft:resistance 1500 4 true
@@ -96,7 +95,8 @@ effect give @e[tag=moddyarena_wave] minecraft:weakness 600 255 true
 
 @step the cow nobody wished gets nothing
 @assert execute unless entity @e[type=minecraft:cow,tag=moddyarena_role]
-@assert execute as @e[type=minecraft:cow,tag=bystander] at @s unless entity @e[type=minecraft:text_display,tag=moddyarena_rolesign,distance=..3]
+# no sign over its head (a sign floats over its own creature's head; another creature walking past the cow is not it)
+@assert execute as @e[type=minecraft:cow,tag=bystander] at @s positioned ~ ~1.9 ~ unless entity @e[type=minecraft:text_display,tag=moddyarena_rolesign,distance=..0.6]
 teleport @s 0.5 64 17.5 180 10
 @wait 10t
 @shot the-roles-shown
