@@ -1,9 +1,9 @@
 # Moddy Arena: a battle lost. A battle gives him 3 lives. He starts a battle, walks into the first wave without fighting
 # back, and the husks knock him out: he has 2 lives left, comes back in the prep room and the battle goes on (the wave's
-# monsters are still there, the board still says wave 1). He is knocked out twice more (the last two by command, to
-# keep the test short); out of lives, and on his own, the battle is lost. He is told in plain words, and the arena is
+# monsters are still there, the board still says wave 1); after a count of 3 on his action bar he is back in the arena.
+# He is knocked out twice more (the last two by command, to keep the test short); out of lives, and on his own, the battle is lost. He is told in plain words, and the arena is
 # tidied: the wave's mobs are gone, and what he dropped is carried to the prep room for him.
-@intent a player knocked out with lives left comes back and the battle goes on; out of lives the battle is lost, he is back in the prep room, and the arena is tidied
+@intent a player knocked out with lives left comes back, is taken back into the arena after a count, and the battle goes on; out of lives the battle is lost, he is back in the prep room, and the arena is tidied
 @world flat seed=1
 
 @step arrive
@@ -24,14 +24,12 @@ give @s minecraft:iron_sword
 @key key.use
 @expect chat A battle is starting within 5s
 
-@step wave 1 comes and he goes in
+@step wave 1 comes and he is taken in
 @expect title Wave 1 of 5 within 15s
-# he opens the gate in the shared wall and walks through it, into the arena
-@aim pos 0.5 64.5 16.5
-@key key.use
-@wait 10t
+# the gate shut with iron bars as the wave came, and he was taken just inside it; he walks on into the arena
+@assert execute if block 0 64 16 minecraft:iron_bars
 @aim look 180 0
-@key key.forward hold 30t
+@key key.forward hold 20t
 @wait 1s
 @assert execute if entity @s[z=-15,dz=30]
 @assert execute if entity @e[tag=moddyarena_wave]
@@ -40,15 +38,19 @@ give @s minecraft:iron_sword
 @step the husks knock him out, and with 2 lives left the battle goes on
 # he does not fight back: three husks on Normal take his 20 health in well under a minute
 @expect chat Knocked out! 2 lives left within 180s
-@expect actionbar 2 lives left within 10s
+@expect actionbar 2 lives left. Back into the arena in 3 within 10s
 @wait 1s
 # he respawns at the arena's home, the prep room, and the wave is still on
 @assert execute if entity @s[x=-4,y=63,z=17,dx=8,dy=3,dz=8]
 @assert execute if entity @e[tag=moddyarena_wave]
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_state,nbt={text:{text:"Battle on: wave 1 of 5"}}]
 @aim look 180 5
-@wait 1s
 @shot knocked-out-lives-left
+# after the count he is taken back into the arena, while the wave is still on
+@expect actionbar Back in the arena within 6s
+@wait 5t
+@assert execute if entity @s[x=-1,y=63,z=14,dx=3,dy=3,dz=2]
+@assert execute if entity @e[tag=moddyarena_wave]
 
 @step knocked out again: 1 life left, still on
 kill @s

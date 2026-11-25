@@ -49,15 +49,15 @@ moddy apprentice a stone well
 @expect bossbar Wave 1 of 5 within 5s
 @shot countdown
 
-@step wave 1: husks, and he walks in through the gate
+@step wave 1: husks, and the gate shuts with him taken inside
 @expect title Wave 1 of 5 within 15s
 @assert execute if entity @e[type=minecraft:husk,tag=moddyarena_wave]
 @assert execute unless entity @e[tag=moddyarena_wave,type=!minecraft:husk]
-@aim pos 0.5 64.5 16.5
-@key key.use
-@wait 10t
+# he waited in the prep room: as the wave came he was taken just inside the gate, and the gate is iron bars
+@assert execute if entity @s[x=-1,y=63,z=14,dx=3,dy=3,dz=2]
+@assert execute if block 0 64 16 minecraft:iron_bars
 @aim look 180 0
-@key key.forward hold 30t
+@key key.forward hold 20t
 @key key.hotbar.3
 @expect bossbar /Wave 1 of 5: [0-9]+ monsters? left/ within 5s
 @shot wave-1

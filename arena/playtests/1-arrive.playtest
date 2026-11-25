@@ -41,7 +41,7 @@
 @assert execute if block 0 65 26 minecraft:black_concrete
 @assert execute if block -4 67 26 minecraft:black_concrete
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_champions_title,nbt={text:{text:"ARENA CHAMPIONS"}}]
-@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_champions_settings,nbt={text:{text:"Normal, 5 waves, 5 monsters"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_champions_settings,nbt={text:{text:"Normal, 5 waves"}}]
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_champions_none,nbt={text:{text:"No champions here yet. Be the first!"}}]
 @assert execute unless entity @e[type=minecraft:item_display,tag=moddyarena_champions]
 @aim look 0 0
