@@ -9,8 +9,8 @@ import java.util.Locale;
  * <b>The arena's champions</b>: each player's best run, kept for each settings the control panel can be set to, and how
  * they rank. Pure: no Minecraft. Only a player's id, his name and his scores are kept; nothing he typed.
  *
- * <p>The champions are per <b>settings</b> ({@link Key}: the difficulty, the number of waves and the monsters size), so
- * players compete at the same game: fastest to beat 5 waves on Normal is a race of its own, and so is Easy. Inside one
+ * <p>The champions are per <b>settings</b> ({@link Key}: the difficulty and the number of waves; the difficulty brings
+ * its own number of monsters), so players compete at the same game: fastest to beat 5 waves on Normal is a race of its own, and so is Easy. Inside one
  * settings, for a battle with a number of waves:
  * <ol>
  *   <li>a run that beat every wave ranks above one that did not, the fastest first;</li>
@@ -33,9 +33,9 @@ public final class ArenaChampions {
     public static final int KEPT_PER_KEY = 20;
 
     /** The settings a run was played at: what the champions are kept by. */
-    public record Key(String difficulty, int waves, int size) {
+    public record Key(String difficulty, int waves) {
         public static Key of(ArenaSettings s) {
-            return new Key(s.difficulty().id(), s.waves(), s.size());
+            return new Key(s.difficulty().id(), s.waves());
         }
 
         public boolean endless() {
@@ -105,6 +105,36 @@ public final class ArenaChampions {
         return out;
     }
 
+    /**
+     * The champions saved before 0.1.6, when a run's settings also held the monsters size: the size is gone from the
+     * key, so one player may have several entries at one key now. Each player keeps his best at each key (the best by
+     * {@link #RANK}; a tie keeps the first run), under the name of his latest run; each key keeps its
+     * {@value #KEPT_PER_KEY} best. Nothing else changes (the time, the wave, the run's sequence). Returns a new list.
+     */
+    public static List<Entry> migrate(List<Entry> all) {
+        java.util.Map<List<Object>, Entry> best = new java.util.LinkedHashMap<>();
+        java.util.Map<String, Entry> latest = new java.util.HashMap<>();
+        for (Entry e : all) {
+            best.merge(List.of(e.id(), e.key()), e, (a, b) -> RANK.compare(b, a) < 0 ? b : a);
+            latest.merge(e.id(), e, (a, b) -> b.seq() > a.seq() ? b : a);
+        }
+        List<Entry> out = new ArrayList<>();
+        for (Entry e : best.values()) {
+            out.add(withName(e, latest.get(e.id()).name()));
+        }
+        java.util.Set<Key> keys = new java.util.LinkedHashSet<>();
+        for (Entry e : out) {
+            keys.add(e.key());
+        }
+        for (Key k : keys) {
+            List<Entry> same = new ArrayList<>(at(out, k));
+            if (same.size() > KEPT_PER_KEY) {
+                out.removeAll(same.subList(KEPT_PER_KEY, same.size()));
+            }
+        }
+        return out;
+    }
+
     private static Entry withName(Entry e, String name) {
         return new Entry(e.id(), name, e.key(), e.wave(), e.cleared(), e.won(), e.ticks(), e.seq());
     }
@@ -143,12 +173,11 @@ public final class ArenaChampions {
         return e.won() ? "Won all " + e.wave() : "Wave " + e.wave();
     }
 
-    /** The settings, in words: "Normal, 5 waves, 5 monsters", "Hard, Endless, 10 monsters". */
+    /** The settings, in words: "Normal, 5 waves", "Hard, Endless". */
     public static String settingsWords(Key k) {
         ArenaDifficulty d = ArenaDifficulty.byId(k.difficulty());
         String diff = d == null ? k.difficulty() : d.word();
-        return diff + ", " + (k.endless() ? "Endless" : k.waves() + " waves") + ", " + k.size()
-                + (k.size() == 1 ? " monster" : " monsters");
+        return diff + ", " + (k.endless() ? "Endless" : k.waves() + " waves");
     }
 
     /** The control panel's line for one player's best at the settings: "Best for Steve: won in 4:12". */

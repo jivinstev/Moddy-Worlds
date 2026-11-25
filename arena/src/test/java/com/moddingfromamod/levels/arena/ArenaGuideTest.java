@@ -168,7 +168,8 @@ class ArenaGuideTest {
         String all = String.join("\n", book().pages());
         assertTrue(all.chars().allMatch(c -> c == '\n' || (c >= 32 && c < 127)), "plain characters only");
         assertFalse(all.toLowerCase(Locale.ROOT).contains("wizard"));
-        for (String word : List.of("prep room", "gate", "MONSTERS", "DIFFICULTY", "WAVES", "START BATTLE", "READY",
+        assertFalse(all.contains("MONSTERS"), "no MONSTERS selector any more: the difficulty sets how many");
+        for (String word : List.of("prep room", "gate", "bars", "how many monsters", "DIFFICULTY", "WAVES", "START BATTLE", "READY",
                 "BOSS WAVE", "lives", "break", "mends", "Builder", "Apprentice", "Magician", "My wishes",
                 "Add to hotbar", "rests", "each wave", "Fighter", "Healer", "Tank", "Champions")) {
             assertTrue(all.contains(word), "the guide says nothing about " + word);

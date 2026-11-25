@@ -7,11 +7,17 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * <b>How hard a battle is</b>, picked on the control panel: four steps, each a row of data. A difficulty changes WHICH
- * mobs come and HOW TOUGH they are, never how many (the wave size does that, {@link ArenaSettings}). Pure: no Minecraft.
+ * <b>How hard a battle is</b>, picked on the control panel: four steps, each a row of data. A difficulty says HOW
+ * MANY mobs come, WHICH and HOW TOUGH. Pure: no Minecraft.
  *
  * <p>Each step is:
  * <ul>
+ *   <li>{@code size}: how many monsters a wave brings, on a scale of {@value ArenaSettings#MIN_SIZE} to
+ *       {@value ArenaSettings#MAX_SIZE} where {@value ArenaSettings#DEFAULT_SIZE} is the rules file's waves exactly:
+ *       every count is multiplied by size / 5 ({@link ArenaSettings#scaleWave}). Normal is 5; Easy 3 (x0.6, as its
+ *       health), Hard 6 (x1.2) and Extreme 8 (x1.6, about its x1.5 health), so the default first wave is 2, 3, 4 and 5
+ *       monsters, one more each step. (Until 0.1.6 the size was its own MONSTERS selector, 1 to 10.) A rules file may
+ *       set other sizes ({@code waveSizes}, {@link ArenaSettings.Limits});</li>
  *   <li>{@code health}: every wave mob's most health is multiplied by it (Normal 1: exactly as the game makes them);</li>
  *   <li>{@code swaps}: a mob kind that becomes another from a wave on, in order, the first that fits (a group is
  *       swapped once, never twice). The count stays: one husk becomes one vindicator. Two groups of one kind after the
@@ -23,23 +29,23 @@ import java.util.Map;
  */
 public enum ArenaDifficulty {
 
-    /** Only husks, and weaker: 0.6 of their health (the generator's later kinds come as husks too). */
-    EASY("easy", "Easy", 0.6, List.of(
+    /** Fewer (size 3) and only husks, and weaker: 0.6 of their health (the generator's later kinds come as husks too). */
+    EASY("easy", "Easy", 3, 0.6, List.of(
             new Swap("minecraft:pillager", "minecraft:husk", 1),
             new Swap("minecraft:witch", "minecraft:husk", 1),
             new Swap("minecraft:vindicator", "minecraft:husk", 1),
             new Swap("minecraft:piglin_brute", "minecraft:husk", 1),
             new Swap("minecraft:ravager", "minecraft:husk", 1))),
-    /** The rules file's waves, exactly. */
-    NORMAL("normal", "Normal", 1.0, List.of()),
-    /** Tougher: a quarter more health, and from wave 4 the husks are vindicators. */
-    HARD("hard", "Hard", 1.25, List.of(
+    /** The rules file's waves, exactly (size 5). */
+    NORMAL("normal", "Normal", 5, 1.0, List.of()),
+    /** A fifth more of them (size 6), tougher: a quarter more health, and from wave 4 the husks are vindicators. */
+    HARD("hard", "Hard", 6, 1.25, List.of(
             new Swap("minecraft:husk", "minecraft:vindicator", 4))),
     /**
-     * The toughest: half again the health; wave 2's husks are pillagers, from wave 3 the husks are vindicators, and from
+     * The most (size 8) and the toughest: half again the health; wave 2's husks are pillagers, from wave 3 the husks are vindicators, and from
      * wave 5 the vindicators are ravagers.
      */
-    EXTREME("extreme", "Extreme", 1.5, List.of(
+    EXTREME("extreme", "Extreme", 8, 1.5, List.of(
             new Swap("minecraft:husk", "minecraft:vindicator", 3),
             new Swap("minecraft:husk", "minecraft:pillager", 2),
             new Swap("minecraft:vindicator", "minecraft:ravager", 5)));
@@ -52,12 +58,14 @@ public enum ArenaDifficulty {
 
     private final String id;
     private final String word;
+    private final int size;
     private final double health;
     private final List<Swap> swaps;
 
-    ArenaDifficulty(String id, String word, double health, List<Swap> swaps) {
+    ArenaDifficulty(String id, String word, int size, double health, List<Swap> swaps) {
         this.id = id;
         this.word = word;
+        this.size = size;
         this.health = health;
         this.swaps = List.copyOf(swaps);
     }
@@ -70,6 +78,14 @@ public enum ArenaDifficulty {
     /** Its name on the board: Easy, Normal, Hard, Extreme. */
     public String word() {
         return word;
+    }
+
+    /**
+     * How many monsters a wave brings at this difficulty, unless a rules file says otherwise: on the 1 to 10 scale
+     * where 5 is the rules file's waves exactly ({@link ArenaSettings#scaleWave}).
+     */
+    public int size() {
+        return size;
     }
 
     /** What every wave mob's most health is multiplied by. */

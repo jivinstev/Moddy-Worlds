@@ -15,26 +15,29 @@ import java.util.List;
  * <pre>
  *   y 67   [        BATTLE ARENA CONTROL PANEL         ]
  *          [      Best for Steve: wave 7 in 3:12       ]
- *   y 66   [-]  MONSTERS   5  [+]   |      START BATTLE
- *                                          Ready! Press START.
- *   y 65   [-] DIFFICULTY Normal [+] gate   [ (o) ]       (o) the start button, on green blocks 3 by 1
- *   y 64   [-]   WAVES     5  [+]   gate   First wave: 3 monsters
- *                                          Boss wave: 5
- *                                          Hotbar wishes: 5 a wave
+ *   y 66   [-] DIFFICULTY Normal [+]  |      START BATTLE
+ *                                            Ready! Press START.
+ *   y 65   [-]   WAVES      5    [+] gate   [ (o) ]       (o) the start button, on green blocks 3 by 1
+ *   y 64     First wave: 3 monsters  gate   Boss wave: 5
+ *                                           Hotbar wishes: 5 a wave
  *          x -4 ...........  -1   0   1 ............ 4
  * </pre>
- * The left half holds the three selectors (a down button, the value, an up button): MONSTERS (how many a wave brings),
- * DIFFICULTY and WAVES (how many waves); the right half the start button on a green block 3 wide, with its label and
- * the battle's state above it (high on the board, where the hand a player holds never covers them) and what the
- * settings mean under it. The top row is the title and the line with the best run of whoever pressed a button last, at
- * these settings. A wall only 3 high (the smallest) has no top row: no title, no best, and nothing under the start
- * button. Every block is in the window, so nothing a player built is in the way of a new place; the buttons stand in
- * the prep room's first row, against the board.
+ * The left half holds the two selectors (a down button, the value, an up button), DIFFICULTY and WAVES (how many
+ * waves), at eye height, and under them how many monsters the first wave brings (the difficulty sets it: there is no
+ * selector for it); the right half the start button on a green block 3 wide, with its label and the battle's state
+ * above it (high on the board, where the hand a player holds never covers them) and what the settings mean under it
+ * (the boss waves, the hotbar wishes a wave). The top row is the title and the line with the best run of whoever
+ * pressed a button last, at these settings. A wall only 3 high (the smallest) has no top row: no title, no best, and
+ * nothing under the start button. Every block is in the window, so nothing a player built is in the way of a new place;
+ * the buttons stand in the prep room's first row, against the board.
+ *
+ * <p>Until 0.1.6 the panel had a third selector, MONSTERS, in the top selector row ({@link #oldButtons}): a world built
+ * then loses its buttons ({@link ArenaBuilder#addControl}).
  */
 public final class ArenaPanel {
 
     /** What a button does. */
-    public enum Control { SIZE_DOWN, SIZE_UP, DIFFICULTY_DOWN, DIFFICULTY_UP, WAVES_DOWN, WAVES_UP, START }
+    public enum Control { DIFFICULTY_DOWN, DIFFICULTY_UP, WAVES_DOWN, WAVES_UP, START }
 
     /** A button: what it does, and its block (in the prep room, against the board). */
     public record Button(Control control, int x, int y, int z) {
@@ -45,9 +48,8 @@ public final class ArenaPanel {
 
     /** What a floating line of words on the board says ({@link ArenaWords#panel}). */
     public enum Words {
-        TITLE, BEST, SIZE_LABEL, SIZE_VALUE, SIZE_DOWN_SIGN, SIZE_UP_SIGN, DIFFICULTY_LABEL, DIFFICULTY_VALUE,
-        DIFFICULTY_DOWN_SIGN, DIFFICULTY_UP_SIGN, WAVES_LABEL, WAVES_VALUE, WAVES_DOWN_SIGN, WAVES_UP_SIGN, SIZE_MEANS,
-        START_LABEL, STATE
+        TITLE, BEST, DIFFICULTY_LABEL, DIFFICULTY_VALUE, DIFFICULTY_DOWN_SIGN, DIFFICULTY_UP_SIGN, WAVES_LABEL,
+        WAVES_VALUE, WAVES_DOWN_SIGN, WAVES_UP_SIGN, FIRST_WAVE, MEANS, START_LABEL, STATE
     }
 
     /**
@@ -104,28 +106,44 @@ public final class ArenaPanel {
         return rows() >= 4;
     }
 
-    private int sizeRow() {
+    /** The top selector row: the first under the title row. */
+    private int difficultyRow() {
         return hasTitleRow() ? top() - 1 : top();
     }
 
-    private int difficultyRow() {
-        return sizeRow() - 1;
+    private int wavesRow() {
+        return difficultyRow() - 1;
     }
 
-    private int wavesRow() {
-        return sizeRow() - 2;
+    /** The bottom row: the first wave's monsters on the left, what the settings mean on the right. */
+    private int meansRow() {
+        return difficultyRow() - 2;
     }
 
     private int startRow() {
-        return difficultyRow();
+        return wavesRow();
+    }
+
+    /**
+     * The selector buttons of the panel before 0.1.6, which had MONSTERS in the top selector row, DIFFICULTY under it
+     * and WAVES at the bottom: where they stood (in the prep room's first row), for taking away what the new panel does
+     * not use.
+     */
+    public List<int[]> oldButtons() {
+        int z = place.sharedWallZ() + 1;
+        int r = difficultyRow();
+        List<int[]> out = new ArrayList<>();
+        for (int row = r; row >= r - 2; row--) {
+            out.add(new int[] {-h(), row, z});
+            out.add(new int[] {-1, row, z});
+        }
+        return out;
     }
 
     /** Every button, in the prep room's first row (one block in front of the board). */
     public List<Button> buttons() {
         int z = place.sharedWallZ() + 1;
         return List.of(
-                new Button(Control.SIZE_DOWN, -h(), sizeRow(), z),
-                new Button(Control.SIZE_UP, -1, sizeRow(), z),
                 new Button(Control.DIFFICULTY_DOWN, -h(), difficultyRow(), z),
                 new Button(Control.DIFFICULTY_UP, -1, difficultyRow(), z),
                 new Button(Control.WAVES_DOWN, -h(), wavesRow(), z),
@@ -238,10 +256,8 @@ public final class ArenaPanel {
                 out.add("MMMMMMMMMMMMMMMM: no best at these settings yet");
                 out.add("Press a button to see your best");
             }
-            case SIZE_LABEL -> out.add(ArenaWords.PANEL_SIZE);
             case DIFFICULTY_LABEL -> out.add(ArenaWords.PANEL_DIFFICULTY);
             case WAVES_LABEL -> out.add(ArenaWords.PANEL_WAVES);
-            case SIZE_VALUE -> out.add(String.valueOf(ArenaSettings.MAX_SIZE));
             case WAVES_VALUE -> {
                 out.add(ArenaWords.ENDLESS);
                 out.add(String.valueOf(ArenaSettings.MAX_WAVE_COUNT));
@@ -251,14 +267,15 @@ public final class ArenaPanel {
                     out.add(d.word());
                 }
             }
-            case SIZE_DOWN_SIGN, SIZE_UP_SIGN, DIFFICULTY_DOWN_SIGN, DIFFICULTY_UP_SIGN, WAVES_DOWN_SIGN, WAVES_UP_SIGN ->
-                    out.add("+");
-            case SIZE_MEANS -> {
-                out.add("First wave: " + (ArenaWaves.MAX_PER_WAVE + 1) + " monsters");
+            case DIFFICULTY_DOWN_SIGN, DIFFICULTY_UP_SIGN, WAVES_DOWN_SIGN, WAVES_UP_SIGN -> out.add("+");
+            case FIRST_WAVE -> {
+                out.add(ArenaWords.firstWave(ArenaWaves.MAX_PER_WAVE + 1));
+                out.add(ArenaWords.firstWave(-1));
+            }
+            case MEANS -> {
                 out.add("Boss waves: 5, 10, 15, 20");
                 out.add("A boss every 50 waves");
                 out.add("No boss waves");
-                out.add("No waves in the rules");
                 out.add(ArenaWords.wishesMeans(ArenaWishes.MAX_PER_WAVE));
             }
             case START_LABEL -> {
@@ -304,21 +321,22 @@ public final class ArenaPanel {
             float best = fit(0.9, 2 * h() + 1 - 0.6, longest(Words.BEST));
             out.add(new Slot(Words.BEST, 0.5, top() + 0.08, z, best, "white"));
         }
-        row(out, Words.SIZE_LABEL, Words.SIZE_VALUE, Words.SIZE_DOWN_SIGN, Words.SIZE_UP_SIGN, sizeRow(), left, down,
-                up, between, z, 2.4);
         row(out, Words.DIFFICULTY_LABEL, Words.DIFFICULTY_VALUE, Words.DIFFICULTY_DOWN_SIGN, Words.DIFFICULTY_UP_SIGN,
-                difficultyRow(), left, down, up, between, z, 1.8);
+                difficultyRow(), left, down, up, between, z, 2.2);
         row(out, Words.WAVES_LABEL, Words.WAVES_VALUE, Words.WAVES_DOWN_SIGN, Words.WAVES_UP_SIGN, wavesRow(), left,
-                down, up, between, z, 1.8);
+                down, up, between, z, 2.2);
+        // under the selectors, across the left half: how many monsters the first wave brings (the difficulty sets it)
+        float first = fit(1.3, h() - 0.3, longest(Words.FIRST_WAVE));
+        out.add(new Slot(Words.FIRST_WAVE, left, meansRow() + 0.5 - 0.5 * LINE * first, z, first, "aqua"));
         // the start label, and the battle's state under it, in the row above the start button
-        int lr = sizeRow();
+        int lr = difficultyRow();
         out.add(new Slot(Words.START_LABEL, right, lr + 0.46, z, fit(1.4, rightRoom, longest(Words.START_LABEL)),
                 "green"));
         out.add(new Slot(Words.STATE, right, lr + 0.1, z, fit(1.0, rightRoom, longest(Words.STATE)), "aqua"));
         if (hasTitleRow()) {
-            float means = fit(0.9, rightRoom, longest(Words.SIZE_MEANS));
-            // three lines (the first wave, the boss waves, the hotbar wishes a wave), centred on the row
-            out.add(new Slot(Words.SIZE_MEANS, right, wavesRow() + 0.5 - 1.5 * LINE * means, z, means, "aqua"));
+            float means = fit(1.0, rightRoom, longest(Words.MEANS));
+            // two lines (the boss waves, the hotbar wishes a wave), centred on the row
+            out.add(new Slot(Words.MEANS, right, meansRow() + 0.5 - LINE * means, z, means, "aqua"));
         }
         return out;
     }
@@ -327,7 +345,7 @@ public final class ArenaPanel {
     private static void row(List<Slot> out, Words label, Words value, Words downSign, Words upSign, int r, double left,
                             double down, double up, double between, double z, double valueMax) {
         float vs = fit(valueMax, between, longest(value));
-        out.add(new Slot(label, left, r + 0.72, z, fit(1.0, between, longest(label)), "white"));
+        out.add(new Slot(label, left, r + 0.68, z, fit(1.2, between, longest(label)), "white"));
         out.add(new Slot(value, left, r + 0.08 + Math.max(0, (0.6 - LINE * vs) / 2), z, vs, "yellow"));
         out.add(new Slot(downSign, down, r + 0.64, z, 1.3f, "white"));
         out.add(new Slot(upSign, up, r + 0.64, z, 1.3f, "white"));
