@@ -605,13 +605,15 @@ arenas`; a second start says `the place stands … nothing to build`. On a dedic
 operators; it does not apply in single player.
 
 **Playtests** (`playtests/`, a real client): `tools/play.sh arena --build`. They switch the arena on by properties in
-the carrier's flat world (`playtests/play.props` names the module), where the place is built in the air above it:
+the carrier's flat world (`playtests/play.props` names the module), where the place is built on its base high above
+the flat ground:
 `1-arrive` (the prep room, facing the arena, the start button beside the gate), `2-wish-in-the-arena` (an Apprentice
 make aimed at the arena floor lands), `3-wish-outside-refused` (the same make made standing on the ground outside the
 place is refused),
-`4-battle-won` (the button pressed, five waves cleared with the sword, the fifth a boss wave, won, the arena tidied:
-the player kept safe), `5-battle-lost` (knocked out in wave 1 with lives left, back in the prep room while the wave goes
-on, then out of lives: lost, back in the prep room with his sword, the arena tidied), `6-prep-and-hotbar` (in prep, a
+`4-battle-won` (the button pressed, taken into the arena behind the shut gate as wave 1 comes, five waves cleared with
+the sword, the fifth a boss wave, won, the arena tidied: the player kept safe), `5-battle-lost` (knocked out in wave 1
+with lives left, back in the prep room while the wave goes on, taken back into the arena after a count of 3, then out
+of lives: lost, back in the prep room with his sword, the arena tidied), `6-prep-and-hotbar` (in prep, a
 make from the prep room lands in the arena ahead of it and one made in the arena lands there, and an Apprentice Fire
 Sword goes on the hotbar from its own page in My wishes, by "Add to hotbar"; its hotbar wish is used in the battle and
 makes it again, a click while its slot sweeps makes nothing, a new make is refused with the arena's words before the
@@ -620,11 +622,12 @@ after the battle the hotbar wish is still there and new makes work), `7-creature
 in the arena lands there; made standing outside the place, it is refused and nothing is left),
 `8-knocked-out-keeps-hotbar` (knocked out in a battle holding a hotbar wish, with lives left, he comes back in the prep
 room with it in its slot and it still fires in the battle that goes on; out of lives, lost, and it makes the sword
-again in prep), `9-control-panel` (the board's blocks and seventeen lines of words; he walks up to it and presses each
-selector, looking at it and using it: down and up to each end, WAVES through 5, 10, 15, 20, Endless and back, each
-press on the board and his action bar; at monsters 10 and Extreme the battle's waves are 6 husks with 30 health, then
-10 pillagers, and the last a boss wave with Rumble the Ravager; in a battle a selector is refused and the board says
-"Battle on: wave 1 of 5"; after it the board keeps his settings), `10-boss-waves` (WAVES 10: boss waves at 5 and 10,
+again in prep), `9-control-panel` (the board's blocks, two selectors and fourteen lines of words, no MONSTERS; he walks
+up to it and presses each selector, looking at it and using it: DIFFICULTY down and up to each end with the first
+wave's monsters following it (2, 3, 4, 5), WAVES through 5, 10, 15, 20, Endless and back, each press on the board and
+his action bar; on Easy a battle's first wave is 2 husks with 12 health, on Hard 4 husks with 25, more than Easy's, then
+Hard's waves to its boss wave with Rumble the Ravager; in a battle a selector is refused and the board says "Battle on:
+wave 1 of 5"; after it the board keeps his settings), `10-boss-waves` (WAVES 10: boss waves at 5 and 10,
 each with its named boss, its health on the boss bar and the BOSS WAVE title, generated waves between, and the win)
 `11-champions` (a run lost on wave 3 puts his face, name, wave and time on the Champions board; a better run
 replaces it and a worse one does not; changing the difficulty switches the board), `12-wishes-per-wave` (the panel
@@ -639,9 +642,16 @@ stand-ins take their roles in wave 1, each told once and shown above it; the wol
 held monsters target it and it has Resistance, a cow nobody wished gets nothing; in the break every role, sign and
 Resistance is gone; in wave 2 the sheep heals him when he is near it and not when he is ten blocks away, and taken into
 the prep room it loses its role at once) and `15-arena-guide` (the Arena Guide on his first arrival, in his bag and not
-on his hotbar; a copy opened and read, its lives page showing the rules' number). A playtest cannot restart its game,
+on his hotbar; a copy opened and read, its lives page showing the rules' number), `16-gate-in-a-wave` (START pressed
+and he waits in the prep room: the wave takes him inside, the gate is iron bars he cannot open or pass, a monster put in
+the prep room goes back into the arena, the shut gate seen from the prep room; in the break the fence gate, he walks
+through it and back; the next wave takes him in again; knocked out with lives left he counts 3 and is taken back in;
+out of lives he stays in the prep room, and after the battle the gate is the fence gate) and `17-on-solid-ground`
+(stone and bedrock under the place and grass round it; a hole torn in the arena's floor and a real TNT blast leave him
+on the bedrock two blocks down, unhurt; a hole under the spawn is put back and a respawn lands on it; teleported far
+below the arena he is put back in the prep room; the place seen from outside, on its base). A playtest cannot restart its game,
 so the settings and the champions surviving a restart are `ArenaStateTest` (the saved record) and a dedicated
-server's restart.
+server's restart, and so is a world from 0.1.5 upgrading (its panel and its base).
 
 **A battle on a server with nobody on** (a test): `-PmoddyProps=arena.allowEmptyBattle=true` (the property
 `moddingfromamod.arena.allowEmptyBattle`) lets `/moddy arena start` start a battle from the console and carry it on with
@@ -657,16 +667,17 @@ All of it in `com.moddingfromamod.levels.arena`:
 |---|---|
 | `ArenaMod` | the `@Mod` class: the World Type and the built-in marker pack (shared code) |
 | `ArenaPlugin` | the plug-in: the `arena` world module, the `arena_place` and `arena_waves` rule types, `/moddy arena start` |
-| `ArenaPlace` | **pure**: the sizes and their checks, every box of the place, the start button, the arrival spot, the reach, the start decision, the upgrades, what a reset puts back, whether a mob is still in the place |
+| `ArenaPlace` | **pure**: the sizes and their checks, every box of the place and the base it stands on, the start button, the arrival spot and the floor under it, the reach, the start decision, the upgrades, what a reset puts back, whether a body is still in the place or fell out under it |
+| `ArenaGate` | **pure**: the gate in a battle: shut (iron bars) only while a wave is on, who is moved in and when (at a wave's start, and a knocked-out fighter after a count), where, and what happens to a monster outside the arena |
 | `ArenaWaves` | **pure**: the wave table and its checks, and what the rule fixes or limits on the control panel |
-| `ArenaSettings` | **pure**: the panel's monsters, difficulty and number of waves, how the monsters scale the waves, the rules' limits, a selector press |
+| `ArenaSettings` | **pure**: the panel's difficulty and number of waves, how a wave size scales the waves, the rules' wave sizes and limits, a selector press |
 | `ArenaGenerator` | **pure**: the waves past the rules file's, made from the wave's number, and its knobs |
 | `ArenaBosses` | **pure**: the boss table, which waves are boss waves, a boss wave's escort |
 | `ArenaRun` | **pure**: one battle's waves as the panel set them (the rules file's, the generator's, the boss waves), wave by wave |
-| `ArenaChampions` | **pure**: the champions' entries per settings, how runs rank, merging a run, their words |
+| `ArenaChampions` | **pure**: the champions' entries per settings (difficulty and waves), how runs rank, merging a run, migrating 0.1.5's entries, their words |
 | `ArenaChampionsLayout` | **pure**: the Champions board's layout: its blocks and where each word and face floats |
 | `ArenaChampionsBoard` | carries the Champions board out: its words (text displays) and faces (item displays with player heads) |
-| `ArenaDifficulty` | **pure**: the four difficulties as data (health, swaps) and how each changes the waves |
+| `ArenaDifficulty` | **pure**: the four difficulties as data (wave size, health, swaps) and how each changes the waves |
 | `ArenaPanel` | **pure**: the control panel's layout: its blocks, buttons and where each line of words floats and how big |
 | `ArenaBoard` | carries the panel out: reads its buttons, a selector press, keeps its words (text displays) |
 | `ArenaWavesRule` | `arena_waves` as a `WorldRuleType`, and reading the table back from a world's rules |
@@ -676,7 +687,7 @@ All of it in `com.moddingfromamod.levels.arena`:
 | `ArenaBattle` | carries a battle out: the button, the fighters and their lives, spawning and counting the monsters and the boss, the boss bar and titles, recording the runs, READY in a break, the arena mended between waves, each fighter's own bar of hotbar wishes, the reset |
 | `ArenaRule` | `arena_place` as a `WorldRuleType`, and reading the place back from a world's rules |
 | `ArenaModule` | the world module: builds once, gives a built place its upgrades, sets the spawn, the first arrival (and the first guide book into the bag), the bases, the fallback rules, ticks the battle |
-| `ArenaBuilder` | each kind of box as a block, placed; the control panel added to (or mended in) a place; the reset |
+| `ArenaBuilder` | each kind of box as a block, placed; the control panel added to (or mended in) a place, and the base; the gate shut or opened; the prep room's floor and the spawn's floor mended; the reset |
 | `ArenaBases` | the arena as the core's `Bases`: every player's base, home in the prep room |
 | `ArenaWishPolicy` | **pure**: the two phases, which kinds of wish each lets through, the Magician count, the cooldowns, the hotbar wishes a wave |
 | `ArenaWishes` | **pure**: the wish tunables and their checks |
@@ -699,12 +710,21 @@ knocked off), by the same path, which sets nothing when the panel stands whole. 
 tagged `moddyarena_panel` (and one role tag each); whenever the board's chunk has its entities loaded they are made
 if missing, a second copy is removed and changed words are rewritten, so a world gets them on load and never twice.
 **A place built before the Champions board** gains it on its next start, once (the upgrade `champions-board`): over
-the prep room's back wall, only where it is still its glass, so nothing a player put there is replaced.
+the prep room's back wall, only where it is still its glass, so nothing a player put there is replaced. **A place built
+before the base** (0.1.5 and earlier, in the sky) gains it on its next start, once (the upgrade `ground-base`): the
+bedrock and the stone under the whole place and 2 blocks round it, and grass round the floors only where nothing
+stands. **A panel built with the MONSTERS selector** (0.1.5 and earlier) loses its two unused buttons on its next start
+and is laid out with two selectors, by the same path that mends a panel (its MONSTERS words are removed with the
+other panel words it no longer has).
 
-The saved record carries `v` 3 since the WAVES selector and the champions (`waveCount`, 0 for Endless, and
-`champions`: each entry a player's id, name, the settings key, the wave, cleared, won, ticks and a sequence number);
-`v` 2 added the panel's monsters and difficulty. An older record reads what it lacks as the defaults (5 waves, no
-champions) and keeps everything else.
+The saved record carries `v` 4 since 0.1.6: the panel's difficulty and `waveCount` (0 for Endless), and `champions`,
+each entry a player's id, name, the settings key (difficulty and waves), the wave, cleared, won, ticks and a sequence
+number. `v` 3 (the WAVES selector and the champions) and `v` 2 (the panel) also had the panel's monsters
+(`waveSize`), and each champion's key had its monsters (`size`): reading such a record drops them, nothing else is
+lost, and its champions are kept by difficulty and waves, **each player's best at each** (the best by the ranking above;
+a tie keeps the first run), under the name of his latest run, each settings keeping its 20 best
+(`ArenaChampions.migrate`). An older record reads what it lacks as the defaults (5 waves, no champions) and keeps
+everything else.
 
 ## Not built yet
 
