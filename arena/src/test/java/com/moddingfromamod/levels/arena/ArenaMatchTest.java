@@ -94,7 +94,7 @@ class ArenaMatchTest {
         ArenaMatch m = new ArenaMatch();
         assertTrue(m.start(TABLE));
         assertFalse(m.start(TABLE), "pressing during a battle starts nothing");
-        assertFalse(new ArenaMatch().start(null), "no table, no battle");
+        assertFalse(new ArenaMatch().start((ArenaRun) null), "no table, no battle");
     }
 
     @Test
@@ -163,5 +163,50 @@ class ArenaMatchTest {
         assertEquals(Kind.READY, m.tick(0, 0).kind());
         assertEquals(Phase.IDLE, m.phase());
         assertNotNull(m);
+    }
+
+    @Test
+    void reachSaysHowFarTheBattleGotAndABossFillsTheBar() throws Exception {
+        ArenaWaves base = ArenaSettingsTest.bundled();
+        ArenaMatch m = new ArenaMatch();
+        assertTrue(m.start(new ArenaSettings(5, ArenaDifficulty.NORMAL, 10).run(base)));
+        until(m, 0, 1, 5 * T + 1);
+        assertEquals(new ArenaChampions.Reach(1, false, false, 0), m.reach());
+        m.spawned(3);
+        for (int i = 0; i < 40; i++) {
+            m.tick(3, 1);
+        }
+        assertEquals(Kind.WAVE_CLEARED, m.tick(0, 1).kind());
+        assertEquals(new ArenaChampions.Reach(1, true, false, 41), m.reach(), "cleared wave 1 after 41 ticks");
+        for (int w = 2; w <= 4; w++) {
+            assertEquals(w, until(m, 0, 1, 10 * T + 1).wave());
+            m.spawned(1);
+            assertEquals(Kind.WAVE_CLEARED, m.tick(0, 1).kind());
+        }
+        assertEquals("BOSS wave 5 of 10 in 10 seconds", m.bar().name());
+        assertEquals(5, until(m, 0, 1, 10 * T + 1).wave());
+        m.spawned(5);
+        m.boss("Rumble the Ravager", 0.5f);
+        m.tick(5, 1);
+        assertEquals(new ArenaMatch.Bar("BOSS: Rumble the Ravager (wave 5 of 10)", 0.5f, true), m.bar());
+        m.boss(null, 0f);
+        m.tick(2, 1);
+        assertEquals("Wave 5 of 10: 2 monsters left", m.bar().name(), "the boss beaten, the wave's monsters");
+        assertEquals(Kind.WAVE_CLEARED, m.tick(0, 1).kind(), "wave 5 of 10 is not the last");
+    }
+
+    @Test
+    void anEndlessBattleIsNeverWon() throws Exception {
+        ArenaMatch m = new ArenaMatch();
+        m.start(new ArenaSettings(1, ArenaDifficulty.NORMAL, 0).run(ArenaSettingsTest.bundled()));
+        for (int w = 1; w <= 30; w++) {
+            assertEquals(w, until(m, 0, 1, 10 * T + 1).wave());
+            m.spawned(1);
+            assertEquals(Kind.WAVE_CLEARED, m.tick(0, 1).kind());
+        }
+        assertEquals("Wave 31 in 10 seconds", m.bar().name());
+        assertEquals(0, m.of());
+        assertEquals(new Event(Kind.LOST, 30, 0, ArenaMatch.Why.NOBODY_LEFT), m.tick(0, 0));
+        assertEquals(new ArenaChampions.Reach(30, true, false, m.reach().ticks()), m.reach());
     }
 }

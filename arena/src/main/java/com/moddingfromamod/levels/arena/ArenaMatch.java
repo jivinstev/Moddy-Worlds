@@ -56,7 +56,7 @@ public final class ArenaMatch {
     }
 
     private Phase phase = Phase.IDLE;
-    private ArenaWaves table;
+    private ArenaRun table;
     private int wave;
     private int ticksLeft;
     private int phaseTicks;
@@ -64,6 +64,15 @@ public final class ArenaMatch {
     private int mobsLeft;
     private boolean resetDone;
     private Why why;
+    /** Ticks since the first wave began (0 before it). */
+    private long elapsed;
+    private long waveStartedAt;
+    private int clearedWave;
+    private long clearedAt;
+    private boolean won;
+    /** The boss of this wave, while it is alive: its name and how much of its health is left. */
+    private String bossName;
+    private float bossHealth;
 
     public Phase phase() {
         return phase;
@@ -74,8 +83,39 @@ public final class ArenaMatch {
         return wave;
     }
 
-    public ArenaWaves table() {
+    public ArenaRun table() {
         return table;
+    }
+
+    /** How many waves this battle has (0: Endless, or no battle). */
+    public int of() {
+        return table == null ? 0 : table.count();
+    }
+
+    /** Ticks since the first wave began. */
+    public long elapsed() {
+        return elapsed;
+    }
+
+    /**
+     * How far the battle has got, for a fighter whose battle ends now (knocked out of his last life, logged out, or
+     * the battle over): the wave being fought if it is not cleared (and the ticks when it began), else the last wave
+     * cleared (and the ticks when it was); won when every wave of a battle with a number of waves is cleared.
+     */
+    public ArenaChampions.Reach reach() {
+        if (wave > clearedWave) {
+            return new ArenaChampions.Reach(wave, false, false, waveStartedAt);
+        }
+        return new ArenaChampions.Reach(clearedWave, true, won, clearedAt);
+    }
+
+    /**
+     * What the boss of this wave is doing, told once a tick by the world: its name and the part of its health left,
+     * or a null name when there is no boss (or it is beaten). The boss bar then shows the boss.
+     */
+    public void boss(String name, float health) {
+        bossName = name;
+        bossHealth = health;
     }
 
     public Why why() {
@@ -94,6 +134,11 @@ public final class ArenaMatch {
 
     /** Starts a battle with this table; false (nothing changes) while one is already on. */
     public boolean start(ArenaWaves waves) {
+        return waves != null && start(ArenaRun.exactly(waves));
+    }
+
+    /** Starts a battle of these waves; false (nothing changes) while one is already on. */
+    public boolean start(ArenaRun waves) {
         if (phase != Phase.IDLE || waves == null) {
             return false;
         }
@@ -102,6 +147,12 @@ public final class ArenaMatch {
         why = null;
         mobsTotal = 0;
         mobsLeft = 0;
+        elapsed = 0;
+        waveStartedAt = 0;
+        clearedWave = 0;
+        clearedAt = 0;
+        won = false;
+        bossName = null;
         enter(Phase.COUNTDOWN, waves.countdownSeconds() * TICKS_PER_SECOND);
         return true;
     }
@@ -111,6 +162,7 @@ public final class ArenaMatch {
         table = null;
         wave = 0;
         why = null;
+        bossName = null;
         resetDone = false;
         enter(Phase.RESETTING, RESTART_WAIT_TICKS);
     }
@@ -127,6 +179,9 @@ public final class ArenaMatch {
      * battle's fighters are still in it.
      */
     public Event tick(int mobsLeft, int fightersIn) {
+        if (wave > 0 && (phase == Phase.WAVE || phase == Phase.BREATHER)) {
+            elapsed++;
+        }
         switch (phase) {
             case IDLE:
                 return null;
@@ -138,7 +193,9 @@ public final class ArenaMatch {
                 ticksLeft--;
                 if (ticksLeft <= 0) {
                     wave++;
-                    enter(Phase.WAVE, table.waveSeconds() * TICKS_PER_SECOND);
+                    waveStartedAt = elapsed;
+                    bossName = null;
+                    enter(Phase.WAVE, table.waveSeconds(wave) * TICKS_PER_SECOND);
                     mobsTotal = 0;
                     this.mobsLeft = 0;
                     return Event.of(Kind.WAVE_START, wave, 0);
@@ -154,7 +211,11 @@ public final class ArenaMatch {
                     return lose(Why.NOBODY_LEFT);
                 }
                 if (mobsLeft <= 0) {
-                    if (wave >= table.count()) {
+                    clearedWave = wave;
+                    clearedAt = elapsed;
+                    bossName = null;
+                    if (table.isLast(wave)) {
+                        won = true;
                         enter(Phase.WON, END_HOLD_TICKS);
                         return Event.of(Kind.WON, wave, 0);
                     }
@@ -196,6 +257,7 @@ public final class ArenaMatch {
 
     private Event lose(Why w) {
         why = w;
+        bossName = null;
         enter(Phase.LOST, END_HOLD_TICKS);
         return new Event(Kind.LOST, wave, 0, w);
     }
@@ -206,17 +268,26 @@ public final class ArenaMatch {
         phaseTicks = ticks;
     }
 
-    /** What the boss bar shows now: its words and how full it is; null when there is no battle to show. */
-    public record Bar(String name, float progress) {
+    /**
+     * What the boss bar shows now: its words, how full it is, and whether it is a boss's health (then it is the only
+     * thing it shows, in its own colour); null when there is no battle to show.
+     */
+    public record Bar(String name, float progress, boolean boss) {
+        public Bar(String name, float progress) {
+            this(name, progress, false);
+        }
     }
 
     public Bar bar() {
-        int of = table == null ? 0 : table.count();
+        int of = of();
         return switch (phase) {
-            case COUNTDOWN, BREATHER -> new Bar(ArenaWords.barNext(wave + 1, of, secondsLeft()),
+            case COUNTDOWN, BREATHER -> new Bar(table != null && table.isBossWave(wave + 1)
+                    ? ArenaWords.barNextBoss(wave + 1, of, secondsLeft())
+                    : ArenaWords.barNext(wave + 1, of, secondsLeft()),
                     phaseTicks <= 0 ? 0f : (float) ticksLeft / phaseTicks);
-            case WAVE -> new Bar(ArenaWords.barWave(wave, of, mobsLeft),
-                    mobsTotal <= 0 ? 0f : (float) mobsLeft / mobsTotal);
+            case WAVE -> bossName != null
+                    ? new Bar(ArenaWords.barBoss(bossName, wave, of), Math.max(0f, Math.min(1f, bossHealth)), true)
+                    : new Bar(ArenaWords.barWave(wave, of, mobsLeft), mobsTotal <= 0 ? 0f : (float) mobsLeft / mobsTotal);
             case WON -> new Bar(ArenaWords.barWon(), 1f);
             case LOST -> new Bar(ArenaWords.barLost(), 0f);
             default -> null;

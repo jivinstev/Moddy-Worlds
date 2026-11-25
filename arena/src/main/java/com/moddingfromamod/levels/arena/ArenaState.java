@@ -18,11 +18,14 @@ import net.minecraft.world.level.saveddata.SavedDataType;
  * with (none until it is built, so a restart builds nothing), who has already arrived (so only a first join is
  * put in the prep room; a returning player stays where he left), which upgrades the place has had (a step-1 place
  * gains its start control once), whether a battle was on (so a restart in the middle of one ends it and resets the
- * arena, rather than leaving a half battle), and what the control panel is set to (the wave size and the difficulty).
+ * arena, rather than leaving a half battle), what the control panel is set to (the monsters size, the difficulty and
+ * the number of waves), and the champions ({@link ArenaChampions}: each player's id, name and best run at each
+ * settings, nothing else).
  *
- * <p>Versioned: {@code v} is {@value #VERSION} since the panel's settings were added. A record without them (version 1,
- * or no {@code v}) reads as the defaults ({@link ArenaSettings#DEFAULT}), and everything else in it is kept. A saved
- * difficulty this jar does not know reads as the default too, and the log says so.
+ * <p>Versioned: {@code v} is {@value #VERSION}. Version 2 added the panel's size and difficulty, version 3 the number
+ * of waves ({@code waveCount}, 0 for Endless) and the champions. A record without them reads them as the defaults (5
+ * waves, no champions), and everything else in it is kept. A saved difficulty this jar does not know reads as the
+ * default too, and the log says so.
  */
 public final class ArenaState extends SavedData {
 
@@ -35,8 +38,23 @@ public final class ArenaState extends SavedData {
                 Codec.INT.fieldOf("floorY").forGetter(Built::floorY)).apply(i, Built::new));
     }
 
-    /** This record's version: 2 added the panel's settings ({@code waveSize}, {@code difficulty}). */
-    static final int VERSION = 2;
+    /** One champion entry, as saved. */
+    private static final Codec<ArenaChampions.Entry> ENTRY = RecordCodecBuilder.create(i -> i.group(
+            Codec.STRING.fieldOf("id").forGetter(ArenaChampions.Entry::id),
+            Codec.STRING.fieldOf("name").forGetter(ArenaChampions.Entry::name),
+            Codec.STRING.fieldOf("difficulty").forGetter(e -> e.key().difficulty()),
+            Codec.INT.fieldOf("waves").forGetter(e -> e.key().waves()),
+            Codec.INT.fieldOf("size").forGetter(e -> e.key().size()),
+            Codec.INT.fieldOf("wave").forGetter(ArenaChampions.Entry::wave),
+            Codec.BOOL.optionalFieldOf("cleared", false).forGetter(ArenaChampions.Entry::cleared),
+            Codec.BOOL.optionalFieldOf("won", false).forGetter(ArenaChampions.Entry::won),
+            Codec.LONG.fieldOf("ticks").forGetter(ArenaChampions.Entry::ticks),
+            Codec.LONG.optionalFieldOf("seq", 0L).forGetter(ArenaChampions.Entry::seq))
+            .apply(i, (id, name, d, w, sz, wave, cleared, won, ticks, seq) -> new ArenaChampions.Entry(id, name,
+                    new ArenaChampions.Key(d, w, sz), wave, cleared, won, ticks, seq)));
+
+    /** This record's version: 2 added the panel's settings, 3 the number of waves and the champions. */
+    static final int VERSION = 3;
 
     static final Codec<ArenaState> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.INT.optionalFieldOf("v", 1).forGetter(s -> VERSION),
@@ -47,7 +65,10 @@ public final class ArenaState extends SavedData {
                     .forGetter(s -> new ArrayList<>(s.upgrades)),
             Codec.BOOL.optionalFieldOf("battleOn", false).forGetter(s -> s.battleOn),
             Codec.INT.optionalFieldOf("waveSize").forGetter(s -> Optional.of(s.settings.size())),
-            Codec.STRING.optionalFieldOf("difficulty").forGetter(s -> Optional.of(s.settings.difficulty().id())))
+            Codec.STRING.optionalFieldOf("difficulty").forGetter(s -> Optional.of(s.settings.difficulty().id())),
+            Codec.INT.optionalFieldOf("waveCount").forGetter(s -> Optional.of(s.settings.waves())),
+            ENTRY.listOf().optionalFieldOf("champions", List.of()).forGetter(s -> s.champions),
+            Codec.LONG.optionalFieldOf("runs", 0L).forGetter(s -> s.runs))
             .apply(i, ArenaState::new));
 
     static final SavedDataType<ArenaState> TYPE =
@@ -62,18 +83,24 @@ public final class ArenaState extends SavedData {
     private int readVersion = VERSION;
     /** A saved difficulty this jar does not know, or null. */
     private String unknownDifficulty;
+    private List<ArenaChampions.Entry> champions = List.of();
+    /** How many runs have been recorded (each run's sequence number, for ties). */
+    private long runs;
 
     private ArenaState() {
     }
 
     private ArenaState(int v, Optional<Built> built, List<UUID> arrived, List<String> upgrades, boolean battleOn,
-                       Optional<Integer> waveSize, Optional<String> difficulty) {
+                       Optional<Integer> waveSize, Optional<String> difficulty, Optional<Integer> waveCount,
+                       List<ArenaChampions.Entry> champions, long runs) {
         this.readVersion = v;
         this.built = built.orElse(null);
         this.arrived.addAll(arrived);
         this.upgrades.addAll(upgrades);
         this.battleOn = battleOn;
-        this.settings = ArenaSettings.of(waveSize.orElse(null), difficulty.orElse(null));
+        this.settings = ArenaSettings.of(waveSize.orElse(null), difficulty.orElse(null), waveCount.orElse(null));
+        this.champions = List.copyOf(champions);
+        this.runs = runs;
         if (difficulty.isPresent() && ArenaDifficulty.byId(difficulty.get()) == null) {
             unknownDifficulty = difficulty.get();
         }
@@ -99,6 +126,32 @@ public final class ArenaState extends SavedData {
             settings = s;
             setDirty();
         }
+    }
+
+    /** Every champion entry (each player's best at each settings). */
+    List<ArenaChampions.Entry> champions() {
+        return champions;
+    }
+
+    /**
+     * Records one player's run at these settings ({@link ArenaChampions#merge}); returns his rank at them afterwards
+     * (1 is the top), or 0 when his run reached no wave.
+     */
+    int record(String id, String name, ArenaChampions.Key key, ArenaChampions.Reach r) {
+        if (r == null || r.wave() <= 0) {
+            return 0;
+        }
+        runs++;
+        champions = List.copyOf(ArenaChampions.merge(champions, new ArenaChampions.Entry(id, name, key, r.wave(),
+                r.cleared(), r.won(), r.ticks(), runs)));
+        setDirty();
+        List<ArenaChampions.Entry> at = ArenaChampions.at(champions, key);
+        for (int i = 0; i < at.size(); i++) {
+            if (at.get(i).id().equals(id)) {
+                return i + 1;
+            }
+        }
+        return 0;
     }
 
     /** The upgrades this world's place has had ({@link ArenaPlace#UPGRADES}). */

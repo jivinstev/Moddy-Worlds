@@ -1,6 +1,7 @@
 package com.moddingfromamod.levels.arena;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -18,6 +19,8 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerBossEvent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.stats.Stats;
 import net.minecraft.world.BossEvent;
 import net.minecraft.world.Difficulty;
@@ -64,8 +67,19 @@ final class ArenaBattle {
     private final ServerBossEvent bar = new ServerBossEvent(Component.literal(""), BossEvent.BossBarColor.RED,
             BossEvent.BossBarOverlay.PROGRESS);
     private final boolean allowEmpty = Boolean.getBoolean(ALLOW_EMPTY_PROPERTY);
-    /** The battle's fighters and their death count when it began; a fighter who is out is removed for good. */
-    private final Map<UUID, Integer> fighters = new LinkedHashMap<>();
+    /**
+     * The battle's fighters: each one's death count at his last knock-out (or when the battle began) and his lives
+     * left. A fighter who is out (no lives left, logged out, gone from the place) is removed for good.
+     */
+    private final Map<UUID, int[]> fighters = new LinkedHashMap<>();
+    /** How far each fighter got, when his battle ended (recorded on the Champions board when the battle ends). */
+    private final Map<UUID, ArenaChampions.Reach> reached = new LinkedHashMap<>();
+    private final Map<UUID, String> fighterNames = new HashMap<>();
+    /** Fighters knocked out with lives left who have not been told their lives on their feet yet. */
+    private final Set<UUID> tellLives = new HashSet<>();
+    /** The boss of the wave being fought, while it stands, and its name. */
+    private UUID boss;
+    private String bossName;
     /** Everyone who fought in this battle, out or not: they are told how it ends, wherever they respawned. */
     private final Set<UUID> told = new HashSet<>();
     private final List<UUID> waveMobs = new ArrayList<>();
@@ -75,6 +89,12 @@ final class ArenaBattle {
     private final Runnable onReady;
     /** The battle arena control panel: its buttons and its words. */
     private final ArenaBoard board;
+    /** The Champions board on the prep room's back wall. */
+    private final ArenaChampionsBoard champions;
+    /** The settings the Champions board shows (those on the panel), to see when they change. */
+    private ArenaChampions.Key shownKey;
+    /** The battle's settings, as its runs are recorded. */
+    private ArenaChampions.Key battleKey;
     /** The difficulty of the battle that is on (its mobs' health), fixed when it starts. */
     private ArenaDifficulty battleDifficulty = ArenaDifficulty.DEFAULT;
     private long ticks;
@@ -85,6 +105,7 @@ final class ArenaBattle {
         this.state = state;
         this.onReady = onReady == null ? () -> { } : onReady;
         this.board = new ArenaBoard(server, place, state);
+        this.champions = new ArenaChampionsBoard(server, place, state);
         if (state.battleOn()) {
             match.endedByRestart();
             LOG.info("Moddy Arena: battle: a battle was on when the server stopped; it is over, and the arena will be"
@@ -123,17 +144,23 @@ final class ArenaBattle {
             return ArenaWords.nobody();
         }
         ArenaSettings settings = state.settings().within(base.limits());
-        ArenaWaves waves = settings.apply(base);
+        ArenaRun waves = settings.run(base);
         battleDifficulty = settings.difficulty();
+        battleKey = ArenaChampions.Key.of(settings);
         match.start(waves);
         state.battleOn(true);
         fighters.clear();
+        reached.clear();
+        fighterNames.clear();
+        tellLives.clear();
+        boss = null;
         told.clear();
         waveMobs.clear();
-        LOG.info("Moddy Arena: battle: COUNTDOWN, started by {}: {} waves, the first in {} s (wave size {}, difficulty"
-                + " {}: {} to {} mobs a wave)", by, waves.count(), waves.countdownSeconds(), settings.size(),
-                settings.difficulty().word(), waves.firstAndLastSize()[0], waves.firstAndLastSize()[1]);
-        sayToPlace(ArenaWords.started(waves.count(), waves.countdownSeconds()));
+        LOG.info("Moddy Arena: battle: COUNTDOWN, started by {}: {} waves, the first in {} s (monsters {}, difficulty"
+                + " {}; the first wave {} mobs; boss waves {}; {} lives)", by, ArenaWords.wavesValue(waves.count()),
+                waves.countdownSeconds(), settings.size(), settings.difficulty().word(), waves.size(1),
+                waves.bossWaves(20), waves.lives());
+        sayToPlace(ArenaWords.started(waves.count(), waves.countdownSeconds(), waves.lives()));
         updateBar();
         return null;
     }
@@ -171,6 +198,7 @@ final class ArenaBattle {
             fightersIn = Math.max(1, fightersIn);
         }
         int mobsLeft = match.phase() == ArenaMatch.Phase.WAVE ? mobsLeft(level) : 0;
+        watchBoss(level);
         ArenaMatch.Event ev = match.tick(mobsLeft, fightersIn);
         if (ev != null) {
             handle(level, ev);
@@ -179,6 +207,14 @@ final class ArenaBattle {
             updateBar();
         }
         board.refresh(level, match, ArenaBattle::baseWaves, ev != null);
+        ArenaWaves rules = baseWaves();
+        ArenaChampions.Key key = ArenaChampions.Key.of(state.settings().within(rules == null ? null : rules.limits()));
+        if (!key.equals(shownKey)) {
+            shownKey = key;
+            champions.changed();
+        }
+        champions.refresh(level, state.settings().within(rules == null ? null : rules.limits()));
+        livesOnTheirFeet();
         if (match.phase() == ArenaMatch.Phase.IDLE && ticks % 100 == 0) {
             int swept = discard(level, placeBox(level), e -> e.getTags().contains(TAG));
             if (swept > 0) {
@@ -188,6 +224,7 @@ final class ArenaBattle {
     }
 
     private void pressed(ServerLevel level) {
+        board.noteBy(board.presser(level, ArenaPanel.Control.START));
         int[] b = place.startButton();
         ServerPlayer presser = null;
         double best = 36;
@@ -209,7 +246,7 @@ final class ArenaBattle {
     }
 
     private void handle(ServerLevel level, ArenaMatch.Event ev) {
-        int of = match.table() == null ? 0 : match.table().count();
+        int of = match.of();
         switch (ev.kind()) {
             case COUNTDOWN -> {
                 for (ServerPlayer p : audience()) {
@@ -219,16 +256,35 @@ final class ArenaBattle {
             case WAVE_START -> {
                 if (ev.wave() == 1) {
                     fighters.clear();
+                    int lives = match.table().lives();
                     for (ServerPlayer p : playersInPlace()) {
-                        fighters.put(p.getUUID(), deaths(p));
+                        fighters.put(p.getUUID(), new int[] {deaths(p), lives});
+                        fighterNames.put(p.getUUID(), p.getScoreboardName());
                         told.add(p.getUUID());
                     }
-                    LOG.info("Moddy Arena: battle: the fighters are {}", names(fighters.keySet()));
+                    LOG.info("Moddy Arena: battle: the fighters are {}, {} lives each", names(fighters.keySet()),
+                            lives);
                 }
-                int n = spawnWave(level, match.table().wave(ev.wave()), battleDifficulty.health());
+                ArenaRun run = match.table();
+                ArenaBosses.Boss b = run.boss(ev.wave());
+                int n = spawnWave(level, run.wave(ev.wave()), run.health(ev.wave()));
+                if (b != null && spawnBoss(level, b, run.bossHealth())) {
+                    n++;
+                }
                 match.spawned(n);
-                LOG.info("Moddy Arena: battle: WAVE {} of {} begins: {} mobs", ev.wave(), of, n);
-                titleToPlace(ArenaWords.waveTitle(ev.wave(), of), ArenaWords.waveSubtitle());
+                LOG.info("Moddy Arena: battle: WAVE {} of {} begins: {} mobs{}", ev.wave(),
+                        ArenaWords.wavesValue(of), n, b == null ? "" : " (a boss wave: " + b.name() + ", a "
+                                + b.mob() + ")");
+                if (b != null) {
+                    titleToPlace(ArenaWords.bossTitle(), ArenaWords.bossSubtitle(b.name()));
+                    sayToPlace(ArenaWords.bossChat(b.name(), ev.wave()));
+                    for (ServerPlayer p : audience()) {
+                        level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.RAID_HORN.value(),
+                                SoundSource.HOSTILE, 1.5f, 1.0f);
+                    }
+                } else {
+                    titleToPlace(ArenaWords.waveTitle(ev.wave(), of), ArenaWords.waveSubtitle());
+                }
             }
             case WAVE_CLEARED -> {
                 LOG.info("Moddy Arena: battle: wave {} cleared; BREATHER of {} s", ev.wave(), ev.seconds());
@@ -238,8 +294,10 @@ final class ArenaBattle {
                 LOG.info("Moddy Arena: battle: WON, all {} waves cleared", of);
                 titleToPlace(ArenaWords.wonTitle(), ArenaWords.wonSubtitle(of));
                 sayToPlace(ArenaWords.wonChat(of));
+                recordRuns();
             }
             case LOST -> {
+                recordRuns();
                 int removed = discardWave(level);
                 LOG.info("Moddy Arena: battle: LOST on wave {} ({}); {} of its mobs removed", ev.wave(), ev.why(),
                         removed);
@@ -282,30 +340,96 @@ final class ArenaBattle {
         return out;
     }
 
-    /** How many fighters are still in; those who are out (died, logged out, left the place) are dropped for good. */
+    /**
+     * How many fighters are still in. A fighter knocked out with lives left loses one and stays in (he comes back in
+     * the prep room and may walk back in); one knocked out of his last life, logged out or gone from the place is out
+     * for good, and how far he got is kept for the Champions board.
+     */
     private int fightersStillIn() {
         var it = fighters.entrySet().iterator();
         while (it.hasNext()) {
             var e = it.next();
             ServerPlayer p = server.getPlayerList().getPlayer(e.getKey());
+            int[] f = e.getValue();
             String out = null;
             if (p == null) {
                 out = "logged out";
-            } else if (p.isDeadOrDying() || deaths(p) > e.getValue()) {
-                out = "was knocked out";
+            } else if (deaths(p) > f[0]) {
+                f[0] = deaths(p);
+                f[1]--;
+                keepDropsOf(p);
+                if (f[1] > 0) {
+                    LOG.info("Moddy Arena: battle: {} was knocked out; {} lives left", p.getScoreboardName(), f[1]);
+                    p.sendSystemMessage(Component.literal(ArenaWords.knockedOut(f[1])));
+                    tellLives.add(p.getUUID());
+                } else {
+                    out = "was knocked out of his last life";
+                    p.sendSystemMessage(Component.literal(ArenaWords.outOfLives()));
+                }
+            } else if (p.isDeadOrDying()) {
+                continue;   // on the way to his next life
             } else if (p.level() != level() || p.isSpectator() || !place.keeps(p.getX(), p.getY(), p.getZ())) {
                 out = "left the place";
-            }
-            if (p != null && "was knocked out".equals(out)) {
-                keepDropsOf(p);
             }
             if (out != null) {
                 LOG.info("Moddy Arena: battle: {} {}; out of the battle", p == null ? e.getKey() : p.getScoreboardName(),
                         out);
+                reached.put(e.getKey(), match.reach());
+                tellLives.remove(e.getKey());
                 it.remove();
             }
         }
         return fighters.size();
+    }
+
+    /** A fighter back on his feet after a knock-out is told his lives on the action bar, once. */
+    private void livesOnTheirFeet() {
+        var it = tellLives.iterator();
+        while (it.hasNext()) {
+            UUID id = it.next();
+            ServerPlayer p = server.getPlayerList().getPlayer(id);
+            int[] f = fighters.get(id);
+            if (p == null || f == null) {
+                it.remove();
+            } else if (p.isAlive() && !p.isDeadOrDying()) {
+                p.displayClientMessage(Component.literal(ArenaWords.livesLeft(f[1])), true);
+                it.remove();
+            }
+        }
+    }
+
+    /**
+     * The battle is over (won or lost): every fighter's run goes on the Champions board, at the battle's settings:
+     * those still in get how far the battle got, those out before it how far they got then.
+     */
+    private void recordRuns() {
+        for (UUID id : fighters.keySet()) {
+            reached.put(id, match.reach());
+        }
+        if (battleKey == null) {
+            return;
+        }
+        for (Map.Entry<UUID, ArenaChampions.Reach> e : reached.entrySet()) {
+            ServerPlayer p = server.getPlayerList().getPlayer(e.getKey());
+            String name = p != null ? p.getScoreboardName() : fighterNames.getOrDefault(e.getKey(), "?");
+            ArenaChampions.Reach r = e.getValue();
+            int rank = state.record(e.getKey().toString(), name, battleKey, r);
+            if (rank == 0) {
+                continue;
+            }
+            LOG.info("Moddy Arena: Champions: {} reached wave {} ({}) in {} at {}: number {}", name, r.wave(),
+                    r.won() ? "won" : r.cleared() ? "cleared" : "not cleared", ArenaChampions.time(r.ticks()),
+                    ArenaChampions.settingsWords(battleKey), rank);
+            if (p != null) {
+                ArenaChampions.Entry run = new ArenaChampions.Entry("", name, battleKey, r.wave(), r.cleared(),
+                        r.won(), r.ticks(), 0);
+                p.sendSystemMessage(Component.literal(ArenaWords.recorded(ArenaChampions.result(run),
+                        ArenaChampions.time(r.ticks()), rank <= ArenaChampions.SHOWN ? rank : 0)));
+            }
+        }
+        reached.clear();
+        champions.changed();
+        board.changed();
     }
 
     /** The things a knocked-out fighter just dropped where he fell: kept for him, not cleared with the arena. */
@@ -365,6 +489,79 @@ final class ArenaBattle {
         return waveMobs.size();
     }
 
+    /** The ids of a boss's changes to its attributes. */
+    private static final net.minecraft.resources.ResourceLocation BOSS_ID =
+            net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(ArenaMod.MODID, "boss");
+
+    /**
+     * Spawns a boss wave's boss: its mob, named, with its health, attack, size and knockback resistance
+     * ({@link ArenaBosses.Boss}) and the difficulty's health on top. Where: the arena's middle when no player is near
+     * it (the most room for a big mob), else the spot farthest from the players. True when it stands.
+     */
+    private boolean spawnBoss(ServerLevel level, ArenaBosses.Boss b, double difficultyHealth) {
+        EntityType<?> type = EntityType.byString(b.mob()).orElse(null);
+        if (type == null) {
+            LOG.warn("Moddy Arena: battle: no mob called {} in this game; the boss {} is left out", b.mob(), b.name());
+            return false;
+        }
+        List<double[]> players = new ArrayList<>();
+        for (ServerPlayer p : level.players()) {
+            players.add(new double[] {p.getX(), p.getZ()});
+        }
+        int[] spot = ArenaSpawns.nearestPlayer(new int[] {0, 0}, players) >= ArenaSpawns.MIN_FROM_PLAYER
+                ? new int[] {0, 0} : ArenaSpawns.pick(place, players, 1, level.random.nextLong()).get(0);
+        Entity e = spawnOne(level, type, new BlockPos(spot[0], place.floorY(), spot[1]), 1.0);
+        if (!(e instanceof LivingEntity living)) {
+            return false;
+        }
+        setBase(living, Attributes.MAX_HEALTH, b.health());
+        if (difficultyHealth != 1.0) {
+            living.getAttribute(Attributes.MAX_HEALTH).addOrReplacePermanentModifier(new AttributeModifier(HEALTH_ID,
+                    difficultyHealth - 1.0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+        }
+        AttributeInstance dmg = living.getAttribute(Attributes.ATTACK_DAMAGE);
+        if (dmg != null && b.damage() != 1.0) {
+            dmg.addOrReplacePermanentModifier(new AttributeModifier(BOSS_ID, b.damage() - 1.0,
+                    AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+        }
+        setBase(living, Attributes.SCALE, b.scale());
+        setBase(living, Attributes.KNOCKBACK_RESISTANCE, b.knockback());
+        living.setHealth(living.getMaxHealth());
+        living.setCustomName(Component.literal(b.name()));
+        living.setCustomNameVisible(true);
+        waveMobs.add(e.getUUID());
+        boss = e.getUUID();
+        bossName = b.name();
+        return true;
+    }
+
+    private static void setBase(LivingEntity e, net.minecraft.core.Holder<net.minecraft.world.entity.ai.attributes.Attribute> a,
+                                double v) {
+        AttributeInstance i = e.getAttribute(a);
+        if (i != null) {
+            i.setBaseValue(v);
+        }
+    }
+
+    /** Tells the match how the boss stands (the boss bar shows its health while it does), and when it is beaten. */
+    private void watchBoss(ServerLevel level) {
+        if (boss == null) {
+            match.boss(null, 0f);
+            return;
+        }
+        Entity e = match.phase() == ArenaMatch.Phase.WAVE ? level.getEntity(boss) : null;
+        if (e instanceof LivingEntity l && l.isAlive()) {
+            match.boss(bossName, l.getHealth() / Math.max(1f, l.getMaxHealth()));
+            return;
+        }
+        if (match.phase() == ArenaMatch.Phase.WAVE) {
+            LOG.info("Moddy Arena: battle: the boss {} is beaten", bossName);
+            sayToPlace(ArenaWords.bossBeaten(bossName));
+        }
+        boss = null;
+        match.boss(null, 0f);
+    }
+
     /** The id of the difficulty's change to a wave mob's most health. */
     private static final net.minecraft.resources.ResourceLocation HEALTH_ID =
             net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(ArenaMod.MODID, "difficulty_health");
@@ -374,6 +571,13 @@ final class ArenaBattle {
             e.addTag(TAG);
             if (e instanceof Mob m) {
                 m.setPersistenceRequired();   // never despawned while the fighters stand far off
+            }
+            // a piglin or a hoglin turns into a zombie in the Overworld; an arena's never does
+            if (e instanceof net.minecraft.world.entity.monster.piglin.AbstractPiglin piglin) {
+                piglin.setImmuneToZombification(true);
+            }
+            if (e instanceof net.minecraft.world.entity.monster.hoglin.Hoglin hoglin) {
+                hoglin.setImmuneToZombification(true);
             }
         };
         T e = type.spawn(level, mark, at, EntitySpawnReason.EVENT, false, false);
@@ -499,6 +703,7 @@ final class ArenaBattle {
             return;
         }
         bar.setName(Component.literal(b.name()));
+        bar.setColor(b.boss() ? BossEvent.BossBarColor.PURPLE : BossEvent.BossBarColor.RED);
         bar.setProgress(Math.max(0f, Math.min(1f, b.progress())));
         Set<ServerPlayer> want = audience();
         for (ServerPlayer p : List.copyOf(bar.getPlayers())) {
