@@ -866,10 +866,10 @@ everything else.
   Recommended: (b), the items a battle's hotbar fires handed over go back at its end, like the creatures, with a line
   saying so, once the core marks wish-made items; until then (a). Nothing is taken from a player without the owner's
   say.
-- **A hotbar wish growing with the ladder**: the core keeps a Builder make's recipe as it was made, fitted to the step
-  it was made at (in prep, the first), so firing it after a step opens gives it no more than that. For "the strongest
-  dragon ever, held down early and unleashed later" the core would keep the make as he ASKED for it and fit it at each
-  fire (it already fits at fire); waits for the core.
+- **A hotbar wish growing in size with the ladder**: the core keeps a Builder make's recipe as it was made, its size
+  fitted to the step it was made at (in prep, the first), so firing it after a step opens gives it no bigger a body.
+  Its health and hits are not held this way (they are fitted on the living creature, from its own numbers, at each
+  spawn and again when a step opens), only its size and the other knobs a make is fitted by; waits for the core.
 
 - **Spectators**: watching a battle without being in it (today a player in the prep room during the countdown is a
   fighter).
