@@ -1,0 +1,180 @@
+# Moddy Arena: what he is told when he pins a wish, and what the ladder does to real items. In prep the strongest
+# sword comes out fitted to the first step. A ready-made meteor put on his hotbar tells him it is locked in a battle
+# until wave 5; a rock golem put on his hotbar tells him it is weaker at first. Then the four item facts, on core
+# 1.0.10: (1) the sword made in prep is a plain item, its hit fixed: when a step opens in a battle it is the same; (2)
+# its hotbar wish fired after that step makes a new sword beside the old one, as strong as the old (the core keeps a
+# Builder make's recipe as it was made, fitted to the first step); (3) nothing changes a held item when a step opens;
+# (4) a strong item of his own (a netherite sword) hits as hard at a battle's first step as anywhere: the arena never
+# changes his things. No model anywhere: the Apprentice's local matcher offers the makes. Monsters are removed by
+# command. The numbers are printed to the log (scoreboard) for the report.
+# play-timeout: 1200
+@intent a wish pinned to the hotbar that the first step would lock or hold back tells the player so once, and real items keep the strength they were made with whatever the ladder does
+@world flat seed=1
+@continue-on-fail
+
+@step he arrives
+@expect chat Welcome to Moddy Arena within 90s
+@wait 2s
+difficulty hard
+difficulty normal
+gamemode survival
+effect give @s minecraft:resistance 1500 4 true
+effect give @s minecraft:saturation 1500 0 true
+scoreboard objectives add arenatest dummy
+
+@step (1) the strongest sword, made in prep, is fitted to the first step
+teleport @s 0.5 64 22.5 180 12
+moddy apprentice the strongest sword ever
+@expect screen Container within 10s
+@click slot 0
+@expect chat Made a bit gentler for this world within 30s
+@expect chat /Lightning Sword( [0-9]+)? is in slot 3/ within 60s
+@wait 2s
+@key key.hotbar.3
+@wait 10t
+execute store result score #atk0 arenatest run attribute @s minecraft:attack_damage get 10
+scoreboard players get #atk0 arenatest
+@assert execute if score #atk0 arenatest matches 20..50
+@key key.hotbar.9
+
+@step a ready-made meteor on his hotbar: he is told it is locked in a battle until wave 5
+@key key.hotbar.1
+@key key.use
+@expect screen /make a wish/ within 10s
+@click button "My wishes"
+@expect screen My wishes within 10s
+@wait 2s
+@click item "meteor" right
+@expect screen /meteor/ within 10s
+@click item "Add to hotbar"
+@expect chat On your hotbar, slot 4 within 10s
+@expect chat /is locked in a battle until wave 5 is cleared/ within 5s
+@wait 1s
+@shot told-the-meteor-is-locked
+@key key.keyboard.escape
+@wait 10t
+@key key.keyboard.escape
+@wait 10t
+@expect screen none within 3s
+
+@step a rock golem on his hotbar: he is told it is held back at first (its own health is far over the first step's)
+moddy apprentice a rock golem
+@expect screen Container within 10s
+@wait 1s
+@click slot 0
+@expect chat /Golem is ready/ within 90s
+@wait 2s
+kill @e[tag=wishmob]
+@key key.hotbar.1
+@key key.use
+@expect screen /make a wish/ within 10s
+@click button "My wishes"
+@expect screen My wishes within 10s
+@wait 2s
+@click item "Golem"
+@expect screen /Golem/ within 10s
+@click item "Add to hotbar"
+@expect chat On your hotbar, slot 5 within 10s
+@expect chat /Golem will be .*weaker at first/ within 5s
+@wait 1s
+@shot told-the-golem-is-held-back
+@key key.keyboard.escape
+@wait 10t
+@key key.keyboard.escape
+@wait 10t
+@expect screen none within 3s
+
+@step the sword's own wish goes on his hotbar too
+@key key.hotbar.1
+@key key.use
+@expect screen /make a wish/ within 10s
+@click button "My wishes"
+@expect screen My wishes within 10s
+@wait 2s
+@click item "Lightning Sword"
+@expect screen Lightning Sword within 10s
+@click item "Add to hotbar"
+@expect chat On your hotbar, slot 6 within 10s
+@key key.keyboard.escape
+@wait 10t
+@key key.keyboard.escape
+@wait 10t
+@expect screen none within 3s
+@key key.hotbar.9
+
+@step a ten-wave battle: two waves cleared open the second step
+teleport @s 0.5 64 21.5 180 0
+@wait 10t
+@key key.forward hold 15t
+@wait 1s
+@aim pos -0.5 65.5 17.1
+@key key.use
+@expect actionbar Waves: 10 within 3s
+moddy arena start
+@expect title Wave 1 of 10 within 15s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title Wave 2 of 10 within 25s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect chat Wave 2 cleared within 10s
+@expect chat Your wishes can be stronger now: health up to 30 hearts, hits up to 3 hearts within 3s
+
+@step (3) the sword he holds is the same when the step opens
+@key key.hotbar.3
+@wait 10t
+execute store result score #atk1 arenatest run attribute @s minecraft:attack_damage get 10
+scoreboard players get #atk1 arenatest
+@assert execute if score #atk1 arenatest = #atk0 arenatest
+
+@step (2) the sword's hotbar wish fired after the step: a new sword, beside the old one, no stronger
+# hotbar slots 7 to 9 emptied (a monster's drop he walked over may lie there), so the new sword lands in slot 7
+item replace entity @s hotbar.6 with minecraft:air
+item replace entity @s hotbar.7 with minecraft:air
+item replace entity @s hotbar.8 with minecraft:air
+@key key.hotbar.6
+@wait 5t
+@key key.use
+@expect chat /Lightning Sword( [0-9]+)? is in slot 7/ within 60s
+@wait 2s
+@key key.hotbar.7
+@wait 10t
+execute store result score #atk2 arenatest run attribute @s minecraft:attack_damage get 10
+scoreboard players get #atk2 arenatest
+@assert execute if score #atk2 arenatest matches 20..60
+@assert execute if score #atk2 arenatest = #atk0 arenatest
+@key key.hotbar.3
+@wait 10t
+execute store result score #atk3 arenatest run attribute @s minecraft:attack_damage get 10
+@assert execute if score #atk3 arenatest = #atk0 arenatest
+@key key.hotbar.9
+
+@step (4) a strong item of his own hits as hard at the next battle's first step
+item replace entity @s hotbar.7 with minecraft:netherite_sword
+@key key.hotbar.8
+@wait 10t
+execute store result score #net0 arenatest run attribute @s minecraft:attack_damage get 10
+scoreboard players get #net0 arenatest
+@expect title Wave 3 of 10 within 25s
+@wait 1s
+@key key.hotbar.9
+gamemode spectator
+@expect title Battle lost within 10s
+@expect chat The arena is tidy again within 20s
+gamemode survival
+teleport @s 0.5 64 21.5 180 0
+@wait 1s
+moddy arena start
+@expect title Wave 1 of 10 within 15s
+@wait 1s
+@key key.hotbar.8
+@wait 10t
+execute store result score #net1 arenatest run attribute @s minecraft:attack_damage get 10
+scoreboard players get #net1 arenatest
+@assert execute if score #net1 arenatest = #net0 arenatest
+@assert execute if score #net1 arenatest matches 80..
+@key key.hotbar.3
+@wait 10t
+execute store result score #atk4 arenatest run attribute @s minecraft:attack_damage get 10
+@assert execute if score #atk4 arenatest = #atk0 arenatest
+@key key.hotbar.9

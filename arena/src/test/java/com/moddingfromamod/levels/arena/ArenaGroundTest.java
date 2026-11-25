@@ -117,6 +117,6 @@ class ArenaGroundTest {
         assertTrue(ArenaPlace.UPGRADES.contains(ArenaPlace.UPGRADE_BASE));
         assertTrue(ArenaPlace.pendingUpgrades(java.util.Set.of(ArenaPlace.UPGRADE_START_CONTROL,
                 ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS, ArenaPlace.UPGRADE_CONTROL_PANEL, ArenaPlace.UPGRADE_CHAMPIONS))
-                .equals(List.of(ArenaPlace.UPGRADE_BASE)));
+                .equals(List.of(ArenaPlace.UPGRADE_BASE, ArenaPlace.UPGRADE_LADDER_BOARD)));
     }
 }

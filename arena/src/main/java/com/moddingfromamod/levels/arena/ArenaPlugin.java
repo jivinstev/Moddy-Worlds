@@ -15,10 +15,11 @@ import net.minecraft.world.entity.ai.attributes.DefaultAttributes;
 
 /**
  * Moddy Arena, plugged into the core: its world module, which runs in the worlds made as Moddy Arena (and supplies
- * the arena's wish charge, {@link ArenaCharge}); its four rule types, {@code arena_place} ({@link ArenaRule}), which
+ * the arena's wish charge, {@link ArenaCharge}, and what may be made there, {@link ArenaMakes}); its five rule types, {@code arena_place} ({@link ArenaRule}), which
  * sizes the place, {@code arena_waves} ({@link ArenaWavesRule}), the battle's waves, and {@code arena_wishes}
  * ({@link ArenaWishesRule}), the Magician wishes a prep and a hotbar wish's cooldown in a battle, and
- * {@code arena_creatures} ({@link ArenaCreaturesRule}), the numbers of the wished creatures' battle roles; and
+ * {@code arena_creatures} ({@link ArenaCreaturesRule}), the numbers of the wished creatures' battle roles, and
+ * {@code arena_ladder} ({@link ArenaLadderRule}), the unlock ladder: limits that rise as bosses fall; and
  * {@code /moddy arena start} (a branch of {@code /moddy}, never a command of its own), which starts a battle as the
  * prep room's button does.
  */
@@ -52,6 +53,7 @@ public final class ArenaPlugin implements ModdyPlugin {
         plugins.add(WorldRuleType.class, new ArenaWavesRule(ArenaPlugin::livingEntity));
         plugins.add(WorldRuleType.class, new ArenaWishesRule());
         plugins.add(WorldRuleType.class, new ArenaCreaturesRule());
+        plugins.add(WorldRuleType.class, new ArenaLadderRule());
         plugins.add(ChildBranch.class, () -> Commands.literal("arena")
                 .then(Commands.literal("start").executes(ctx -> ArenaModule.startCommand(ctx.getSource()))));
     }

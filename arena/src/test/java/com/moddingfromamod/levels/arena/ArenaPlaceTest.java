@@ -243,13 +243,20 @@ class ArenaPlaceTest {
     void upgradesAreGivenOnceInOrder() {
         assertEquals(ArenaPlace.UPGRADES, ArenaPlace.pendingUpgrades(java.util.Set.of()));
         assertEquals(List.of(ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS, ArenaPlace.UPGRADE_CONTROL_PANEL,
-                ArenaPlace.UPGRADE_CHAMPIONS, ArenaPlace.UPGRADE_BASE), ArenaPlace.pendingUpgrades(java.util.Set.of(ArenaPlace.UPGRADE_START_CONTROL)));
-        assertEquals(List.of(ArenaPlace.UPGRADE_CONTROL_PANEL, ArenaPlace.UPGRADE_CHAMPIONS, ArenaPlace.UPGRADE_BASE),
+                ArenaPlace.UPGRADE_CHAMPIONS, ArenaPlace.UPGRADE_BASE, ArenaPlace.UPGRADE_LADDER_BOARD),
+                ArenaPlace.pendingUpgrades(java.util.Set.of(ArenaPlace.UPGRADE_START_CONTROL)));
+        assertEquals(List.of(ArenaPlace.UPGRADE_CONTROL_PANEL, ArenaPlace.UPGRADE_CHAMPIONS,
+                ArenaPlace.UPGRADE_BASE, ArenaPlace.UPGRADE_LADDER_BOARD),
                 ArenaPlace.pendingUpgrades(java.util.Set.of(ArenaPlace.UPGRADE_START_CONTROL,
                         ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS)), "a world from before the panel gets it once");
-        assertEquals(List.of(ArenaPlace.UPGRADE_CHAMPIONS, ArenaPlace.UPGRADE_BASE), ArenaPlace.pendingUpgrades(java.util.Set.of(
+        assertEquals(List.of(ArenaPlace.UPGRADE_CHAMPIONS, ArenaPlace.UPGRADE_BASE, ArenaPlace.UPGRADE_LADDER_BOARD),
+                ArenaPlace.pendingUpgrades(java.util.Set.of(ArenaPlace.UPGRADE_START_CONTROL,
+                        ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS, ArenaPlace.UPGRADE_CONTROL_PANEL)),
+                "a world from before the Champions board gets it once");
+        assertEquals(List.of(ArenaPlace.UPGRADE_LADDER_BOARD), ArenaPlace.pendingUpgrades(java.util.Set.of(
                 ArenaPlace.UPGRADE_START_CONTROL, ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS,
-                ArenaPlace.UPGRADE_CONTROL_PANEL)), "a world from before the Champions board gets it once");
+                ArenaPlace.UPGRADE_CONTROL_PANEL, ArenaPlace.UPGRADE_CHAMPIONS, ArenaPlace.UPGRADE_BASE)),
+                "a world from before the wish ladder board gets it once");
         assertTrue(ArenaPlace.pendingUpgrades(java.util.Set.copyOf(ArenaPlace.UPGRADES)).isEmpty());
     }
 

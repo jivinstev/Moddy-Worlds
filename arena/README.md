@@ -7,9 +7,10 @@
 2. **Create World**, open the **World** tab and pick **World Type: Moddy Arena first**, then choose your game mode on
    the **Game** tab. (Either order makes the same world; this one is simply the easy one to remember.)
 3. **Play it in Survival.** Creative is not much fun here: the monsters do not go for a player in Creative and he
-   cannot be knocked out, so the waves, the lives and the boss fights stop meaning anything. (A Creative player who is in
-   the place when a battle starts still counts as one of its fighters, and his run still goes on the Champions board
-   today.) A player in Spectator is never a fighter, and a fighter who turns to Spectator is out of that battle.
+   cannot be knocked out, so the waves, the lives and the boss fights stop meaning anything. A Creative player who is in
+   the place when a battle starts still counts as one of its fighters, but **a battle he is in Creative for at any point
+   does not go on the Champions board**, and he is told so once, in chat (below). A player in Spectator is never a
+   fighter, and a fighter who turns to Spectator is out of that battle, with no run recorded either.
 4. Keep the game's own difficulty above **Peaceful**: on Peaceful monsters vanish as soon as they come, so the button
    says "Battles need the game's difficulty above Peaceful: on Peaceful, monsters vanish as soon as they come." and no
    battle starts. (The arena's own Easy, Normal, Hard and Extreme are picked on its control panel.)
@@ -227,7 +228,18 @@ player at each settings**: a run replaces his entry only when it ranks above it 
 way); each settings keeps its 20 best. A run is recorded when the battle ends, won or lost, for every player who
 fought in it: how far the battle got for those still in at the end, and for one out before (out of lives, logged out,
 gone from the place) how far it had got when he went out. He is told in chat: "Your run: Wave 3 in 1:10. You are number
-1 on the Champions board!". Lives are not on the board. Only a player's id, his name and his scores are kept (with the
+1 on the Champions board!". Lives are not on the board.
+
+**Creative and Spectator are not on the board** (`ArenaUnranked`, pure). A fighter who is in Creative or Spectator at
+ANY point of a battle (at its start, or switched to it and back) has no run recorded for that battle; the others' runs
+are, as before. Why: in Creative the monsters ignore him (Minecraft's own monsters never pick a Creative or Spectator
+player as a target, so a wave stands round him until he kills it, and nothing but a fall out of the world or `/kill`
+knocks him out), so his run would be a race nobody else can run. He is told once a battle, in chat, the first time he
+is seen in one of them: "You are in Creative: this battle will not go on the Champions board." (or "You are in
+Spectator: ..."). Chat is the channel that is his alone: the Champions board and the panel are text displays every
+player sees alike, so they cannot show one player something else. What the panel can say truthfully to everyone is
+about the player it names: its best line, which is the best of whoever pressed a button last, reads "Steve: in
+Creative, runs not recorded" while that player is in Creative (or Spectator). Only a player's id, his name and his scores are kept (with the
 arena's record, below); nothing he typed. The board's words and faces are tagged `moddyarena_champions` and kept like
 the control panel's (made when missing, a second copy removed, changed words rewritten), so a restart never doubles
 them.
@@ -270,8 +282,10 @@ them.
    floor, walls, rim, board, gate; a panel button knocked off is put back; holes in the prep room's floor filled), anything standing in it is cleared to the sky (including whatever was wished into it during the
    battle), and every thing in it that is not a player goes: monsters, drops, experience, arrows, wished creatures and
    things. Kept: players, a pet someone owns, anything carrying a player, and **a player's own things**: what a
-   fighter dropped when he was knocked out, and what a player threw, are carried to the prep room's middle (where he
-   comes back) rather than cleared. The prep room and everything in it, and players' inventories, are never touched.
+   player dropped when he was knocked out (or died), what he threw, and an arrow or trident he can pick up again (as the
+   item it is picked up as) are carried to the prep room's middle (where he comes back) rather than cleared. The prep
+   room and everything in it, and players' inventories, are never touched (`ArenaTidy`, below: "Items between
+   battles").
 
 ### The gate in a battle
 
@@ -311,7 +325,8 @@ them.
   base's bedrock, holes in the prep room's floor filled, a house or a
   wall wished into it cleared to the sky, a panel button knocked off put back), and "The arena is mended for the next
   wave." is said when anything was. Of the things in it, the break tidies what a fight leaves flying or falling: arrows
-  and other thrown things, lit TNT, falling blocks, lingering potion clouds, evoker fangs. It **keeps** what the
+  and other thrown things (but not an arrow or trident a player can pick up again: that is his), lit TNT, falling
+  blocks, lingering potion clouds, evoker fangs. It **keeps** what the
   battle's end waits for: every living creature that is not a wave monster (a player's own wished creatures and pets
   fight on with him; the battle's end clears the ones nobody owns), the displays a wished creature is drawn with, and
   dropped things and experience, which a fighter may pick up in the break (the battle's end clears or carries them as
@@ -324,8 +339,12 @@ takes one battle role**, automatically, on top of whatever it is (`ArenaRoles` d
 `ArenaRoleKeeper` carries it out):
 
 - **Fighter**: a creature whose own attack is at least `fighterAttack` (3, a zombie's punch), or that the game counts a
-  monster, goes for the wave's nearest monster, walks to it and strikes it once a second with its own attack (a
-  crit spark and a strong-hit sound on each strike). A wished monster never goes for a player.
+  monster and has any attack at all, goes for the wave's nearest monster, walks to it and strikes it once a second with
+  its own attack damage (a crit spark and a strong-hit sound on each strike). The arena lands the blow itself, so a
+  creature whose own nature never strikes (a `friendly` creature: in the core only a guardian or a hunter instinct
+  attacks on its own) fights all the same. **A creature whose attack damage is 0 is never a Fighter** (it is a Tank or
+  a Healer by the rules below): the arena gives no creature damage it does not have, and whether one of its own moves
+  hurts a monster is not a fact the core gives in 1.0.10.
 - **Tank**: a creature that does not fight and has at least `tankHealth` (40) most health or is at least `tankWidth`
   (1.3) blocks wide, and any creature that neither fights nor walks: once a second every wave monster within
   `tauntRadius` (8) blocks that no other tank holds turns to it (an angry cloud over the monster, a shield clang), and
@@ -343,22 +362,33 @@ and rules finds none without). Chosen the first time it is seen in a battle's wa
 **What he sees.** When a battle starts: "Creatures you wished into the arena help you: each one is a Fighter, a Healer
 or a Tank." The first time each creature takes its role in a battle, one line to the player it helps (its tamer when
 the game says so, else the nearest fighter): "Your Puff is a Healer! It will keep you healthy." Above the creature, its
-role's word in its colour (Fighter red, Tank aqua, Healer green), a text display that follows it, the game's own kind
-of floating words a stock client draws; the creature's own name is never changed.
+role's symbol and word in its colour (crossed swords and Fighter in red, a shield and Tank in aqua, a heart and Healer in
+green: glyphs the game's own font draws), big enough to read from across the arena, bold with a shadow and no backing
+box (so it never hides the creature): a text display that follows it, the game's own kind of floating words a stock
+client draws. It floats over the creature's own height, higher still over a creature with a name plate, and a sign
+close to another goes up a row so both read (`ArenaRoles.signY`, `signLift`); the creature's own name is never
+changed.
 
 **Nothing lasts past the wave.** At the wave's end, in a break, when the battle ends, when the server stops, and
 whenever a creature is outside the arena (in the prep room, say), its role stops completely: its sign and role tags
 go, its walk stops, the Resistance it was given is taken off, and every monster a tank held is let go (its target
 cleared). A role touches nothing else: no attribute, no name, nothing saved.
 
-**Which creatures.** A creature carrying the core's tag `wishmob`: the tag the core puts on the body of every creature
-a wish makes (a Builder or Apprentice make, a Magician's sculpt), which the core's own lessons tell a wish's datapack to
-select creatures by, and which its client-validation playtests look for. A plain game mob that a Magician's wish
-summoned carries the core's `moddy_wished` tag instead; that tag is **not** a documented handle (only the core's source
-names it, as the mobs its wish-made-mob limit counts), so reading it is an approximation, labelled so in
-`ArenaRoles.WISH_SUMMONED`. What would make it exact is one documented core marker for "a creature a player's wish
-made", on every such body, whatever made it. A mob nobody wished (one that wandered in, or a `/summon`) has neither tag
-and gets nothing; nor do the arena's own (a wave's monster, a board's words, a role's sign).
+**Always on the players' side** (the owner: "something the player wishes is the player's side"; `ArenaSide`, pure). In
+the place, the arena and its prep room, in a battle or not, in a wave or a break, a creature a wish made never hurts a
+player and never keeps a player as its target, whatever it was wished as (a hunter like a shark included): the game's
+damage event stops any hurt it would do to a player there, and the role keeper's pass (twice a second), with the game's
+target event, lets go of a player it targets. What is traced: the creature itself, and what the game records it as the
+owner of (an arrow, a fireball, a trident, evoker fangs, a potion cloud, lit TNT it set off). Not traced: hurt the game
+gives no source for (a fall, fire or lava it caused, a blast nobody owns, a block it changed, a command a datapack power
+runs), which a player takes as from anything else. In a wave such a creature is a battle role like any other, against
+the monsters. Outside the place nothing changes. The guide's creatures page says "Your creatures are on your side
+here."
+
+**Which creatures.** A creature the core says a wish made: `com.moddingfromamod.world.Wished.isWished(entity)`, the
+core's one documented reader for a wish-made body, whatever made it (a Builder or Apprentice make, a Magician's sculpt
+or `summon`, "Make another one", a recipe or a hotbar fire). The arena reads no core tag itself. A mob nobody wished (one
+that wandered in, or a `/summon`) is not wished and gets nothing; nor do the arena's own (a wave's monster, a board's words, a role's sign).
 
 **A healer never makes a player unbeatable.** `arena_creatures` refuses heal numbers above 1 health a second for one
 player from all his healers together (`healAmount / healSeconds`), and the default is half that: 0.5 a second, while one
@@ -371,6 +401,142 @@ everything in it has loaded) and no battle is on.
 
 Each wave's monsters carry the tag `moddyarena_wave`, so a battle counts only its own. They never despawn while a
 battle is on. Monsters with that tag found in the place when no battle is on (after a crash, say) are removed.
+
+## The wish ladder: limits that rise as a battle goes on
+
+**Every battle starts at the ladder's first step and climbs as it goes on**, so later waves get stronger wishes against
+stronger monsters. The ladder is the **battle's**: the same for every fighter, back to the first step when the next
+battle starts, and gone when a battle ends (won, lost, or ended by a restart). Nothing about it is saved with the
+world or the Champions board, so every run on the board climbed the same ladder. In prep (no battle on) the first step
+holds, so what a player prepares is what he starts with.
+
+**Fit, not refuse.** The arena answers the core's `WorldMakes` hook (`ArenaMakes`, handed over by the world module): it
+states the limits of the step the battle is on, in the core's fact vocabulary (health and attack in health points,
+size, how many at once, how strong, how far and how long a power reaches), with a stamp that changes with the step. The
+core fits every make to them: a Builder page and its tune dialog, an Apprentice tile, a hotbar fire, "Make another one"
+and a creature on the live entity. A wish for the strongest sword ever comes out as the strongest sword the step allows;
+a giant dragon comes out as big as the step allows. The core tells him once, in its own words ("Made a bit smaller for
+this world.", "Made a bit gentler for this world."); the arena adds nothing to that line. A hotbar wish is fitted when
+it is FIRED, to the step the battle is on then, and in the next battle to the first step again. (Today a kept Builder
+make's recipe is the make as it came out, so one made in prep was already fitted to the first step and a later step has
+nothing more to give it: a core gap, "Not built yet".)
+
+**Locked: "no tornado on wave 1".** A make whose strength is not a number the core can lower is locked IN A BATTLE until
+a step opens its kind or tag: by default events (kind `event`) until wave 5 is cleared and world rules (tag `world_rule`)
+until wave 10. A locked make shows grey with the arena's words, "Locked: opens in a battle, after wave 5.", and pressing
+it (a hotbar fire) says them and makes nothing, charges nothing. The arena decides from the make's facts only (its kind
+and tags), never a Builder id or name; a kind, tag or number the ladder does not name is never locked or limited, and
+facts the core could not read (cautious facts, which carry every tag) are judged by their kind alone. **In prep nothing
+is locked** (a tornado is made at the first step's size): prep is where a player makes what he puts on his hotbar, and a
+kind locked there too could never reach his hotbar at all, since a new make in a battle is refused and every battle's
+ladder starts again. Nothing is hidden: every wished creature has a battle role.
+
+**What he sees.**
+- **The WISH LADDER board** beside the control panel: the prep room's west wall's first four columns are a black board
+  (blocks, like the panel's; a place built before it gains it once, the upgrade `ladder-board`, only where the glass
+  still stands), its words a few big lines read from across the room, one text display each (`ArenaLadderBoard`, each
+  tagged `moddyarena_ladder` and its line's own tag, kept like the panel's; laid out by the pure `ArenaLadderLayout`,
+  whose test holds every line on the board and none over another): the title; where the battle is ("Before a battle:
+  step 1", "This battle: 2 waves cleared"); at most four big lines of what wishes can have now, health, hits, size and
+  how many at once first ("Health: 30 hearts", "Hits: 3 hearts", "Size: x1.75", "2 at once"); one line of what is
+  locked ("Locked: Events, World rules"); and one of what the next step brings ("After wave 4: health 40 hearts",
+  "After wave 5: events open"). The full list is `/moddy wishes` and the Arena Guide's.
+- **A step is a moment**, said at the start of the break after the wave that reached it, so the break is his to use:
+  the title "Stronger wishes!" with "Wave 2 cleared" under it, one or two lines ("Your wishes can be stronger now: health
+  up to 30 hearts, hits up to 3 hearts, size up to 1.75 times, and more." and "Events are open now!"), and a fanfare.
+- **A wish he puts on his hotbar** that the step the battle is on would lock or hold back (a battle starts at the first,
+  and prep is the first) tells him so once, as it lands ("On your hotbar, slot 5" is the core's line, this one follows
+  it): "Your Meteor is locked in a battle until wave 5 is cleared.", "Your Rock Golem will be weaker at first. It gets
+  stronger as you clear waves.", "Your Dragon will be smaller at first. It grows as you clear waves." (a number the core
+  cannot lower: "Your Castle is too much for now. It opens when wave 6 is cleared."; a wish whose label is a sentence
+  rather than a name, as a ready-made's is, is "This wish"). The arena reads his hotbar wishes
+  twice a second through the core's public `WishHotbar.recipeOf` and asks what each makes with
+  `MakeFactsLookup.forRecipe`, then judges the facts exactly as a fire is judged (`ArenaPinNotice`, pure): only a
+  wish new to him in this prep is told, once (taken off and put back, it is not told again; after a battle, what he
+  has is looked at afresh, silently).
+- `/moddy wishes` says the limits now, what the next step brings, and in prep that every battle starts at the first step.
+- The Arena Guide's pages "Stronger wishes" and "The wish ladder" (their numbers are placeholders, below).
+
+**The default ladder** (`ArenaLadder.DEFAULT`, the rules file's `arena_ladder`), counted in waves cleared, first values
+guesses to be tuned by playing:
+
+| after waves cleared | health | hits | size | Builder size | strength | at once | items | power reach | powers last | opens |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 0 (a battle's start, and prep) | 20 hearts | 2.5 hearts | x1.5 | 2 | 1 | 2 | 16 | 4 | 10 s | |
+| 2 | 30 | 3 | x1.75 | 2 | 2 | 2 | 24 | 5 | 15 s | |
+| 4 | 40 | 3.5 | x2 | 3 | 2 | 3 | 32 | 6 | 20 s | |
+| 5 (the first boss) | 60 | 4.5 | x2.5 | 3 | 3 | 4 | 48 | 8 | 30 s | events |
+| 8 | 80 | 6 | x3 | any | any | 5 | 64 | 10 | 40 s | |
+| 10 (the second boss) | 125 | 8 | x4 | any | any | 6 | any | 12 | 50 s | world rules |
+| 15 (the third boss) | 200 | 12 | x5 | any | any | 8 | any | 16 | 60 s | |
+| 20 (the fourth boss) | no limits | | | | | | | | | |
+
+Why: it starts modest (a zombie has 10 hearts; a stone sword hits for 2.5), and it rises twice before wave 5, so even
+the default five-wave battle, whose only boss is its last wave, meets that boss with stronger wishes than it started
+with. Each boss wave cleared is a bigger step (at least 1.4 times), because the bosses grow (150, 200, 250, 300 health)
+and past the rules file's waves the generator adds half a monster and 4% health a wave; the health and hit limits rise
+at least as fast as the monsters' health all the way (`ArenaLadderTest.theDefaultKeepsPaceWithTheMonsters`). From wave 20
+nothing is limited. Movement speed and a building's length are never limited by default: the core cannot lower them, so
+a limit on them would lock rather than fit.
+
+**What a living creature does when a step opens: it grows.** The arena tells the core whenever the ladder's step
+changes (`WorldMakes.limitsChanged`, the core's documented call), for every player on the server, since the ladder is
+the same for all: when a step opens (`ArenaBattle.ladderUp`, at the start of the break, after the arena's own "Stronger
+wishes!" lines) and when the battle is over and the ladder is back at its first step (`ladderReset`). The core fits
+every living creature that player's wishes made again from its own numbers: a dragon made at the first step and held
+to 20 hearts of health has more as the steps open, up to what it was made to have, keeping how hurt it was (half its
+hearts before, half after), and is held back to the first step's numbers after the battle. The core tells him once for
+the change, after the arena's lines ("Your creatures are stronger now! This world lets them do more.", or "Your
+creatures are held back a little in this world for now."), and says nothing when no creature of his moved. What it
+fits again is health, hits, armour and knockback resistance; a creature's size is its make's and does not grow. The
+arena never writes the core's fit itself.
+
+**Armour is not limited by default** (`armorPoints` and `knockbackResistanceFraction`, the core's newer facts, may be
+named in a step like any number, and the board and `/moddy wishes` have words for them). No Builder or Apprentice
+ready-made creature has armour, so a limit would only ever hold a Magician's sculpt, which is already held by its
+health and hits, and the board would carry a line that means nothing to most players. If play shows Magician tanks
+with armour are too strong, a ladder starting at 4 (leather) and rising to 8 (iron) at wave 5, 12 at wave 10 and 20
+(diamond) at wave 15 keeps pace with the bosses; the rules file can set it today.
+
+**Between battles** (fairness on the Champions board): the battle's end clears every creature a wish made from the arena,
+also one a player tamed (a plain pet someone owns is still kept), so no creature made at a high step fights in the next
+battle. A wished creature that walked into the prep room is not touched, nor is anything in a player's inventory.
+
+**Items between battles: kept, as Minecraft keeps them** (the owner's decision: "retained and dropped as normally happens
+in Minecraft so people can still go and re-collect their armor etc"). The arena takes nothing away, ever (`ArenaTidy`,
+pure, and its test):
+
+- **Knocked out with lives left, or out of his last life**: exactly what Minecraft does on a death (the game rule
+  `keepInventory` is left as the world has it, off by default): his armour and items fall where he fell; only his hotbar
+  wishes are kept, back in their slots when he is on his feet (the core does that). The arena never deletes what fell:
+  every item a player drops when he dies is noted as his (the game's drop event), and so is what he throws.
+- **Between waves** (the mend) his dropped and thrown things stay where they lie, for him to go and get in the break;
+  so does an arrow or trident he can pick up again. Wave monsters never pick up loot in the arena, so a monster removed
+  (a lost battle, one that left the arena) cannot carry his chestplate off with it.
+- **At the battle's end** whatever of his is still in the arena is carried to the prep room's middle, where he comes back
+  (an arrow or trident as the item it picks up as). A monster's drops and experience are cleared, as before.
+- **In his inventory** nothing is ever touched: a real item a wish handed him keeps the strength it was made with, in
+  this battle and the next (below).
+
+**Real items and the ladder** (measured on core 1.0.10, `21-hotbar-items-and-the-ladder`):
+
+1. A Builder or Apprentice item made in prep (the strongest sword) is fitted when it is MADE, to the first step (a hit
+   of at most 2.5 hearts, a stone sword's), and is then a plain item: its strength is fixed in it for good.
+2. Its hotbar wish fired after a step opens makes a NEW sword beside the old one, and it is no stronger: the core keeps
+   a kept Builder make's recipe as it came out, already fitted to the first step, so a later step has nothing more to
+   give it (the same core gap as a creature's size, `Not built yet`). A thing whose recipe the core fits at each fire
+   (the core's documentation: a recipe, "Make another one" and a hotbar fire are fitted at fire, by the facts of what
+   the recipe makes; not measured here) would come out stronger fired later, and the old one stays as it was.
+3. When a step opens nothing changes an item he holds: the core re-fits living creatures (`limitsChanged`), never items.
+4. A strong item of his own (a netherite sword, or a wish-made item kept from a battle's high step) hits as hard at the
+   next battle's first step: the arena never changes his things, and core 1.0.10 gives a world no way to tell a
+   wish-made item from any other (no documented marker on the stack).
+
+So the rule is the simplest honest one: **held items are never changed** (they are his); **the ladder applies when an
+item is made or fired**. What a player needs to know is in the guide's "Stronger wishes" page and the pin line above.
+Rebalancing items as the steps rise needs the core: a documented marker on a wish-made item stack (whose wish, at what
+fit), and a way for a world to have one re-fitted or re-made; until then, the arena cannot even tell which of his
+items a wish made.
 
 ## Wishes: the prep phase and a battle
 
@@ -455,9 +621,9 @@ made outside the place it is refused. The rules also carry a clamp
 
 ## The rules file
 
-`src/level/resources/worlds/rules/arena.rules.json`, the core's rules format, plus the arena's own three rule types,
-registered by `ArenaPlugin`: `arena_place` (`ArenaRule`), `arena_waves` (`ArenaWavesRule`) and `arena_wishes`
-(`ArenaWishesRule`).
+`src/level/resources/worlds/rules/arena.rules.json`, the core's rules format, plus the arena's own rule types,
+registered by `ArenaPlugin`: `arena_place` (`ArenaRule`), `arena_waves` (`ArenaWavesRule`), `arena_wishes`
+(`ArenaWishesRule`), `arena_creatures` (`ArenaCreaturesRule`) and `arena_ladder` (`ArenaLadderRule`).
 
 ### `arena_place`, the place's sizes
 
@@ -561,6 +727,30 @@ Every key is optional: `fighterAttack` (0.5 to 50), `tankHealth` (10 to 1000), `
 `tankResistance` (0 to 3, whole; 0 none). A heal faster than 1 health a second (`healAmount / healSeconds`) refuses the
 file. First values are guesses, to be tuned by playing.
 
+### `arena_ladder`, the wish ladder
+
+```json
+{"id": "the-wish-ladder", "type": "arena_ladder", "params": {
+  "progress": "waves",
+  "locked": {"kinds": ["event"], "tags": ["world_rule"]},
+  "steps": [
+    {"after": 0, "limits": {"healthHalfHearts": 40, "attackDamageHalfHearts": 5, "scaleTimes": 1.5, "countMade": 2}},
+    {"after": 5, "limits": {"healthHalfHearts": 120, "attackDamageHalfHearts": 9}, "opens": {"kinds": ["event"]}},
+    {"after": 20, "limits": {}}
+  ]}}
+```
+
+- `progress`: what a step counts in the battle on now, `waves` (waves cleared, the default) or `bosses` (bosses beaten).
+- `steps`: 1 to 20 steps, the first `after` 0, each after more than the one before (at most 1000). `limits` is the most a
+  make may have, by the core's measured facts (`MakeFacts.NUMBERS`: `healthHalfHearts`, `attackDamageHalfHearts`,
+  `scaleTimes`, `builderSizeStep`, `builderStrengthStep`, `countMade`, `amountItems`, `radiusBlocks`, `durationTicks`,
+  `movementSpeedAttribute`, `extentBlocks`, in their units). A fact a step does not name has no limit at that step, so a
+  last step with no limits allows everything. A limit never falls from one step to the next (and a fact limited at a step
+  is limited at the one before), and every number is above 0.
+- `locked`: kinds (`MakeFacts.KINDS`) and tags (`MakeFacts.TAGS`) locked in a battle until a step `opens` them; every lock
+  must be opened by some later step, so every lock can say when it opens.
+- An unknown key, fact, kind or tag refuses the file, naming it. Without the rule, the default ladder above holds.
+
 ### Where the file comes from
 
 A world made with the World Type uses this file from the jar. A dedicated server may name its own with
@@ -569,14 +759,16 @@ A world made with the World Type uses this file from the jar. A dedicated server
 ## The Arena Guide
 
 `worlds/arena.json` carries a `guide.book`: the **Arena Guide**, sixteen short pages by Moddy, one idea a page (the
-prep room and the gate; the control panel; START; waves and boss waves; lives; the breaks; READY; the arena mending;
-making wishes; Magician wishes; the hotbar; firing a wish and its rest; wishes a wave; the creatures' roles; the
-Champions board). The core turns it into a vanilla written book (a stock client reads it) and gives it on a player's
+prep room and the gate; the control panel and START; waves and boss waves; lives; the breaks; READY; the arena mending;
+making wishes; stronger wishes; the wish ladder; Magician wishes; the hotbar; firing a wish and its rest; wishes a wave;
+the creatures' roles; the Champions board). The core turns it into a vanilla written book (a stock client reads it) and gives it on a player's
 first arrival and again on `/moddy guide` (the watch's guide page). **No page types a number**: a rules number is a
 placeholder the core fills in when it gives the book, from the arena's charge (`ArenaCharge.guideValues`, `ArenaGuide`):
 `{arena_lives}`, `{arena_boss_every}`, `{arena_break_seconds}`, `{arena_boss_break_seconds}`,
-`{arena_magician_wishes}`, `{arena_rest_seconds}`, `{arena_wishes_per_wave}`. A rule that turns a thing off (no boss
-waves, no Magician wishes) leaves its key out, and the core then leaves that page out. The book given on the first
+`{arena_magician_wishes}`, `{arena_rest_seconds}`, `{arena_wishes_per_wave}`, and the ladder's
+`{arena_ladder_health}` and `{arena_ladder_hits}` (its first step's, in hearts) and `{arena_ladder_events_open}` ("wave
+5"). A rule that turns a thing off (no boss waves, no Magician wishes, a ladder whose first step limits no health or
+locks no events) leaves its key out, and the core then leaves that page out. The book given on the first
 arrival lands on the hotbar; the arena moves that one copy into his bag, so the hotbar stays for his wishes.
 `ArenaGuideTest` holds every page to the core's book page (14 lines of 19 characters, 16 pages, a 32-character title),
 also with the largest numbers the rules allow, and fails a placeholder with no value or a page with a digit in it.
@@ -645,10 +837,30 @@ on his hotbar; a copy opened and read, its lives page showing the rules' number)
 and he waits in the prep room: the wave takes him inside, the gate is iron bars he cannot open or pass, a monster put in
 the prep room goes back into the arena, the shut gate seen from the prep room; in the break the fence gate, he walks
 through it and back; the next wave takes him in again; knocked out with lives left he counts 3 and is taken back in;
-out of lives he stays in the prep room, and after the battle the gate is the fence gate) and `17-on-solid-ground`
+out of lives he stays in the prep room, and after the battle the gate is the fence gate), `17-on-solid-ground`
 (stone and bedrock under the place and grass round it; a hole torn in the arena's floor and a real TNT blast leave him
 on the bedrock two blocks down, unhurt; a hole under the spawn is put back and a respawn lands on it; teleported far
-below the arena he is put back in the prep room; the place seen from outside, on its base). A playtest cannot restart its game,
+below the arena he is put back in the prep room; the place seen from outside, on its base) and `18-wish-ladder` (in prep the first step: /moddy wishes and the WISH LADDER board's big lines, read from where he
+stands; a giant dragon made smaller and told once, then left hurt in the prep room; the strongest sword at most a stone
+sword's hit, a tornado made in prep; the dragon and a ready-made meteor on the hotbar; in a ten-wave battle the hotbar
+meteor (a ready-made event) is locked with the arena's words, wave 2 cleared is the "Stronger wishes!" moment and the
+core's "Your creatures are stronger now!", the prep room's dragon has more health without being made again and is just
+as hurt, the board says where the battle is, the hotbar dragon fired after wave 4 is fitted to that step, the boss wave
+opens events and the meteor fires; after the battle nothing wished is left in the arena, the prep room's dragon is held
+back to the first step and he is told once, and the next battle starts at the first step: the same hotbar dragon small
+again, the meteor locked again; on the way, three wished stand-ins' role signs read from about 5 and 20 blocks),
+`19-creative-not-recorded` (in Creative the panel's best line says his runs are not recorded; a battle started in
+Creative, one he switches to Creative in and back, and one he turns to Spectator in are each told once in chat and not
+recorded; a Survival battle is), `20-items-kept` (a block he throws in a wave and the iron chestplate he drops when
+knocked out with lives left lie in the arena through the mend and are carried to the prep room when the battle is won;
+knocked out of his last life, his chestplate is in the prep room after the tidy too) and
+`21-hotbar-items-and-the-ladder` (a meteor pinned in prep is told locked until wave 5, a rock golem pinned is told
+weaker at first; the strongest sword made in prep keeps its hit when a step opens, its hotbar wish fired after the step
+makes a second sword as strong as the first, and his own netherite sword hits as hard at the next battle's first step)
+and `22-creatures-on-your-side` (a wished stand-in hunter beside him in the prep room never hurts him, not even a hit
+the game says it dealt, while far outside the place the same hit lands; in a wave a wished polar bear is a Fighter whose
+blows land on a monster held still, and a wished zombie with no attack is a Healer or Tank, not a Fighter).
+A playtest cannot restart its game,
 so the settings and the champions surviving a restart are `ArenaStateTest` (the saved record) and a dedicated
 server's restart, and so is a world from 0.1.5 upgrading (its panel and its base).
 
@@ -674,6 +886,7 @@ All of it in `com.moddingfromamod.levels.arena`:
 | `ArenaBosses` | **pure**: the boss table, which waves are boss waves, a boss wave's escort |
 | `ArenaRun` | **pure**: one battle's waves as the panel set them (the rules file's, the generator's, the boss waves), wave by wave |
 | `ArenaChampions` | **pure**: the champions' entries per settings (difficulty and waves), how runs rank, merging a run, migrating 0.1.5's entries, their words |
+| `ArenaUnranked` | **pure**: who has no run on the Champions board this battle (in Creative or Spectator at any point of it), told once |
 | `ArenaChampionsLayout` | **pure**: the Champions board's layout: its blocks and where each word and face floats |
 | `ArenaChampionsBoard` | carries the Champions board out: its words (text displays) and faces (item displays with player heads) |
 | `ArenaDifficulty` | **pure**: the four difficulties as data (wave size, health, swaps) and how each changes the waves |
@@ -683,7 +896,8 @@ All of it in `com.moddingfromamod.levels.arena`:
 | `ArenaMatch` | **pure**: a battle as a state machine (IDLE, COUNTDOWN, WAVE, BREATHER, WON, LOST, RESETTING), the break between waves (longer after a boss wave, ended early when every fighter is READY), its boss bar (a boss's health on a boss wave) and how far it got |
 | `ArenaSpawns` | **pure**: where a wave's monsters appear |
 | `ArenaWords` | **pure**: every word a player reads about a battle and on the control panel |
-| `ArenaBattle` | carries a battle out: the button, the fighters and their lives, spawning and counting the monsters and the boss, the boss bar and titles, recording the runs, READY in a break, the arena mended between waves, each fighter's own bar of hotbar wishes, the reset |
+| `ArenaBattle` | carries a battle out: the button, the fighters and their lives, spawning and counting the monsters and the boss, the boss bar and titles, recording the runs (none for a fighter seen in Creative or Spectator, told once in chat), READY in a break, the arena mended between waves, each fighter's own bar of hotbar wishes, the line when a wish put on the hotbar is locked or held back, the reset (a player's own things carried to the prep room) |
+| `ArenaTidy` | **pure**: what each tidy does with each thing in the arena: between waves only the loose things a fight leaves flying; at a battle's end a player's own things to the prep room, never removed |
 | `ArenaRule` | `arena_place` as a `WorldRuleType`, and reading the place back from a world's rules |
 | `ArenaModule` | the world module: builds once, gives a built place its upgrades, sets the spawn, the first arrival (and the first guide book into the bag), the bases, the fallback rules, ticks the battle |
 | `ArenaBuilder` | each kind of box as a block, placed; the control panel added to (or mended in) a place, and the base; the gate shut or opened; the prep room's floor and the spawn's floor mended; the reset |
@@ -696,6 +910,11 @@ All of it in `com.moddingfromamod.levels.arena`:
 | `ArenaAllies` | **pure**: how a Fighter picks its monster, its reach, how often and how hard it strikes |
 | `ArenaCreatures` | **pure**: the roles' numbers and their checks (a heal never faster than 1 health a second) |
 | `ArenaCreaturesRule` | `arena_creatures` as a `WorldRuleType`, and reading it back from a world's rules |
+| `ArenaLadder` | **pure**: the wish ladder as data (its steps, their limits in the core's facts, what is locked and when it opens), its checks, where a battle is on it, what a step raises and opens |
+| `ArenaLadderRule` | `arena_ladder` as a `WorldRuleType`, and reading it back from a world's rules (kept until the rules change) |
+| `ArenaMakes` | the core's `WorldMakes` for arena worlds: the battle's step as limits for every make, and the locked kinds in a battle |
+| `ArenaPinNotice` | **pure**: whether a wish put on the hotbar would be locked or held back at the battle's step, and when that changes, from its facts and the ladder |
+| `ArenaLadderBoard` | carries the WISH LADDER board out: one text display beside the control panel, kept like the panel's words |
 | `ArenaRoleKeeper` | carries the roles out in a wave: each creature's sign and one line, the Fighter's strikes, the Healer's heals, the Tank's held monsters and Resistance, and stopping all of it |
 | `ArenaGuide` | **pure**: the Arena Guide's rules numbers (its placeholders), and where the first copy goes in the bag |
 | `ArenaState` | the world's saved record (versioned): the built sizes, who has arrived, the upgrades it has had, whether a battle is on, the panel's settings, the champions |
@@ -727,9 +946,21 @@ everything else.
 
 ## Not built yet
 
-- **Unlocks**: wishes unlocked in tiers as a player wins battles.
+- **Items growing with the ladder** (decided: items are kept, "Items between battles" above): a held item keeps the
+  strength it was made with. Re-fitting wish-made items as steps open, or telling a player "fire or make it again for a
+  stronger one" only when his item was made weaker than he asked, needs a core marker on wish-made item stacks (not in
+  core 1.0.10); and a Builder make's hotbar wish fired later is no stronger until the core re-fits a kept recipe at fire
+  (the gap below).
+- **A hotbar wish growing in size with the ladder**: the core keeps a Builder make's recipe as it was made, its size
+  fitted to the step it was made at (in prep, the first), so firing it after a step opens gives it no bigger a body.
+  Its health and hits are not held this way (they are fitted on the living creature, from its own numbers, at each
+  spawn and again when a step opens), only its size and the other knobs a make is fitted by; waits for the core.
+
 - **Spectators**: watching a battle without being in it (today a player in the prep room during the countdown is a
   fighter).
+- **A ride (a vehicle) taking a battle role**, and **counting a creature's special moves** (a power that hurts monsters)
+  when choosing its role: both wait for facts the core does not give a world in 1.0.10 (whether a creature is a ride,
+  what its moves do). Today a role reads its attack damage, health, size, whether it is a monster and whether it walks.
 - **More than one arena**, or more than one battle at a time.
 - **"Give me one"** (a copy of a kept item) is not a wish: the arena lets it through in a battle with no rest and no
   count. (The core now tells a world which thing it is, `chargeAgain(player, kind, ask)`, so a later change can.)

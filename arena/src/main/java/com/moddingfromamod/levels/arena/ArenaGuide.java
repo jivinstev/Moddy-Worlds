@@ -28,9 +28,16 @@ final class ArenaGuide {
 
     /** Every placeholder a page may name, in the order the book reads them. */
     static final List<String> KEYS = List.of("arena_lives", "arena_boss_every", "arena_break_seconds",
-            "arena_boss_break_seconds", "arena_magician_wishes", "arena_rest_seconds", "arena_wishes_per_wave");
+            "arena_boss_break_seconds", "arena_magician_wishes", "arena_rest_seconds", "arena_wishes_per_wave",
+            "arena_ladder_health", "arena_ladder_hits", "arena_ladder_events_open");
 
     private ArenaGuide() {
+    }
+
+    /** Health points as a number of hearts, "20" or "2.5". */
+    static String heartsNumber(double halfHearts) {
+        String h = ArenaWords.hearts(halfHearts);
+        return h.substring(0, h.indexOf(' '));
     }
 
     /**
@@ -55,6 +62,15 @@ final class ArenaGuide {
      * defaults for lives and boss waves, and no break lengths; {@code wishes} null gives {@link ArenaWishes#DEFAULT}.
      */
     static Map<String, String> values(ArenaWaves waves, ArenaWishes wishes) {
+        return values(waves, wishes, ArenaLadder.DEFAULT);
+    }
+
+    /**
+     * The guide's values for these rules and this unlock ladder: its first step's health and hits, in hearts (each left
+     * out when the first step does not limit it), and when events open (left out when the ladder does not lock them).
+     * {@code ladder} null gives {@link ArenaLadder#DEFAULT}.
+     */
+    static Map<String, String> values(ArenaWaves waves, ArenaWishes wishes, ArenaLadder ladder) {
         ArenaWishes w = wishes == null ? ArenaWishes.DEFAULT : wishes;
         Map<String, String> out = new LinkedHashMap<>();
         out.put("arena_lives", Integer.toString(waves == null ? ArenaWaves.DEFAULT_LIVES : waves.lives()));
@@ -71,6 +87,19 @@ final class ArenaGuide {
         }
         out.put("arena_rest_seconds", Integer.toString(w.cooldownSeconds()));
         out.put("arena_wishes_per_wave", Integer.toString(w.wishesPerWave()));
+        ArenaLadder l = ladder == null ? ArenaLadder.DEFAULT : ladder;
+        Map<String, Double> first = l.limits(0);
+        if (first.containsKey(com.moddingfromamod.wishbuilder.MakeFacts.HEALTH_HALF_HEARTS)) {
+            out.put("arena_ladder_health", heartsNumber(first.get(com.moddingfromamod.wishbuilder.MakeFacts.HEALTH_HALF_HEARTS)));
+        }
+        if (first.containsKey(com.moddingfromamod.wishbuilder.MakeFacts.ATTACK_DAMAGE_HALF_HEARTS)) {
+            out.put("arena_ladder_hits",
+                    heartsNumber(first.get(com.moddingfromamod.wishbuilder.MakeFacts.ATTACK_DAMAGE_HALF_HEARTS)));
+        }
+        int events = l.opensAfter("event", false);
+        if (events > 0) {
+            out.put("arena_ladder_events_open", ArenaWords.opensAt(l.progress(), events));
+        }
         return out;
     }
 }

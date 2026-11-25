@@ -192,6 +192,63 @@ public final class ArenaWords {
                 + " on the Champions board!" : ".");
     }
 
+    /**
+     * Chat, once a battle, to a player seen in Creative or Spectator during it (at its start, or when he switches): his
+     * run of this battle is not recorded.
+     */
+    public static String notRecorded(ArenaUnranked.Mode mode) {
+        return "You are in " + modeName(mode) + ": this battle will not go on the Champions board.";
+    }
+
+    /** The control panel's best line, for the player who pressed last while he is in Creative or Spectator. */
+    public static String bestNotRecorded(String name, ArenaUnranked.Mode mode) {
+        return name + ": in " + modeName(mode) + ", runs not recorded";
+    }
+
+    private static String modeName(ArenaUnranked.Mode mode) {
+        return mode == ArenaUnranked.Mode.SPECTATOR ? "Spectator" : "Creative";
+    }
+
+    /** "wave 5" or "boss 2": how far a battle has to get, as the ladder counts. */
+    private static String stepName(ArenaLadder.Count count, int after) {
+        return count == ArenaLadder.Count.BOSSES ? "boss " + after + " is beaten" : "wave " + after + " is cleared";
+    }
+
+    /**
+     * Chat, once per wish per prep, when a wish he puts on his hotbar would not come out as it is at the step the battle
+     * is on (a battle starts at the first): "Your Meteor is locked in a battle until wave 5 is cleared.", "Your Dragon
+     * will be smaller at first. It grows as you clear waves." Null when there is nothing to say.
+     */
+    public static String pinNotice(String name, ArenaPinNotice.Notice n, ArenaLadder.Count count) {
+        if (n == null || n.type() == ArenaPinNotice.Type.NONE) {
+            return null;
+        }
+        String your = name == null || name.isBlank() ? "This wish" : "Your " + name;
+        boolean bosses = count == ArenaLadder.Count.BOSSES;
+        return switch (n.type()) {
+            case LOCKED -> your + " is locked in a battle until " + stepName(count, n.after()) + ".";
+            case TOO_MUCH -> n.after() > 0 ? your + " is too much for now. It opens when " + stepName(count, n.after())
+                    + "." : your + " is too much for this arena right now.";
+            case FITTED -> {
+                List<String> how = new java.util.ArrayList<>();
+                for (ArenaPinNotice.Held h : n.held()) {
+                    how.add(switch (h) {
+                        case SMALLER -> "smaller";
+                        case WEAKER -> "weaker";
+                        case FEWER -> "fewer";
+                        case GENTLER -> "gentler";
+                    });
+                }
+                String what = how.size() == 1 ? how.get(0) : String.join(", ", how.subList(0, how.size() - 1))
+                        + " and " + how.get(how.size() - 1);
+                String grows = n.held().contains(ArenaPinNotice.Held.SMALLER) ? "It grows" : "It gets stronger";
+                yield your + " will be " + what + " at first. " + grows + " as you "
+                        + (bosses ? "beat bosses." : "clear waves.");
+            }
+            default -> null;
+        };
+    }
+
     /** Chat, to everyone in the place, once the arena is put back. */
     public static String ready() {
         return "The arena is tidy again. Press the button in the prep room to start a battle.";
@@ -520,6 +577,329 @@ public final class ArenaWords {
     /** The board with no champions at these settings yet. */
     public static String championsNone() {
         return "No champions here yet. Be the first!";
+    }
+
+    // ── the unlock ladder ───────────────────────────────────────────────────────────────────────────────────────────
+
+    /** The ladder's board title. */
+    static final String LADDER_TITLE = "WISH LADDER";
+
+    /** "1 heart", "2.5 hearts", "20 hearts", from health points (two to a heart). */
+    static String hearts(double halfHearts) {
+        double h = halfHearts / 2.0;
+        String n = h == Math.rint(h) ? Long.toString((long) h) : String.format(java.util.Locale.ROOT, "%.1f", h);
+        return n + (h == 1.0 ? " heart" : " hearts");
+    }
+
+    private static String number(double v) {
+        if (v == Math.rint(v)) {
+            return Long.toString((long) v);
+        }
+        return String.format(java.util.Locale.ROOT, "%.2f", v).replaceAll("0+$", "").replaceAll("\\.$", "");
+    }
+
+    /**
+     * One limit, in a child's words and the game's own numbers: "Health up to 20 hearts", "Up to 2 at once". A number the
+     * arena has no words for (one a newer core added) is still shown, by its name.
+     */
+    static String limit(String fact, double most) {
+        return switch (fact) {
+            case "healthHalfHearts" -> "Health up to " + hearts(most);
+            case "attackDamageHalfHearts" -> "Hits up to " + hearts(most);
+            case "scaleTimes" -> "Size up to " + number(most) + " times";
+            case "builderSizeStep" -> "Builder size up to " + number(most) + " of 4";
+            case "builderStrengthStep" -> "Power strength up to " + number(most) + " of 3";
+            case "countMade" -> "Up to " + number(most) + " at once";
+            case "amountItems" -> "Up to " + number(most) + " items";
+            case "radiusBlocks" -> "Power reach up to " + number(most) + (most == 1 ? " block" : " blocks");
+            case "durationTicks" -> "Powers last up to " + seconds((int) Math.round(most / 20.0));
+            case "movementSpeedAttribute" -> "Speed up to " + number(most);
+            case "extentBlocks" -> "Buildings up to " + number(most) + " blocks long";
+            case "armorPoints" -> "Armour up to " + number(most);
+            case "knockbackResistanceFraction" -> "Knockback resistance up to " + Math.round(most * 100) + "%";
+            default -> fact + " up to " + number(most);
+        };
+    }
+
+    /** A number with no limit any more: "No limit on health". */
+    static String noLimit(String fact) {
+        return switch (fact) {
+            case "healthHalfHearts" -> "No limit on health";
+            case "attackDamageHalfHearts" -> "No limit on hits";
+            case "scaleTimes", "builderSizeStep" -> "No limit on size";
+            case "builderStrengthStep" -> "No limit on power strength";
+            case "countMade" -> "No limit on how many at once";
+            case "amountItems" -> "No limit on items";
+            case "radiusBlocks" -> "No limit on power reach";
+            case "durationTicks" -> "No limit on how long powers last";
+            case "movementSpeedAttribute" -> "No limit on speed";
+            case "extentBlocks" -> "No limit on building size";
+            case "armorPoints" -> "No limit on armour";
+            case "knockbackResistanceFraction" -> "No limit on knockback resistance";
+            default -> "No limit on " + fact;
+        };
+    }
+
+    /** What a locked kind or tag is called ({@code kind:<id>} or {@code tag:<id>}, as the ladder names them). */
+    static String lockName(String kindOrTag) {
+        String id = kindOrTag.substring(kindOrTag.indexOf(':') + 1);
+        boolean tag = kindOrTag.startsWith("tag:");
+        if (tag) {
+            return switch (id) {
+                case "world_rule" -> "World rules";
+                case "changes_blocks" -> "Wishes that change blocks";
+                case "summons" -> "Wishes that call creatures";
+                case "fights" -> "Fighting wishes";
+                case "hostile" -> "Creatures that attack";
+                case "boss" -> "Boss creatures";
+                case "builds" -> "Wishes that build";
+                case "gives_items" -> "Wishes that give items";
+                case "decorative" -> "Decorations";
+                case "harmless" -> "Harmless wishes";
+                default -> id;
+            };
+        }
+        return switch (id) {
+            case "creature" -> "Creatures";
+            case "ride" -> "Rides";
+            case "item" -> "Items";
+            case "machine" -> "Machines";
+            case "magic_block" -> "Magic blocks";
+            case "building" -> "Buildings";
+            case "picture" -> "Pictures";
+            case "event" -> "Events";
+            case "rule" -> "World rules";
+            case "supplies" -> "Supplies";
+            default -> "Other wishes";
+        };
+    }
+
+    /** How far into a battle a step or a lock waits for, short: "wave 5", "boss 1". */
+    static String opensAt(ArenaLadder.Count count, int after) {
+        return (count == ArenaLadder.Count.BOSSES ? "boss " : "wave ") + after;
+    }
+
+    /** A locked make's words (under its tile, and when pressed): when, in a battle, it opens. */
+    public static String ladderLocked(ArenaLadder.Count count, int after) {
+        return count == ArenaLadder.Count.BOSSES ? "Locked: opens in a battle, after you beat boss " + after + "."
+                : "Locked: opens in a battle, after wave " + after + ".";
+    }
+
+    /** Where the battle is on the ladder: "Before a battle: the first step", "This battle: 3 waves cleared". */
+    static String ladderWhere(ArenaLadder.Count count, boolean inBattle, int reached) {
+        if (!inBattle) {
+            return "Before a battle: the first step";
+        }
+        if (count == ArenaLadder.Count.BOSSES) {
+            return "This battle: " + (reached == 0 ? "no boss beaten yet" : reached == 1 ? "1 boss beaten"
+                    : reached + " bosses beaten");
+        }
+        return "This battle: " + (reached == 0 ? "no wave cleared yet" : reached == 1 ? "1 wave cleared"
+                : reached + " waves cleared");
+    }
+
+    /**
+     * The wish ladder board's words, few and big, to be read from across the prep room: the title, where the battle is
+     * on the ladder, at most {@value #BOARD_NOW_LINES} of what wishes can have now (health, hits, size and how many at
+     * once first), one line of what is locked, one of what the next step brings. The full list is
+     * {@code /moddy wishes} and the Arena Guide's.
+     */
+    record LadderBoardWords(String title, String where, List<String> now, String locked, String next) {
+    }
+
+    /** How many of the limits now the board shows. */
+    static final int BOARD_NOW_LINES = 4;
+
+    /** The facts the board shows first, when the step limits them: what matters most to a fighter. */
+    static final List<String> BOARD_FIRST = List.of("healthHalfHearts", "attackDamageHalfHearts", "scaleTimes",
+            "countMade");
+
+    /** One limit, short, for the board: "Health: 20 hearts", "Size: x1.5", "2 at once". */
+    static String boardLimit(String fact, double most) {
+        return switch (fact) {
+            case "healthHalfHearts" -> "Health: " + hearts(most);
+            case "attackDamageHalfHearts" -> "Hits: " + hearts(most);
+            case "scaleTimes" -> "Size: x" + number(most);
+            case "countMade" -> number(most) + " at once";
+            case "builderSizeStep" -> "Builder size: " + number(most) + " of 4";
+            case "builderStrengthStep" -> "Power: " + number(most) + " of 3";
+            case "amountItems" -> "Items: " + number(most);
+            case "radiusBlocks" -> "Reach: " + number(most) + (most == 1 ? " block" : " blocks");
+            case "durationTicks" -> "Powers: " + seconds((int) Math.round(most / 20.0));
+            case "movementSpeedAttribute" -> "Speed: " + number(most);
+            case "extentBlocks" -> "Buildings: " + number(most) + " long";
+            case "armorPoints" -> "Armour: " + number(most);
+            case "knockbackResistanceFraction" -> "Knockback: " + Math.round(most * 100) + "%";
+            default -> fact + ": " + number(most);
+        };
+    }
+
+    /** Where the battle is, short, for the board: "Before a battle: step 1", "This battle: 2 waves cleared". */
+    static String boardWhere(ArenaLadder.Count count, boolean inBattle, int reached) {
+        if (!inBattle) {
+            return "Before a battle: step 1";
+        }
+        if (count == ArenaLadder.Count.BOSSES) {
+            return "This battle: " + reached + (reached == 1 ? " boss beaten" : " bosses beaten");
+        }
+        return "This battle: " + reached + (reached == 1 ? " wave cleared" : " waves cleared");
+    }
+
+    /** The wish ladder board's words now ({@link LadderBoardWords}); in prep, the first step. */
+    static LadderBoardWords ladderBoard(ArenaLadder ladder, boolean inBattle, int reached) {
+        int at = inBattle ? reached : 0;
+        java.util.Map<String, Double> limits = ladder.limits(at);
+        List<String> order = new java.util.ArrayList<>(BOARD_FIRST);
+        for (String k : com.moddingfromamod.wishbuilder.MakeFacts.NUMBERS) {
+            if (!order.contains(k)) {
+                order.add(k);
+            }
+        }
+        for (String k : limits.keySet()) {
+            if (!order.contains(k)) {
+                order.add(k);
+            }
+        }
+        List<String> now = new java.util.ArrayList<>();
+        for (String k : order) {
+            if (limits.containsKey(k) && now.size() < BOARD_NOW_LINES) {
+                now.add(boardLimit(k, limits.get(k)));
+            }
+        }
+        if (now.isEmpty()) {
+            now.add("No limits!");
+        }
+        java.util.Map<String, Integer> lockedNow = ladder.stillLocked(at);
+        String locked = null;
+        if (!lockedNow.isEmpty()) {
+            List<String> names = new java.util.ArrayList<>();
+            for (String k : lockedNow.keySet()) {
+                names.add(lockName(k));
+            }
+            locked = (inBattle ? "Locked: " : "Battle locks: ") + String.join(", ", names);
+        }
+        ArenaLadder.Step next = ladder.next(at);
+        String nextLine = null;
+        if (next != null) {
+            nextLine = "After " + opensAt(ladder.progress(), next.after()) + ": "
+                    + riseOne(ladder.rise(at, next.after()));
+        }
+        return new LadderBoardWords(LADDER_TITLE, boardWhere(ladder.progress(), inBattle, at), List.copyOf(now), locked,
+                nextLine);
+    }
+
+    /** What a rise brings, in a few words: "events open", "health 30 hearts", "no limits!". */
+    static String riseOne(ArenaLadder.Rise r) {
+        if (!r.opened().isEmpty()) {
+            return lockName(r.opened().get(0)).toLowerCase(java.util.Locale.ROOT) + " open";
+        }
+        if (r.top() && r.rose().values().stream().allMatch(v -> Double.isNaN(v[1]))) {
+            return "no limits!";
+        }
+        for (String k : BOARD_FIRST) {
+            double[] v = r.rose().get(k);
+            if (v != null && !Double.isNaN(v[1])) {
+                return boardLimit(k, v[1]).replace(":", "").toLowerCase(java.util.Locale.ROOT);
+            }
+        }
+        for (java.util.Map.Entry<String, double[]> e : r.rose().entrySet()) {
+            if (!Double.isNaN(e.getValue()[1])) {
+                return boardLimit(e.getKey(), e.getValue()[1]).replace(":", "").toLowerCase(java.util.Locale.ROOT);
+            }
+        }
+        return "stronger wishes";
+    }
+
+    /** What a rise brings, in one short line: "Health up to 40 hearts, hits up to 3.5 hearts and more". */
+    static String riseShort(ArenaLadder.Rise r) {
+        List<String> bits = new java.util.ArrayList<>();
+        for (String o : r.opened()) {
+            bits.add(lockName(o));
+        }
+        for (java.util.Map.Entry<String, double[]> e : r.rose().entrySet()) {
+            double to = e.getValue()[1];
+            bits.add(Double.isNaN(to) ? noLimit(e.getKey()) : limit(e.getKey(), to));
+        }
+        if (r.top() && bits.size() > 2) {
+            return "No limits at all!";
+        }
+        if (bits.isEmpty()) {
+            return "Nothing new";
+        }
+        String line = (bits.size() <= 2 ? String.join(", ", bits) : bits.get(0) + ", " + bits.get(1) + " and more")
+                .toLowerCase(java.util.Locale.ROOT);
+        return Character.toUpperCase(line.charAt(0)) + line.substring(1);
+    }
+
+    /** The moment's title, when a boss beaten raises his ladder. */
+    static String ladderTitle() {
+        return "Stronger wishes!";
+    }
+
+    /** The moment's subtitle: what the battle just reached. */
+    static String ladderSubtitle(ArenaLadder.Count count, int reached) {
+        return count == ArenaLadder.Count.BOSSES ? "You beat boss " + reached : "Wave " + reached + " cleared";
+    }
+
+    /**
+     * The moment in chat: one or two short lines, what rose (the new numbers) and what opened. Empty when nothing did.
+     */
+    static List<String> ladderRose(ArenaLadder.Rise r) {
+        List<String> out = new java.util.ArrayList<>();
+        if (r.isEmpty()) {
+            return out;
+        }
+        List<String> bits = new java.util.ArrayList<>();
+        for (java.util.Map.Entry<String, double[]> e : r.rose().entrySet()) {
+            double to = e.getValue()[1];
+            if (!Double.isNaN(to) && bits.size() < 3) {
+                bits.add(limit(e.getKey(), to).toLowerCase(java.util.Locale.ROOT));
+            }
+        }
+        if (r.top() && r.rose().values().stream().allMatch(v -> Double.isNaN(v[1]))) {
+            out.add("Your wishes can be as strong as you like now: no more limits!");
+        } else if (!bits.isEmpty()) {
+            out.add("Your wishes can be stronger now: " + String.join(", ", bits)
+                    + (r.rose().size() > bits.size() ? ", and more." : "."));
+        }
+        if (!r.opened().isEmpty()) {
+            List<String> names = new java.util.ArrayList<>();
+            for (String o : r.opened()) {
+                names.add(lockName(o));
+            }
+            out.add(String.join(" and ", names) + (names.size() == 1 && !names.get(0).endsWith("s") ? " is" : " are")
+                    + " open now!");
+        }
+        return out;
+    }
+
+    /** {@code /moddy wishes}: the limits every fighter's wishes have now, and what the next step brings. */
+    static List<String> ladderWishes(ArenaLadder ladder, boolean inBattle, int reached) {
+        int at = inBattle ? reached : 0;
+        List<String> out = new java.util.ArrayList<>();
+        java.util.Map<String, Double> now = ladder.limits(at);
+        List<String> bits = new java.util.ArrayList<>();
+        for (String k : com.moddingfromamod.wishbuilder.MakeFacts.NUMBERS) {
+            if (now.containsKey(k)) {
+                bits.add(limit(k, now.get(k)).toLowerCase(java.util.Locale.ROOT));
+            }
+        }
+        for (java.util.Map.Entry<String, Integer> e : ladder.stillLocked(at).entrySet()) {
+            bits.add(lockName(e.getKey()).toLowerCase(java.util.Locale.ROOT) + " locked" + (inBattle ? "" : " in a battle")
+                    + " until " + opensAt(ladder.progress(), e.getValue()));
+        }
+        String where = ladderWhere(ladder.progress(), inBattle, at);
+        out.add(bits.isEmpty() ? "Wish limits: none. " + where + "."
+                : "Wish limits (" + where + "): " + String.join(", ", bits) + ". A bigger wish is made to fit.");
+        ArenaLadder.Step next = ladder.next(at);
+        if (next != null) {
+            out.add("After " + opensAt(ladder.progress(), next.after()) + (inBattle ? "" : " of a battle") + ": "
+                    + riseShort(ladder.rise(at, next.after())) + ".");
+        }
+        if (!inBattle) {
+            out.add("Every battle starts at the first step, and wishes grow stronger as it goes on.");
+        }
+        return out;
     }
 
     /** Every fixed line, for a test that reads them all. */

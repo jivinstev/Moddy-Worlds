@@ -34,6 +34,8 @@ import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.OwnableEntity;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.projectile.AbstractArrow;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.phys.AABB;
@@ -83,8 +85,19 @@ final class ArenaBattle {
     /** Everyone who fought in this battle, out or not: they are told how it ends, wherever they respawned. */
     private final Set<UUID> told = new HashSet<>();
     private final List<UUID> waveMobs = new ArrayList<>();
-    /** What fighters dropped when they were knocked out: moved to the prep room at the reset, never cleared. */
-    private final Set<UUID> fightersDrops = new HashSet<>();
+    /**
+     * The dropped items that are a player's own: what any player dropped when he died (or was knocked out), and what he
+     * threw (both told by the game's events, {@link #playersItem}). Kept between waves, moved to the prep room at the
+     * battle's end ({@link ArenaTidy}), never removed. Forgotten at the reset, once they are moved.
+     */
+    private final Set<UUID> playersDrops = new HashSet<>();
+    /** The players seen in Creative or Spectator this battle: their runs are not recorded ({@link ArenaUnranked}). */
+    private final ArenaUnranked unranked = new ArenaUnranked();
+    /**
+     * The hotbar wishes (their recipes) each player in the place had when last looked at, so a new one is noticed when he
+     * puts it on his hotbar and told once ({@link #watchPins}); a player not looked at yet is absent.
+     */
+    private final Map<UUID, Set<String>> pins = new HashMap<>();
     /**
      * The arena's wish charge: told when a wave is cleared (the hotbar wishes start again) and when a battle is over
      * (every count and rest starts again), and asked how many hotbar wishes each fighter has left; null in a test.
@@ -112,6 +125,19 @@ final class ArenaBattle {
     private final Map<UUID, Integer> backIn = new HashMap<>();
     /** Whether the gateway was last set shut (null: not set yet in this run of the server). */
     private Boolean gateSetShut;
+    /** The wish ladder board beside the control panel. */
+    private final ArenaLadderBoard ladderBoard;
+    /**
+     * The battle's own place on the wish ladder: the waves it has cleared and the bosses it has beaten, the same for
+     * every fighter; none outside a battle, so prep is the first step. Read by the core's {@code WorldMakes} questions
+     * (any thread), written on the server thread.
+     */
+    private volatile int wavesCleared;
+    private volatile int bossesBeaten;
+    /** True from the button to the arena being ready again: the ladder is the battle's. */
+    private volatile boolean ladderOn;
+    /** Where the ladder was when its step was last told (at the start of a break). */
+    private int ladderTold;
     private long ticks;
 
     ArenaBattle(MinecraftServer server, ArenaPlace place, ArenaState state, ArenaCharge wishes) {
@@ -121,8 +147,9 @@ final class ArenaBattle {
         this.wishes = wishes;
         this.board = new ArenaBoard(server, place, state);
         this.champions = new ArenaChampionsBoard(server, place, state);
+        this.ladderBoard = new ArenaLadderBoard(server, place);
         this.roles = new ArenaRoleKeeper(server, place, List.of(TAG, ArenaBoard.TAG, ArenaChampionsBoard.TAG,
-                ArenaRoleKeeper.SIGN_TAG));
+                ArenaRoleKeeper.SIGN_TAG, ArenaLadderBoard.TAG));
         if (state.battleOn()) {
             match.endedByRestart();
             LOG.info("Moddy Arena: battle: a battle was on when the server stopped; it is over, and the arena will be"
@@ -132,6 +159,11 @@ final class ArenaBattle {
 
     ArenaMatch match() {
         return match;
+    }
+
+    /** Whether an entity is in the place (the arena or its prep room) in the arena's world. */
+    boolean inPlace(Entity e) {
+        return e != null && e.level() == level() && place.keeps(e.getX(), e.getY(), e.getZ());
     }
 
     void stop() {
@@ -181,6 +213,8 @@ final class ArenaBattle {
         knockedOut.clear();
         backIn.clear();
         boss = null;
+        ladderReset(true);   // every battle starts at the ladder's first step
+        unranked.clear();
         told.clear();
         waveMobs.clear();
         ready.clear();
@@ -213,6 +247,12 @@ final class ArenaBattle {
         ticks++;
         ServerLevel level = level();
         safetyNet(level);
+        if (match.fighting()) {
+            watchModes(level);   // before the fighters are counted: one who turned Spectator is out, and unrecorded
+        }
+        if (ticks % 10 == 0) {
+            watchPins(level);
+        }
         for (ArenaPanel.Control c : board.pressed(level)) {
             if (c == ArenaPanel.Control.START) {
                 pressed(level);
@@ -250,6 +290,10 @@ final class ArenaBattle {
             updateWishBars();
         }
         board.refresh(level, match, ArenaBattle::baseWaves, ev != null);
+        if (ev != null || ticks % 10 == 0) {
+            ArenaLadder ladder = ArenaLadderRule.ladderOf(com.moddingfromamod.world.WorldRulesService.current());
+            ladderBoard.refresh(level, ArenaWords.ladderBoard(ladder, ladderOn, reached(ladder)));
+        }
         ArenaWaves rules = baseWaves();
         ArenaChampions.Key key = ArenaChampions.Key.of(state.settings().within(rules == null ? null : rules.limits()));
         if (!key.equals(shownKey)) {
@@ -344,7 +388,7 @@ final class ArenaBattle {
     private int tidyBetweenWaves(ServerLevel level) {
         ArenaPlace.Box r = place.resetBox(level.getMaxY());
         AABB arena = new AABB(r.x0(), r.y0() - 1, r.z0(), r.x1() + 1, r.y1() + 1, r.z1() + 1);
-        return discard(level, arena, ArenaBattle::looseThing);
+        return discard(level, arena, e -> ArenaTidy.betweenWaves(thing(e)) == ArenaTidy.Act.REMOVE);
     }
 
     /** A thing a fight leaves flying or falling, tidied between waves. */
@@ -404,6 +448,8 @@ final class ArenaBattle {
                 LOG.info("Moddy Arena: battle: wave {} cleared; BREATHER of {} s; the hotbar wishes start again",
                         ev.wave(), ev.seconds());
                 sayToPlace(ArenaWords.cleared(ev.wave(), ev.seconds()));
+                wavesCleared = Math.max(wavesCleared, ev.wave());
+                ladderUp();
                 ready.clear();
                 if (mend(level) > 0) {
                     sayToPlace(ArenaWords.mended());
@@ -446,7 +492,11 @@ final class ArenaBattle {
                 state.battleOn(false);
                 LOG.info("Moddy Arena: battle: IDLE, the arena is ready for the next battle");
                 sayToPlace(ArenaWords.ready());
+                // the battle's ladder is gone with it: prep is the first step again, and the creatures are held back
+                // to it (the core's line about them after the arena's)
+                ladderReset(false);
                 told.clear();
+                pins.clear();   // a new prep: his hotbar wishes are looked at afresh, silently; a new one is told
                 if (wishes != null) {
                     wishes.battleEnded();
                 }
@@ -484,7 +534,6 @@ final class ArenaBattle {
             } else if (deaths(p) > f[0]) {
                 f[0] = deaths(p);
                 f[1]--;
-                keepDropsOf(p);
                 if (f[1] > 0) {
                     LOG.info("Moddy Arena: battle: {} was knocked out; {} lives left", p.getScoreboardName(), f[1]);
                     p.sendSystemMessage(Component.literal(ArenaWords.knockedOut(f[1])));
@@ -537,6 +586,127 @@ final class ArenaBattle {
             p.displayClientMessage(Component.literal(ArenaWords.fellOut()), true);
             LOG.info("Moddy Arena: {} fell out under the place; put back in the prep room", p.getScoreboardName());
         }
+    }
+
+    // ── Creative and Spectator ──────────────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * While the fighting is on, every player in the place and every fighter is looked at: one in Creative or Spectator
+     * (at the start, or switched to it) has no run recorded for this battle, and is told so once, in chat
+     * ({@link ArenaUnranked}). Chat is the one channel that is his alone: the boards are text displays every player sees
+     * alike.
+     */
+    private void watchModes(ServerLevel level) {
+        Set<ServerPlayer> look = new java.util.LinkedHashSet<>();
+        for (ServerPlayer p : level.players()) {
+            if (place.keeps(p.getX(), p.getY(), p.getZ())) {
+                look.add(p);
+            }
+        }
+        for (UUID id : fighters.keySet()) {
+            ServerPlayer p = server.getPlayerList().getPlayer(id);
+            if (p != null) {
+                look.add(p);
+            }
+        }
+        for (ServerPlayer p : look) {
+            ArenaUnranked.Mode mode = unranked.saw(p.getUUID(), modeOf(p));
+            if (mode != null) {
+                LOG.info("Moddy Arena: battle: {} is in {} mode; this battle's run of his is not recorded",
+                        p.getScoreboardName(), mode);
+                p.sendSystemMessage(Component.literal(ArenaWords.notRecorded(mode)));
+            }
+        }
+    }
+
+    /** A player's game mode, as the Champions board cares (a player not online plays). */
+    static ArenaUnranked.Mode modeOf(ServerPlayer p) {
+        if (p == null) {
+            return ArenaUnranked.Mode.PLAY;
+        }
+        return p.isSpectator() ? ArenaUnranked.Mode.SPECTATOR
+                : p.isCreative() ? ArenaUnranked.Mode.CREATIVE : ArenaUnranked.Mode.PLAY;
+    }
+
+    // ── a wish put on the hotbar ────────────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Twice a second: the hotbar wishes (the core's proxies, read by their recipe, {@code WishHotbar.recipeOf}) of each
+     * player in the place. A recipe he did not have before in this prep is one he just put on his hotbar: when, at the
+     * step the battle is on (prep and a battle's start are the first), it would be locked or made smaller or weaker, he
+     * is told once, with when that changes ({@link ArenaPinNotice}). The first look at a player, and the first after a
+     * battle, only notes what he has. A wish taken off and put back in the same prep is not told again.
+     */
+    private void watchPins(ServerLevel level) {
+        pins.keySet().removeIf(id -> server.getPlayerList().getPlayer(id) == null);
+        ArenaLadder ladder = null;
+        for (ServerPlayer p : level.players()) {
+            if (p.isSpectator() || !p.isAlive() || !place.keeps(p.getX(), p.getY(), p.getZ())) {
+                continue;
+            }
+            Map<String, ItemStack> now = hotbarWishes(p);
+            Set<String> before = pins.get(p.getUUID());
+            Set<String> after = new HashSet<>(now.keySet());
+            if (before != null) {
+                after.addAll(before);
+            }
+            pins.put(p.getUUID(), after);
+            if (before == null) {
+                continue;
+            }
+            for (Map.Entry<String, ItemStack> e : now.entrySet()) {
+                if (before.contains(e.getKey())) {
+                    continue;
+                }
+                if (ladder == null) {
+                    ladder = ArenaLadderRule.ladderOf(com.moddingfromamod.world.WorldRulesService.current());
+                }
+                tellPin(p, e.getKey(), e.getValue(), ladder);
+            }
+        }
+    }
+
+    /** His hotbar wishes, by recipe: the proxies in his inventory (hotbar, bag and off hand). */
+    private static Map<String, ItemStack> hotbarWishes(ServerPlayer p) {
+        Map<String, ItemStack> out = new LinkedHashMap<>();
+        var inv = p.getInventory();
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack s = inv.getItem(i);
+            String recipe = s.isEmpty() ? null : com.moddingfromamod.wish.WishHotbar.recipeOf(s);
+            if (recipe != null) {
+                out.putIfAbsent(recipe, s);
+            }
+        }
+        return out;
+    }
+
+    private void tellPin(ServerPlayer p, String recipe, ItemStack proxy, ArenaLadder ladder) {
+        UUID owner = p.getUUID();
+        String o = com.moddingfromamod.wish.WishHotbar.ownerOf(proxy);
+        try {
+            if (o != null && !o.isEmpty()) {
+                owner = UUID.fromString(o);
+            }
+        } catch (IllegalArgumentException ignored) {
+            // not a UUID: his own
+        }
+        com.moddingfromamod.wishbuilder.MakeFacts facts;
+        try {
+            facts = com.moddingfromamod.wish.MakeFactsLookup.forRecipe(server, owner, recipe);
+        } catch (RuntimeException ex) {
+            LOG.warn("Moddy Arena: could not read what the hotbar wish {} of {} makes: {}", recipe,
+                    p.getScoreboardName(), ex.toString());
+            return;
+        }
+        ArenaPinNotice.Notice n = ArenaPinNotice.of(ladder, reached(ladder), facts);
+        String line = ArenaWords.pinNotice(ArenaPinNotice.nameOf(proxy.getHoverName().getString()), n,
+                ladder.progress());
+        if (line == null) {
+            return;
+        }
+        LOG.info("Moddy Arena: hotbar: {} put {} on his hotbar: {} (step {})", p.getScoreboardName(), recipe, n,
+                ladder.stepIndex(reached(ladder)) + 1);
+        p.sendSystemMessage(Component.literal(line));
     }
 
     // ── the gate ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -694,7 +864,14 @@ final class ArenaBattle {
         if (battleKey == null) {
             return;
         }
-        for (Map.Entry<UUID, ArenaChampions.Reach> e : reached.entrySet()) {
+        for (UUID id : unranked.unranked()) {
+            if (reached.containsKey(id)) {
+                ServerPlayer p = server.getPlayerList().getPlayer(id);
+                LOG.info("Moddy Arena: Champions: {} was in Creative or Spectator in this battle; the run is not recorded",
+                        p != null ? p.getScoreboardName() : fighterNames.getOrDefault(id, id.toString()));
+            }
+        }
+        for (Map.Entry<UUID, ArenaChampions.Reach> e : unranked.onlyRecorded(reached).entrySet()) {
             ServerPlayer p = server.getPlayerList().getPlayer(e.getKey());
             String name = p != null ? p.getScoreboardName() : fighterNames.getOrDefault(e.getKey(), "?");
             ArenaChampions.Reach r = e.getValue();
@@ -715,21 +892,6 @@ final class ArenaBattle {
         reached.clear();
         champions.changed();
         board.changed();
-    }
-
-    /** The things a knocked-out fighter just dropped where he fell: kept for him, not cleared with the arena. */
-    private void keepDropsOf(ServerPlayer p) {
-        p.getLastDeathLocation().ifPresent(at -> {
-            if (!at.dimension().equals(level().dimension())) {
-                return;
-            }
-            BlockPos b = at.pos();
-            AABB near = new AABB(b).inflate(4);
-            for (ItemEntity item : level().getEntities(EntityTypeTest.forClass(ItemEntity.class), near,
-                    i -> i.tickCount < 200)) {
-                fightersDrops.add(item.getUUID());
-            }
-        });
     }
 
     private static int deaths(ServerPlayer p) {
@@ -842,9 +1004,89 @@ final class ArenaBattle {
         if (match.phase() == ArenaMatch.Phase.WAVE) {
             LOG.info("Moddy Arena: battle: the boss {} is beaten", bossName);
             sayToPlace(ArenaWords.bossBeaten(bossName));
+            bossesBeaten++;
+            LOG.info("Moddy Arena: ladder: boss {} of this battle beaten", bossesBeaten);
         }
         boss = null;
         match.boss(null, 0f);
+    }
+
+    /** Where the battle is on this ladder (0 outside a battle: the first step). */
+    int reached(ArenaLadder ladder) {
+        return ladderOn ? ladder.reached(wavesCleared, bossesBeaten) : 0;
+    }
+
+    /** True from the button to the arena being ready again: the ladder is the battle's. */
+    boolean ladderOn() {
+        return ladderOn;
+    }
+
+    /** Where the battle is on the ladder in force now (0 outside a battle). Any thread. */
+    int reached() {
+        return reached(ArenaLadderRule.ladderOf(com.moddingfromamod.world.WorldRulesService.current()));
+    }
+
+    /** The ladder back at its first step: a battle starting ({@code on}), or the arena ready again after one. */
+    private void ladderReset(boolean on) {
+        boolean wasUp = ladderTold > 0 || wavesCleared > 0 || bossesBeaten > 0;
+        wavesCleared = 0;
+        bossesBeaten = 0;
+        ladderTold = 0;
+        ladderOn = on;
+        ladderBoard.changed();
+        if (wasUp) {
+            refitWished("the ladder is back at its first step");
+        }
+    }
+
+    /**
+     * The ladder's step changed, so the limits the arena answers the core's {@code WorldMakes.limits} with changed too,
+     * for everyone (the ladder is the battle's, the same for every fighter): the core is told for every player on the
+     * server, and it fits each one's living wished creatures again from their own numbers (stronger as a step opens,
+     * held down again at the battle's end), keeping how hurt each was, and tells him once if anything moved. The arena
+     * never writes the core's fit itself. Server thread.
+     */
+    private void refitWished(String why) {
+        List<ServerPlayer> everyone = List.copyOf(server.getPlayerList().getPlayers());
+        LOG.info("Moddy Arena: ladder: {}; the core re-fits the living wished creatures of {} player(s)", why,
+                everyone.size());
+        for (ServerPlayer p : everyone) {
+            com.moddingfromamod.world.WorldMakes.limitsChanged(p.getUUID());
+        }
+    }
+
+    /**
+     * A wave was cleared and a break begins: the battle's place on the ladder may have risen (a wave cleared, or a boss
+     * beaten during it). If its step did, everyone in the battle is told at once, as a moment, so the break is his to use
+     * the stronger wishes: a title, one or two lines saying what rose and what opened ({@link ArenaWords#ladderRose}),
+     * and a fanfare. The core reads the new limits at the next make or hotbar fire, and fits the living wished creatures
+     * again at once ({@link #refitWished}).
+     */
+    private void ladderUp() {
+        ArenaLadder ladder = ArenaLadderRule.ladderOf(com.moddingfromamod.world.WorldRulesService.current());
+        int now = reached(ladder);
+        ArenaLadder.Rise rise = ladder.rise(ladderTold, now);
+        int was = ladderTold;
+        ladderTold = now;
+        ladderBoard.changed();
+        if (rise.isEmpty()) {
+            return;
+        }
+        LOG.info("Moddy Arena: ladder: {} -> {} ({}): step {} -> {}; rose {}, opened {}", was, now,
+                ladder.progress().id(), ladder.stepIndex(was) + 1, ladder.stepIndex(now) + 1, rise.rose().keySet(),
+                rise.opened());
+        for (ServerPlayer p : audience()) {
+            p.connection.send(new ClientboundSetTitlesAnimationPacket(10, 60, 20));
+            p.connection.send(new ClientboundSetSubtitleTextPacket(Component.literal(
+                    ArenaWords.ladderSubtitle(ladder.progress(), now))));
+            p.connection.send(new ClientboundSetTitleTextPacket(Component.literal(ArenaWords.ladderTitle())));
+            for (String line : ArenaWords.ladderRose(rise)) {
+                p.sendSystemMessage(Component.literal(line));
+            }
+            p.playNotifySound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.PLAYERS, 1.0f, 1.0f);
+        }
+        // after the arena's own lines, so the core's one line about his creatures ("stronger now") follows them
+        refitWished("step " + (ladder.stepIndex(now) + 1) + " opened");
     }
 
     /** The id of the difficulty's change to a wave mob's most health. */
@@ -856,6 +1098,9 @@ final class ArenaBattle {
             e.addTag(TAG);
             if (e instanceof Mob m) {
                 m.setPersistenceRequired();   // never despawned while the fighters stand far off
+                // never carries off a player's dropped armour or sword: a wave mob removed (a lost battle, one that
+                // left the arena) would take it with it
+                m.setCanPickUpLoot(false);
             }
             // a piglin or a hoglin turns into a zombie in the Overworld; an arena's never does
             if (e instanceof net.minecraft.world.entity.monster.piglin.AbstractPiglin piglin) {
@@ -929,33 +1174,113 @@ final class ArenaBattle {
     }
 
     /**
-     * After a battle: every thing in the arena that is not a player (its mobs, drops, experience, arrows, and anything
-     * wished into it), except a pet someone owns and anything carrying a player; and any wave mob that reached the
-     * prep room.
+     * After a battle ({@link ArenaTidy#atBattleEnd}): a player's own things in the arena (what he dropped when knocked
+     * out, what he threw, an arrow or trident he may pick up) are moved to the prep room, never removed; a pet someone
+     * owns, a player and what carries one stay; everything else in the arena goes (its mobs, their drops, experience,
+     * arrows, anything wished into it, and every creature a wish made, tamed or not); and any wave mob that reached
+     * the prep room.
      */
     private int clearArena(ServerLevel level) {
         ArenaPlace.Box r = place.resetBox(level.getMaxY());
         AABB arena = new AABB(r.x0(), r.y0() - 1, r.z0(), r.x1() + 1, r.y1() + 1, r.z1() + 1);
-        // a player's own things (what a fighter dropped when knocked out, what a player threw) go to the prep room
         int[] home = place.arrival();
         int moved = 0;
-        for (ItemEntity item : level.getEntities(EntityTypeTest.forClass(ItemEntity.class), arena, this::playersOwn)) {
-            item.teleportTo(home[0] + 0.5, home[1] + 0.2, home[2] + 0.5);
-            item.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
-            moved++;
+        int removed = 0;
+        for (Entity e : List.copyOf(level.getEntities(EntityTypeTest.forClass(Entity.class), arena, x -> true))) {
+            if (e.isRemoved()) {
+                continue;
+            }
+            switch (ArenaTidy.atBattleEnd(thing(e))) {
+                case TO_PREP_ROOM -> {
+                    if (toPrepRoom(level, e, home)) {
+                        moved++;
+                    }
+                }
+                case REMOVE -> {
+                    e.discard();
+                    removed++;
+                }
+                case KEEP -> {
+                }
+            }
         }
         if (moved > 0) {
-            LOG.info("Moddy Arena: battle: {} of the players' own dropped things moved to the prep room", moved);
+            LOG.info("Moddy Arena: battle: {} of the players' own things moved to the prep room", moved);
         }
-        fightersDrops.clear();
-        int n = discard(level, arena, e -> !(e instanceof Player) && !owned(e) && !playersOwn(e)
-                && !e.hasPassenger(p -> p instanceof Player) && !e.getTags().contains(ArenaBoard.TAG));
-        return n + discard(level, placeBox(level), e -> e.getTags().contains(TAG));
+        playersDrops.clear();
+        return removed + discard(level, placeBox(level), e -> e.getTags().contains(TAG));
     }
 
-    /** An item a player threw, or one a fighter dropped when he was knocked out. */
-    private boolean playersOwn(Entity e) {
-        return e instanceof ItemEntity item && (fightersDrops.contains(item.getUUID()) || item.getOwner() instanceof Player);
+    /**
+     * Moves one of a player's things to the prep room's arrival spot: a dropped item as it is; an arrow or trident he
+     * may pick up as the item it is picked up as (it would not lie still in the air). True when it went.
+     */
+    private static boolean toPrepRoom(ServerLevel level, Entity e, int[] home) {
+        if (e instanceof ItemEntity item) {
+            item.teleportTo(home[0] + 0.5, home[1] + 0.2, home[2] + 0.5);
+            item.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+            return true;
+        }
+        if (e instanceof AbstractArrow arrow) {
+            ItemStack stack = arrow.getPickupItemStackOrigin().copy();
+            arrow.discard();
+            if (stack.isEmpty()) {
+                return false;
+            }
+            ItemEntity item = new ItemEntity(level, home[0] + 0.5, home[1] + 0.2, home[2] + 0.5, stack);
+            item.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+            item.setPickUpDelay(10);
+            level.addFreshEntity(item);
+            return true;
+        }
+        return false;
+    }
+
+    /** What a thing in the arena is, for {@link ArenaTidy}. */
+    private ArenaTidy.Thing thing(Entity e) {
+        if (e instanceof Player || e.hasPassenger(p -> p instanceof Player) || e.getTags().contains(ArenaBoard.TAG)) {
+            return ArenaTidy.Thing.UNTOUCHED;
+        }
+        if (e instanceof ItemEntity item) {
+            return playersOwn(item) ? ArenaTidy.Thing.PLAYERS_ITEM : ArenaTidy.Thing.DROP;
+        }
+        if (e instanceof net.minecraft.world.entity.ExperienceOrb) {
+            return ArenaTidy.Thing.DROP;
+        }
+        if (e instanceof AbstractArrow a && a.pickup == AbstractArrow.Pickup.ALLOWED && a.getOwner() instanceof Player) {
+            return ArenaTidy.Thing.PLAYERS_PICKUP;
+        }
+        if (looseThing(e)) {
+            return ArenaTidy.Thing.LOOSE;
+        }
+        if (e.getTags().contains(TAG)) {
+            return ArenaTidy.Thing.WAVE_MOB;
+        }
+        if (wished(e)) {
+            return ArenaTidy.Thing.WISHED;
+        }
+        return owned(e) ? ArenaTidy.Thing.PET : ArenaTidy.Thing.OTHER;
+    }
+
+    /** An item a player threw, or one a player dropped when he died (or was knocked out). */
+    private boolean playersOwn(ItemEntity item) {
+        return playersDrops.contains(item.getUUID()) || item.getOwner() instanceof Player;
+    }
+
+    /**
+     * A dropped item is a player's own (the game's events: what a player dropped when he died, or threw): kept between
+     * waves and moved to the prep room when the battle is over. Server thread.
+     */
+    void playersItem(UUID item) {
+        if (item != null) {
+            playersDrops.add(item);
+        }
+    }
+
+    /** A creature a player's wish made ({@link ArenaRoles#wished}). */
+    private static boolean wished(Entity e) {
+        return ArenaRoles.wished(com.moddingfromamod.world.Wished.isWished(e), e.getTags(), List.of(TAG, ArenaBoard.TAG, ArenaChampionsBoard.TAG,
+                ArenaRoleKeeper.SIGN_TAG, ArenaLadderBoard.TAG));
     }
 
     private static boolean owned(Entity e) {

@@ -89,9 +89,9 @@ effect give @e[tag=moddyarena_wave] minecraft:weakness 600 255 true
 @assert execute if entity @e[type=minecraft:sheep,tag=moddyarena_healer]
 @assert execute if entity @e[type=minecraft:camel,tag=moddyarena_tank]
 @assert execute if entity @e[tag=wishmob,tag=!standin,tag=moddyarena_role]
-@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_rolesign,nbt={text:{text:"Healer"}}]
-@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_rolesign,nbt={text:{text:"Tank"}}]
-@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_rolesign,nbt={text:{text:"Fighter"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_rolesign,nbt={text:{text:"❤ Healer"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_rolesign,nbt={text:{text:"⛨ Tank"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_rolesign,nbt={text:{text:"⚔ Fighter"}}]
 
 @step the cow nobody wished gets nothing
 @assert execute unless entity @e[type=minecraft:cow,tag=moddyarena_role]

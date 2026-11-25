@@ -69,9 +69,11 @@ class ArenaAlliesTest {
     }
 
     @Test
-    void aCreatureWithNoAttackStillHurts() {
-        assertEquals(ArenaAllies.NO_ATTACK_DAMAGE, ArenaAllies.damage(0));
+    void aStrikeTakesTheCreaturesOwnAttackAndNeverInventsOne() {
         assertEquals(7.0f, ArenaAllies.damage(7.0));
-        assertTrue(ArenaAllies.NO_ATTACK_DAMAGE > 0);
+        assertEquals(3.0f, ArenaAllies.damage(3.0), "a friendly creature with a 3 attack: its own 3");
+        assertEquals(0f, ArenaAllies.damage(0), "no attack: no hit, never a made-up one");
+        assertEquals(0f, ArenaAllies.damage(-1));
+        assertEquals(0f, ArenaAllies.damage(Double.NaN));
     }
 }

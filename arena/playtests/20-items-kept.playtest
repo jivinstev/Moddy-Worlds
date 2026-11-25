@@ -1,0 +1,108 @@
+# Moddy Arena: nothing of a player's is taken away. In a battle he throws a block in the arena, and is knocked out
+# with lives left wearing an iron chestplate: it falls where he fell, as Minecraft drops it. The arena mends itself
+# when the wave is cleared, and his things still lie there for him to pick up; when the battle is over they are
+# carried to the prep room, not cleared. Knocked out of his last life, the same: his things are in the prep room after
+# the tidy. Monsters are removed by command; a resistance effect keeps them from knocking him out by themselves.
+# play-timeout: 900
+@intent a player's own dropped and thrown things survive the arena's mend between waves and its tidy at a battle's end, which carries them to the prep room, whether he was knocked out with lives left or out of his last life
+@world flat seed=1
+@continue-on-fail
+
+@step he arrives
+@expect chat Welcome to Moddy Arena within 90s
+@wait 2s
+difficulty hard
+difficulty normal
+gamemode survival
+effect give @s minecraft:resistance 900 4 true
+effect give @s minecraft:saturation 900 0 true
+scoreboard objectives add arenatest dummy
+
+@step in wave 1 he throws a block on the arena's far side
+moddy arena start
+@expect title Wave 1 of 5 within 15s
+@wait 1s
+teleport @s 0.5 64 -10.5 0 30
+@wait 10t
+item replace entity @s hotbar.8 with minecraft:cobblestone 5
+@key key.hotbar.9
+@wait 5t
+@key key.drop
+@wait 2s
+@assert execute if entity @e[type=minecraft:item,x=-15,y=63,z=-15,dx=30,dy=10,dz=30,nbt={Item:{id:"minecraft:cobblestone"}}]
+
+@step knocked out with lives left, his iron chestplate falls where he fell
+teleport @s 8.5 64 -10.5 0 0
+item replace entity @s armor.chest with minecraft:iron_chestplate
+@wait 5t
+kill @s
+@expect chat Knocked out! 2 lives left within 10s
+@wait 2s
+@assert execute if entity @e[type=minecraft:item,x=-15,y=63,z=-15,dx=30,dy=10,dz=30,nbt={Item:{id:"minecraft:iron_chestplate"}}]
+@assert execute unless items entity @s armor.chest minecraft:iron_chestplate
+@wait 5s
+@aim pos 8.5 64 -10.5
+@wait 1s
+@shot his-things-in-the-arena
+
+@step the wave is cleared and the arena mended: his things still lie there
+kill @e[tag=moddyarena_wave]
+@expect chat Wave 1 cleared within 10s
+@wait 2s
+@assert execute if entity @e[type=minecraft:item,x=-15,y=63,z=-15,dx=30,dy=10,dz=30,nbt={Item:{id:"minecraft:cobblestone"}}]
+@assert execute if entity @e[type=minecraft:item,x=-15,y=63,z=-15,dx=30,dy=10,dz=30,nbt={Item:{id:"minecraft:iron_chestplate"}}]
+
+@step he stays away from them; the battle is won and his things are carried to the prep room
+teleport @s -10.5 64 10.5 0 0
+@expect title Wave 2 of 5 within 25s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title Wave 3 of 5 within 25s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title Wave 4 of 5 within 25s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title BOSS WAVE within 25s
+@wait 1s
+teleport @s -10.5 64 10.5 0 0
+kill @e[tag=moddyarena_wave]
+@expect title You won within 10s
+@expect chat The arena is tidy again within 20s
+@wait 1s
+@assert execute unless entity @e[type=minecraft:item,x=-15,y=63,z=-15,dx=30,dy=10,dz=30,nbt={Item:{id:"minecraft:iron_chestplate"}}]
+@assert execute if entity @e[type=minecraft:item,x=-4,y=63,z=17,dx=8,dy=3,dz=8,nbt={Item:{id:"minecraft:iron_chestplate"}}]
+@assert execute if entity @e[type=minecraft:item,x=-4,y=63,z=17,dx=8,dy=3,dz=8,nbt={Item:{id:"minecraft:cobblestone"}}]
+teleport @s 0.5 64 24.5 180 40
+@wait 1s
+@shot his-things-in-the-prep-room
+
+@step he picks them up where he comes back
+teleport @s 0.5 64 21.5 180 0
+@wait 2s
+@assert execute if items entity @s container.* minecraft:iron_chestplate
+
+@step knocked out of his last life: his things are in the prep room after the tidy too
+clear @s minecraft:iron_chestplate
+moddy arena start
+@expect title Wave 1 of 5 within 15s
+@wait 1s
+teleport @s 8.5 64 -10.5 0 0
+item replace entity @s armor.chest with minecraft:golden_chestplate
+@wait 5t
+kill @s
+@expect chat Knocked out! 2 lives left within 10s
+@wait 2s
+teleport @s -10.5 64 10.5 0 0
+kill @s
+@expect chat Knocked out! 1 life left within 10s
+@wait 2s
+teleport @s -10.5 64 10.5 0 0
+kill @s
+@expect chat no lives left within 10s
+@wait 1s
+teleport @s -10.5 64 10.5 0 0
+@expect chat The arena is tidy again within 20s
+@wait 1s
+@assert execute if entity @e[type=minecraft:item,x=-4,y=63,z=17,dx=8,dy=3,dz=8,nbt={Item:{id:"minecraft:golden_chestplate"}}]
+@assert execute unless entity @e[type=minecraft:item,x=-15,y=63,z=-15,dx=30,dy=10,dz=30,nbt={Item:{id:"minecraft:golden_chestplate"}}]

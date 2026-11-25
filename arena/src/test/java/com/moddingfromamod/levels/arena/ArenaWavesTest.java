@@ -21,7 +21,7 @@ class ArenaWavesTest {
     private static final Set<String> KNOWN = Set.of("minecraft:husk", "minecraft:pillager", "minecraft:witch",
             "minecraft:vindicator", "minecraft:zombie");
     private static final List<WorldRuleType> TYPES = List.of(new ArenaRule(), new ArenaWavesRule(KNOWN::contains),
-            new ArenaWishesRule(), new ArenaCreaturesRule());
+            new ArenaWishesRule(), new ArenaCreaturesRule(), new ArenaLadderRule());
 
     private static String bundled() throws IOException {
         try (InputStream in = ArenaWavesTest.class.getResourceAsStream("/worlds/rules/arena.rules.json")) {

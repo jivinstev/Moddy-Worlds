@@ -213,7 +213,8 @@ teleport @s 0.5 64 19.5 180 0
 @wait 5t
 @assert execute if items entity @s weapon.mainhand minecraft:paper
 @key key.use
-@expect chat /is ready/ within 90s
+# its own name: "is ready" alone also matches "Everyone is ready!" from the READY a moment before
+@expect chat /Your Cozy House is ready/ within 90s
 @wait 3s
 @assert execute unless blocks -15 64 -15 15 67 15 -15 200 -15 all
 @shot the-house-from-the-hotbar

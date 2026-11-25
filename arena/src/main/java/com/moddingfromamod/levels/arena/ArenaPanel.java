@@ -254,6 +254,7 @@ public final class ArenaPanel {
             case BEST -> {
                 out.add("Best for MMMMMMMMMMMMMMMM: wave 995 in 99:59");
                 out.add("MMMMMMMMMMMMMMMM: no best at these settings yet");
+                out.add(ArenaWords.bestNotRecorded("MMMMMMMMMMMMMMMM", ArenaUnranked.Mode.SPECTATOR));
                 out.add("Press a button to see your best");
             }
             case DIFFICULTY_LABEL -> out.add(ArenaWords.PANEL_DIFFICULTY);
@@ -349,6 +350,45 @@ public final class ArenaPanel {
         out.add(new Slot(value, left, r + 0.08 + Math.max(0, (0.6 - LINE * vs) / 2), z, vs, "yellow"));
         out.add(new Slot(downSign, down, r + 0.64, z, 1.3f, "white"));
         out.add(new Slot(upSign, up, r + 0.64, z, 1.3f, "white"));
+    }
+
+    /**
+     * One line of the wish ladder board's words ({@link ArenaLadderLayout}), on the prep room's west wall beside the
+     * control panel, facing into the room: (x, y, z) is the bottom middle of the words; {@code yaw} which way they face
+     * (-90: east, into the room); {@code scale} how big.
+     */
+    public record LadderSlot(ArenaLadderLayout.Role role, String text, String colour, boolean bold, double x, double y,
+                             double z, float yaw, float scale) {
+    }
+
+    /**
+     * The wish ladder board's blocks: the prep room's west wall, from the floor to the room's top, its first four
+     * columns beside the shared wall (the panel's wall). Seen from the room, they are a black board on the left of the
+     * panel.
+     */
+    public Box ladderBoard() {
+        int z0 = place.sharedWallZ() + 1;
+        return new Box(-h() - 1, place.floorY(), z0, -h() - 1, place.floorY() + ArenaPlace.PREP_HEIGHT - 1, z0 + 3);
+    }
+
+    /** Where each line of the wish ladder board's words floats, and how big ({@link ArenaLadderLayout#lay}). */
+    public List<LadderSlot> ladderSlots(ArenaWords.LadderBoardWords words) {
+        Box b = ladderBoard();
+        double width = b.z1() - b.z0() + 1;
+        double x = -h() + IN_FRONT;                                     // the west wall's inside face
+        double z = b.z0() + width / 2;                                  // the board's middle
+        List<LadderSlot> out = new ArrayList<>();
+        for (ArenaLadderLayout.Line l : ArenaLadderLayout.lay(words, width, b.y1() - b.y0() + 1)) {
+            out.add(new LadderSlot(l.role(), l.text(), l.colour(), l.bold(), x, b.y0() + l.bottom(), z, -90f,
+                    l.scale()));
+        }
+        return out;
+    }
+
+    /** The box round the wish ladder board's words, to find them in the world. */
+    public Box ladderWordsBox() {
+        Box b = ladderBoard();
+        return new Box(b.x0(), b.y0() - 1, b.z0() - 1, b.x0() + 2, b.y1() + 1, b.z1() + 1);
     }
 
     /** The box round every line of words (and its buttons), to find the board's words in the world. */

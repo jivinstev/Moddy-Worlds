@@ -27,8 +27,12 @@ class ArenaRolesTest {
         assertEquals(Role.FIGHTER, ArenaRoles.choose(new Facts(3, 20, 0.6, false, true), N), "a cat or a zombie's punch");
         assertEquals(Role.FIGHTER, ArenaRoles.choose(new Facts(15, 100, 1.4, false, true), N),
                 "big and tough, but it fights: a fighter first");
-        assertEquals(Role.FIGHTER, ArenaRoles.choose(new Facts(0, 20, 0.6, true, true), N),
-                "a monster a wish summoned fights, attack or not");
+        assertEquals(Role.FIGHTER, ArenaRoles.choose(new Facts(1, 20, 0.6, true, true), N),
+                "a monster a wish summoned fights, however soft its punch");
+        assertEquals(Role.HEALER, ArenaRoles.choose(new Facts(0, 20, 0.6, true, true), N),
+                "but a monster with no attack at all is no Fighter: it heals");
+        assertEquals(Role.TANK, ArenaRoles.choose(new Facts(0, 80, 0.6, true, true), N),
+                "or, when tough, it is a Tank");
         assertEquals(Role.FIGHTER, ArenaRoles.choose(new Facts(3, 20, 0.6, false, false), N),
                 "it fights where it stands when it cannot walk");
     }
@@ -98,13 +102,19 @@ class ArenaRolesTest {
 
     @Test
     void onlyAWishedCreatureGetsARole() {
-        assertTrue(ArenaRoles.wished(Set.of("wishmob", "wishmob_buddy_the_cat"), ARENAS_OWN), "a wished creature");
-        assertTrue(ArenaRoles.wished(Set.of("moddy_wished"), ARENAS_OWN), "a mob a wish summoned");
-        assertFalse(ArenaRoles.wished(Set.of(), ARENAS_OWN), "a mob that wandered in, or a /summon: no tags");
-        assertFalse(ArenaRoles.wished(Set.of("his_own_tag"), ARENAS_OWN));
-        assertFalse(ArenaRoles.wished(null, ARENAS_OWN));
-        assertFalse(ArenaRoles.wished(Set.of("wishmob", "moddyarena_wave"), ARENAS_OWN), "never a wave's monster");
-        assertFalse(ArenaRoles.wished(Set.of("moddy_wished", ArenaRoleKeeper.SIGN_TAG), ARENAS_OWN), "never a sign");
+        assertTrue(wished(Set.of("wishmob", "wishmob_buddy_the_cat")), "a wished creature");
+        assertTrue(wished(Set.of("moddy_wished")), "a mob a wish summoned");
+        assertFalse(wished(Set.of()), "a mob that wandered in, or a /summon: no tags");
+        assertFalse(wished(Set.of("his_own_tag")));
+        assertFalse(ArenaRoles.wished(false, null, ARENAS_OWN));
+        assertTrue(ArenaRoles.wished(true, null, ARENAS_OWN), "the core says a wish made it, with no tags read");
+        assertFalse(wished(Set.of("wishmob", "moddyarena_wave")), "never a wave's monster");
+        assertFalse(wished(Set.of("moddy_wished", ArenaRoleKeeper.SIGN_TAG)), "never a sign");
+    }
+
+    /** The arena's decision on a body's tags, with the core's own documented reader deciding "a wish made it". */
+    private static boolean wished(Set<String> tags) {
+        return ArenaRoles.wished(com.moddingfromamod.world.Wished.byTags(tags), tags, ARENAS_OWN);
     }
 
     @Test
@@ -184,5 +194,37 @@ class ArenaRolesTest {
             String l = ArenaWords.roleTaken(r, "Rex");
             assertTrue(l.startsWith("Your Rex is a " + r.word() + "!"), l);
         }
+    }
+
+    /** A role's sign: its symbol and word, over the creature's name plate, and lifted clear of a sign close by. */
+    @Test
+    void aSignIsReadableAndClearOfTheNamePlateAndOtherSigns() {
+        org.junit.jupiter.api.Assertions.assertEquals("\u2694 Fighter", ArenaRoles.signText(ArenaRoles.Role.FIGHTER));
+        for (ArenaRoles.Role r : ArenaRoles.Role.values()) {
+            org.junit.jupiter.api.Assertions.assertEquals(1, r.symbol().length(), "one glyph, in the basic plane");
+        }
+        double plain = ArenaRoles.signY(64, 2.0, false);
+        double named = ArenaRoles.signY(64, 2.0, true);
+        org.junit.jupiter.api.Assertions.assertTrue(plain > 66.4, "above the top, clear of where a name plate floats");
+        org.junit.jupiter.api.Assertions.assertTrue(named > plain, "higher still over a name plate");
+        java.util.List<double[]> placed = new java.util.ArrayList<>();
+        placed.add(new double[] {0, 66.6, 0});
+        double next = ArenaRoles.signLift(0.5, 0.5, 66.6, placed);
+        org.junit.jupiter.api.Assertions.assertTrue(next >= 66.6 + ArenaRoles.SIGN_ROW, "a close sign goes up a row");
+        org.junit.jupiter.api.Assertions.assertEquals(66.6, ArenaRoles.signLift(5, 5, 66.6, placed), 1e-9,
+                "a far one stays");
+        placed.add(new double[] {0.5, next, 0.5});
+        org.junit.jupiter.api.Assertions.assertTrue(ArenaRoles.signLift(0, 0.3, 66.6, placed) >= next + ArenaRoles.SIGN_ROW,
+                "a third goes up again");
+    }
+
+    /** Two signs side by side never cover each other: "close" is at least a sign's width, a row at least its height. */
+    @Test
+    void signsAreKeptApartByTheirOwnSize() {
+        for (ArenaRoles.Role r : ArenaRoles.Role.values()) {
+            double wide = ArenaPanel.width(ArenaRoles.signText(r)) * 1.17 * ArenaRoleKeeper.SIGN_SCALE;
+            org.junit.jupiter.api.Assertions.assertTrue(ArenaRoles.SIGN_NEAR >= wide, r + " is " + wide + " wide");
+        }
+        org.junit.jupiter.api.Assertions.assertTrue(ArenaRoles.SIGN_ROW >= ArenaPanel.LINE * ArenaRoleKeeper.SIGN_SCALE * 1.2);
     }
 }

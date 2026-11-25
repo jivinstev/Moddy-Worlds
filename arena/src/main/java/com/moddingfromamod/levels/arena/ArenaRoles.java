@@ -13,8 +13,11 @@ import java.util.UUID;
  * wished as.
  *
  * <ul>
- *   <li><b>Fighter</b>: a creature that can fight (its own attack is at least {@link ArenaCreatures#fighterAttack}, or
- *       it is a monster) goes for the wave's monsters ({@link ArenaAllies});</li>
+ *   <li><b>Fighter</b>: a creature that can hurt (its own attack is at least {@link ArenaCreatures#fighterAttack}, or
+ *       it is a monster with any attack at all) goes for the wave's monsters, and the arena lands its blows at its own
+ *       attack damage ({@link ArenaAllies}), whatever its own nature (a friendly creature never strikes by itself). A
+ *       creature whose attack damage is 0 is never a Fighter: nothing it does is known to hurt a monster (the core
+ *       gives no fact about its special moves), and the arena gives no creature damage it does not have;</li>
  *   <li><b>Tank</b>: a big or tough creature that does not fight (most health at least
  *       {@link ArenaCreatures#tankHealth}, or at least {@link ArenaCreatures#tankWidth} wide) draws the monsters near it
  *       and stands up to them;</li>
@@ -34,16 +37,23 @@ final class ArenaRoles {
 
     /** A wished creature's battle role. */
     enum Role {
-        FIGHTER("Fighter", "red"),
-        TANK("Tank", "aqua"),
-        HEALER("Healer", "green");
+        FIGHTER("Fighter", "red", "\u2694"),     // crossed swords
+        TANK("Tank", "aqua", "\u26E8"),          // a shield (a black cross on a shield)
+        HEALER("Healer", "green", "\u2764");     // a heart
 
         private final String word;
         private final String colour;
+        private final String symbol;
 
-        Role(String word, String colour) {
+        Role(String word, String colour, String symbol) {
             this.word = word;
             this.colour = colour;
+            this.symbol = symbol;
+        }
+
+        /** The small symbol before its word on the sign: a glyph the game's own font draws (never a box). */
+        String symbol() {
+            return symbol;
         }
 
         /** The role's name as a player reads it ("Healer"). */
@@ -79,7 +89,7 @@ final class ArenaRoles {
      * walk to its player, is a Tank where it stands.
      */
     static Role choose(Facts f, ArenaCreatures n) {
-        if (f.monster() || f.attack() >= n.fighterAttack()) {
+        if (f.attack() >= n.fighterAttack() || (f.monster() && f.attack() > 0)) {
             return Role.FIGHTER;
         }
         if (f.maxHealth() >= n.tankHealth() || f.width() >= n.tankWidth()) {
@@ -91,29 +101,17 @@ final class ArenaRoles {
     // ── which creatures ─────────────────────────────────────────────────────────────────────────────────────────────
 
     /**
-     * The tag the Moddy core puts on every creature a wish makes (a Builder or Apprentice make, a Magician's sculpt, a
-     * spawn egg), on the body that stands in the world: its public handle for "the things I made", which the core's own
-     * docs tell a datapack to select creatures by ({@code @e[tag=wishmob]}).
+     * True for a creature a player wished for: one the core says a wish made ({@code madeByAWish}, from the core's
+     * documented {@code com.moddingfromamod.world.Wished.isWished}, whatever path made it) and that carries none of the
+     * arena's own tags (a wave's monster, the control panel's or the Champions board's words, a role's sign). A mob
+     * that wandered in, or was put there by a command, is not wished and is left alone.
      */
-    static final String WISHED_CREATURE = "wishmob";
-
-    /**
-     * The tag the core puts on a plain game mob a wish summoned (a Magician's {@code summon}, an event, a datapack the
-     * wish made): the creatures its wish-made-mob limit counts. Not one of the core's documented handles (only its
-     * source names it), so this is the best approximation the arena has for "a creature the player's wish summoned";
-     * see the arena's README.
-     */
-    static final String WISH_SUMMONED = "moddy_wished";
-
-    /**
-     * True for a creature a player wished for, by its tags: the core's {@link #WISHED_CREATURE} or
-     * {@link #WISH_SUMMONED}, and none of the arena's own (a wave's monster, the control panel's or the Champions
-     * board's words, a role's sign). A mob that wandered in, or was put there by a command, has neither and is left
-     * alone.
-     */
-    static boolean wished(Collection<String> tags, Collection<String> arenasOwn) {
-        if (tags == null || !(tags.contains(WISHED_CREATURE) || tags.contains(WISH_SUMMONED))) {
+    static boolean wished(boolean madeByAWish, Collection<String> tags, Collection<String> arenasOwn) {
+        if (!madeByAWish) {
             return false;
+        }
+        if (tags == null) {
+            return true;
         }
         for (String t : arenasOwn) {
             if (tags.contains(t)) {
@@ -249,5 +247,52 @@ final class ArenaRoles {
 
     private static double sq(double v) {
         return v * v;
+    }
+
+    // ── the sign above a creature ───────────────────────────────────────────────────────────────────────────────────
+
+    /** The sign's words: the role's symbol, then its word ("\u2694 Fighter"). */
+    static String signText(Role role) {
+        return role.symbol() + " " + role.word();
+    }
+
+    /** How far above the creature's top its sign starts: over the name plate a named creature carries. */
+    static final double SIGN_GAP = 0.6;
+    static final double SIGN_GAP_NAMED = 0.95;
+    /**
+     * How far apart two signs must be, across and up: closer than this, the later one goes up a row. Across is about a
+     * sign's width (the widest word, at its size), so two creatures side by side never show their words on top of each
+     * other, even from across the arena; a row is a line's height and a little more.
+     */
+    static final double SIGN_NEAR = 3.4;
+    static final double SIGN_ROW = 0.8;
+
+    /** Where a creature's sign floats: from its own height, clear of its name plate when it has one. */
+    static double signY(double feetY, double height, boolean named) {
+        return feetY + height + (named ? SIGN_GAP_NAMED : SIGN_GAP);
+    }
+
+    /**
+     * The sign's height, lifted a row at a time while a sign already placed is close across and in height, so two
+     * creatures standing together show both words (at most four rows up).
+     */
+    static double signLift(double x, double z, double y, java.util.List<double[]> placed) {
+        double at = y;
+        for (int row = 0; row < 4; row++) {
+            boolean clash = false;
+            for (double[] p : placed) {
+                double dx = p[0] - x;
+                double dz = p[2] - z;
+                if (dx * dx + dz * dz < SIGN_NEAR * SIGN_NEAR && Math.abs(p[1] - at) < SIGN_ROW) {
+                    clash = true;
+                    break;
+                }
+            }
+            if (!clash) {
+                return at;
+            }
+            at += SIGN_ROW;
+        }
+        return at;
     }
 }
