@@ -46,6 +46,8 @@ final class ArenaCharge implements WishCharge {
     private final ArenaWishPolicy policy;
     private final Supplier<ArenaWishes> wishes;
     private volatile ArenaWishPolicy.Phase phase = ArenaWishPolicy.Phase.PREP;
+    /** The battle, for where it is on the wish ladder; null in a test. */
+    private volatile ArenaBattle battle;
 
     ArenaCharge(MinecraftServer server, ArenaWishPolicy policy, Supplier<ArenaWishes> wishes) {
         this.server = server;
@@ -57,6 +59,11 @@ final class ArenaCharge implements WishCharge {
     static ArenaCharge of(MinecraftServer server) {
         return new ArenaCharge(server, new ArenaWishPolicy(),
                 () -> ArenaWishesRule.wishesOf(WorldRulesService.current()));
+    }
+
+    /** The arena's battle, whose wish ladder {@code /moddy wishes} reports. */
+    void battle(ArenaBattle b) {
+        battle = b;
     }
 
     ArenaWishPolicy policy() {
@@ -236,17 +243,26 @@ final class ArenaCharge implements WishCharge {
     /** The Arena Guide's numbers, from the rules in force when the core gives the book. */
     @Override
     public Map<String, String> guideValues() {
-        return ArenaGuide.values(ArenaWavesRule.wavesOf(WorldRulesService.current()), wishes.get());
+        return ArenaGuide.values(ArenaWavesRule.wavesOf(WorldRulesService.current()), wishes.get(),
+                ArenaLadderRule.ladderOf(WorldRulesService.current()));
     }
 
     @Override
     public List<String> wishesCommand(UUID player) {
         ArenaWishes w = wishes.get();
+        List<String> out = new java.util.ArrayList<>();
         if (phase == ArenaWishPolicy.Phase.BATTLE) {
-            return ArenaWords.battleWishes(w.cooldownSeconds(), policy.firesLeft(player, w), w.wishesPerWave());
+            out.addAll(ArenaWords.battleWishes(w.cooldownSeconds(), policy.firesLeft(player, w), w.wishesPerWave()));
+        } else {
+            out.add(ArenaWords.magicianLeft(policy.left(player, w), w.magicianWishes()));
+            out.add(ArenaWords.prepWishes(w.wishesPerWave()));
         }
-        return List.of(ArenaWords.magicianLeft(policy.left(player, w), w.magicianWishes()),
-                ArenaWords.prepWishes(w.wishesPerWave()));
+        ArenaBattle b = battle;
+        if (b != null) {   // the wish ladder: the limits every fighter's makes are fitted to now, and what is next
+            ArenaLadder ladder = ArenaModule.ladder();
+            out.addAll(ArenaWords.ladderWishes(ladder, b.ladderOn(), b.reached(ladder)));
+        }
+        return out;
     }
 
     @Override

@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
 class ArenaGuideTest {
 
     private static final List<WorldRuleType> TYPES = List.of(new ArenaRule(), new ArenaWavesRule(null),
-            new ArenaWishesRule(), new ArenaCreaturesRule());
+            new ArenaWishesRule(), new ArenaCreaturesRule(), new ArenaLadderRule());
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{([a-z_]+)}");
 
     private static String read(String path) throws IOException {
@@ -52,7 +52,7 @@ class ArenaGuideTest {
 
     private static Map<String, String> bundledValues() throws IOException {
         WorldRules r = bundledRules();
-        return ArenaGuide.values(ArenaWavesRule.wavesOf(r), ArenaWishesRule.wishesOf(r));
+        return ArenaGuide.values(ArenaWavesRule.wavesOf(r), ArenaWishesRule.wishesOf(r), ArenaLadderRule.ladderOf(r));
     }
 
     @Test
@@ -94,7 +94,8 @@ class ArenaGuideTest {
         // the widest numbers a rule may set still fit
         Map<String, String> widest = Map.of("arena_lives", "10", "arena_boss_every", "50", "arena_break_seconds", "120",
                 "arena_boss_break_seconds", "300", "arena_magician_wishes", "20", "arena_rest_seconds", "120",
-                "arena_wishes_per_wave", "50");
+                "arena_wishes_per_wave", "50", "arena_ladder_health", "500000", "arena_ladder_hits", "500000",
+                "arena_ladder_events_open", ArenaWords.opensAt(ArenaLadder.Count.BOSSES, ArenaLadder.MAX_AFTER));
         assertEquals(List.of(), GuideBook.problems(new WorldGuide.Book(b.title(), b.author(),
                 GuideBook.pages(b, widest))), "with the largest numbers the rules allow");
     }
@@ -142,6 +143,22 @@ class ArenaGuideTest {
         assertEquals(String.valueOf(wishes.magicianWishes()), v.get("arena_magician_wishes"));
         assertEquals(String.valueOf(wishes.cooldownSeconds()), v.get("arena_rest_seconds"));
         assertEquals(String.valueOf(wishes.wishesPerWave()), v.get("arena_wishes_per_wave"));
+        ArenaLadder ladder = ArenaLadderRule.ladderOf(r);
+        assertEquals(ArenaGuide.heartsNumber(ladder.limits(0).get("healthHalfHearts")), v.get("arena_ladder_health"));
+        assertEquals(ArenaGuide.heartsNumber(ladder.limits(0).get("attackDamageHalfHearts")), v.get("arena_ladder_hits"));
+        assertEquals("wave " + ladder.opensAfter("event", false), v.get("arena_ladder_events_open"));
+    }
+
+    /** A ladder that limits nothing at first, or locks no events, leaves those pages out. */
+    @Test
+    void aLadderWithoutFirstLimitsOrLockedEventsLeavesItsPagesOut() throws IOException {
+        WorldRules r = bundledRules();
+        ArenaLadder open = new ArenaLadder(ArenaLadder.Count.WAVES,
+                List.of(new ArenaLadder.Step(0, Map.of(), null)), null);
+        Map<String, String> v = ArenaGuide.values(ArenaWavesRule.wavesOf(r), ArenaWishesRule.wishesOf(r), open);
+        assertFalse(v.containsKey("arena_ladder_health"));
+        assertFalse(v.containsKey("arena_ladder_events_open"));
+        assertEquals(book().pages().size() - 2, GuideBook.pages(book(), v).size());
     }
 
     /** A rule that turns a thing off leaves its page out, never a page that says "every 0 waves". */
@@ -171,7 +188,8 @@ class ArenaGuideTest {
         assertFalse(all.contains("MONSTERS"), "no MONSTERS selector any more: the difficulty sets how many");
         for (String word : List.of("prep room", "gate", "bars", "how many monsters", "DIFFICULTY", "WAVES", "START BATTLE", "READY",
                 "BOSS WAVE", "lives", "break", "mends", "Builder", "Apprentice", "Magician", "My wishes",
-                "Add to hotbar", "rests", "each wave", "Fighter", "Healer", "Tank", "Champions")) {
+                "Add to hotbar", "rests", "each wave", "Fighter", "Healer", "Tank", "Champions", "WISH LADDER",
+                "hearts", "events open")) {
             assertTrue(all.contains(word), "the guide says nothing about " + word);
         }
     }

@@ -112,6 +112,19 @@ final class ArenaBattle {
     private final Map<UUID, Integer> backIn = new HashMap<>();
     /** Whether the gateway was last set shut (null: not set yet in this run of the server). */
     private Boolean gateSetShut;
+    /** The wish ladder board beside the control panel. */
+    private final ArenaLadderBoard ladderBoard;
+    /**
+     * The battle's own place on the wish ladder: the waves it has cleared and the bosses it has beaten, the same for
+     * every fighter; none outside a battle, so prep is the first step. Read by the core's {@code WorldMakes} questions
+     * (any thread), written on the server thread.
+     */
+    private volatile int wavesCleared;
+    private volatile int bossesBeaten;
+    /** True from the button to the arena being ready again: the ladder is the battle's. */
+    private volatile boolean ladderOn;
+    /** Where the ladder was when its step was last told (at the start of a break). */
+    private int ladderTold;
     private long ticks;
 
     ArenaBattle(MinecraftServer server, ArenaPlace place, ArenaState state, ArenaCharge wishes) {
@@ -121,8 +134,9 @@ final class ArenaBattle {
         this.wishes = wishes;
         this.board = new ArenaBoard(server, place, state);
         this.champions = new ArenaChampionsBoard(server, place, state);
+        this.ladderBoard = new ArenaLadderBoard(server, place);
         this.roles = new ArenaRoleKeeper(server, place, List.of(TAG, ArenaBoard.TAG, ArenaChampionsBoard.TAG,
-                ArenaRoleKeeper.SIGN_TAG));
+                ArenaRoleKeeper.SIGN_TAG, ArenaLadderBoard.TAG));
         if (state.battleOn()) {
             match.endedByRestart();
             LOG.info("Moddy Arena: battle: a battle was on when the server stopped; it is over, and the arena will be"
@@ -181,6 +195,7 @@ final class ArenaBattle {
         knockedOut.clear();
         backIn.clear();
         boss = null;
+        ladderReset(true);   // every battle starts at the ladder's first step
         told.clear();
         waveMobs.clear();
         ready.clear();
@@ -250,6 +265,10 @@ final class ArenaBattle {
             updateWishBars();
         }
         board.refresh(level, match, ArenaBattle::baseWaves, ev != null);
+        if (ev != null || ticks % 10 == 0) {
+            ArenaLadder ladder = ArenaLadderRule.ladderOf(com.moddingfromamod.world.WorldRulesService.current());
+            ladderBoard.refresh(level, ArenaWords.ladderBoard(ladder, ladderOn, reached(ladder)));
+        }
         ArenaWaves rules = baseWaves();
         ArenaChampions.Key key = ArenaChampions.Key.of(state.settings().within(rules == null ? null : rules.limits()));
         if (!key.equals(shownKey)) {
@@ -404,6 +423,8 @@ final class ArenaBattle {
                 LOG.info("Moddy Arena: battle: wave {} cleared; BREATHER of {} s; the hotbar wishes start again",
                         ev.wave(), ev.seconds());
                 sayToPlace(ArenaWords.cleared(ev.wave(), ev.seconds()));
+                wavesCleared = Math.max(wavesCleared, ev.wave());
+                ladderUp();
                 ready.clear();
                 if (mend(level) > 0) {
                     sayToPlace(ArenaWords.mended());
@@ -444,6 +465,7 @@ final class ArenaBattle {
             }
             case READY -> {
                 state.battleOn(false);
+                ladderReset(false);   // the battle's ladder is gone with it: prep is the first step again
                 LOG.info("Moddy Arena: battle: IDLE, the arena is ready for the next battle");
                 sayToPlace(ArenaWords.ready());
                 told.clear();
@@ -842,9 +864,74 @@ final class ArenaBattle {
         if (match.phase() == ArenaMatch.Phase.WAVE) {
             LOG.info("Moddy Arena: battle: the boss {} is beaten", bossName);
             sayToPlace(ArenaWords.bossBeaten(bossName));
+            bossesBeaten++;
+            LOG.info("Moddy Arena: ladder: boss {} of this battle beaten", bossesBeaten);
         }
         boss = null;
         match.boss(null, 0f);
+    }
+
+    /** Where the battle is on this ladder (0 outside a battle: the first step). */
+    int reached(ArenaLadder ladder) {
+        return ladderOn ? ladder.reached(wavesCleared, bossesBeaten) : 0;
+    }
+
+    /** True from the button to the arena being ready again: the ladder is the battle's. */
+    boolean ladderOn() {
+        return ladderOn;
+    }
+
+    /** Where the battle is on the ladder in force now (0 outside a battle). Any thread. */
+    int reached() {
+        return reached(ArenaLadderRule.ladderOf(com.moddingfromamod.world.WorldRulesService.current()));
+    }
+
+    /** The ladder back at its first step: a battle starting ({@code on}), or the arena ready again after one. */
+    private void ladderReset(boolean on) {
+        wavesCleared = 0;
+        bossesBeaten = 0;
+        ladderTold = 0;
+        ladderOn = on;
+        ladderBoard.changed();
+    }
+
+    /**
+     * A wave was cleared and a break begins: the battle's place on the ladder may have risen (a wave cleared, or a boss
+     * beaten during it). If its step did, everyone in the battle is told at once, as a moment, so the break is his to use
+     * the stronger wishes: a title, one or two lines saying what rose and what opened ({@link ArenaWords#ladderRose}),
+     * and a fanfare. The core reads the new limits at the next make or hotbar fire.
+     */
+    private void ladderUp() {
+        ArenaLadder ladder = ArenaLadderRule.ladderOf(com.moddingfromamod.world.WorldRulesService.current());
+        int now = reached(ladder);
+        ArenaLadder.Rise rise = ladder.rise(ladderTold, now);
+        int was = ladderTold;
+        ladderTold = now;
+        ladderBoard.changed();
+        if (rise.isEmpty()) {
+            return;
+        }
+        LOG.info("Moddy Arena: ladder: {} -> {} ({}): step {} -> {}; rose {}, opened {}", was, now,
+                ladder.progress().id(), ladder.stepIndex(was) + 1, ladder.stepIndex(now) + 1, rise.rose().keySet(),
+                rise.opened());
+        // ── WAITS FOR A CORE CALL: re-fitting living wished creatures ─────────────────────────────────────────────
+        // A wished creature already alive keeps the limits it was fitted to when it was spawned: the core fits its
+        // health and attack on the live entity at spawn (and again when it is loaded or rebuilt), and gives a world no
+        // documented way to ask for a re-fit when the world's limits change. When the core has that call ("the limits
+        // changed for this player": re-fit his living wished creatures up to their own values, within the new limits,
+        // and tell him once), this is the one place the arena calls it: for every fighter in the battle, here, when a
+        // step has opened, and again when the battle ends and the ladder is back at its first step (ladderReset). The
+        // arena never writes the core's world_fit modifiers itself. See README, "The wish ladder".
+        for (ServerPlayer p : audience()) {
+            p.connection.send(new ClientboundSetTitlesAnimationPacket(10, 60, 20));
+            p.connection.send(new ClientboundSetSubtitleTextPacket(Component.literal(
+                    ArenaWords.ladderSubtitle(ladder.progress(), now))));
+            p.connection.send(new ClientboundSetTitleTextPacket(Component.literal(ArenaWords.ladderTitle())));
+            for (String line : ArenaWords.ladderRose(rise)) {
+                p.sendSystemMessage(Component.literal(line));
+            }
+            p.playNotifySound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.PLAYERS, 1.0f, 1.0f);
+        }
     }
 
     /** The id of the difficulty's change to a wave mob's most health. */
@@ -948,7 +1035,9 @@ final class ArenaBattle {
             LOG.info("Moddy Arena: battle: {} of the players' own dropped things moved to the prep room", moved);
         }
         fightersDrops.clear();
-        int n = discard(level, arena, e -> !(e instanceof Player) && !owned(e) && !playersOwn(e)
+        // a pet someone owns is kept, but not a creature a wish made: it was made at the ladder's step of this battle,
+        // and the next battle starts at the first (a creature that walked into the prep room is not touched)
+        int n = discard(level, arena, e -> !(e instanceof Player) && (!owned(e) || wished(e)) && !playersOwn(e)
                 && !e.hasPassenger(p -> p instanceof Player) && !e.getTags().contains(ArenaBoard.TAG));
         return n + discard(level, placeBox(level), e -> e.getTags().contains(TAG));
     }
@@ -956,6 +1045,12 @@ final class ArenaBattle {
     /** An item a player threw, or one a fighter dropped when he was knocked out. */
     private boolean playersOwn(Entity e) {
         return e instanceof ItemEntity item && (fightersDrops.contains(item.getUUID()) || item.getOwner() instanceof Player);
+    }
+
+    /** A creature a player's wish made ({@link ArenaRoles#wished}). */
+    private static boolean wished(Entity e) {
+        return ArenaRoles.wished(e.getTags(), List.of(TAG, ArenaBoard.TAG, ArenaChampionsBoard.TAG,
+                ArenaRoleKeeper.SIGN_TAG, ArenaLadderBoard.TAG));
     }
 
     private static boolean owned(Entity e) {

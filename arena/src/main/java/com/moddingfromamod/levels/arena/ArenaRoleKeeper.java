@@ -142,6 +142,7 @@ final class ArenaRoleKeeper {
         List<Mob> creatures = level.getEntities(EntityTypeTest.forClass(Mob.class), arena,
                 m -> m.isAlive() && ArenaRoles.wished(m.getTags(), arenasOwn) && !waveMobs.contains(m.getUUID()));
         Set<UUID> seen = new HashSet<>();
+        List<double[]> signs = new ArrayList<>();   // where this tick's signs went, so two never sit on each other
         for (Mob m : creatures) {
             seen.add(m.getUUID());
             Held h = held.computeIfAbsent(m.getUUID(), id -> new Held());
@@ -159,7 +160,7 @@ final class ArenaRoleKeeper {
                     told.add(m.getUUID());
                 }
             }
-            keepSign(level, m, h);
+            keepSign(level, m, h, signs);
             switch (h.role) {
                 case FIGHTER -> fight(level, m, h, foes);
                 case HEALER -> heal(level, m, h, in);
@@ -360,11 +361,16 @@ final class ArenaRoleKeeper {
 
     // ── the sign above it ───────────────────────────────────────────────────────────────────────────────────────────
 
-    /** The role's sign floats just above the creature: a text display (what a stock client draws), moved with it. */
-    private void keepSign(ServerLevel level, Mob m, Held h) {
+    /**
+     * The role's sign floats above the creature, clear of its own name plate ({@link ArenaRoles#signY}) and lifted over
+     * a sign already placed close by ({@link ArenaRoles#signLift}): a text display (what a stock client draws), moved
+     * with it.
+     */
+    private void keepSign(ServerLevel level, Mob m, Held h, List<double[]> placed) {
         double x = m.getX();
-        double y = m.getY() + m.getBbHeight() + 0.45;
         double z = m.getZ();
+        double y = ArenaRoles.signLift(x, z, ArenaRoles.signY(m.getY(), m.getBbHeight(), m.hasCustomName()), placed);
+        placed.add(new double[] {x, y, z});
         Entity sign = h.sign == null ? null : level.getEntity(h.sign);
         if (sign == null || !sign.isAlive()) {
             String tag = SIGN_TAG + "_" + m.getUUID();
@@ -383,13 +389,20 @@ final class ArenaRoleKeeper {
         }
     }
 
-    /** The sign's data: the arena's tags, the role's word in its colour, the game's own grey backing, facing the eye. */
+    /** How big a role sign's words are: readable from across the arena (about 20 blocks). */
+    static final float SIGN_SCALE = 2.5f;
+
+    /**
+     * The sign's data: the arena's tags, the role's symbol and word in its colour ({@link ArenaRoles#signText}), bold,
+     * with a shadow and no backing box (so it never hides the creature), facing the eye, seen from as far as a creature.
+     */
     static String signNbt(ArenaRoles.Role role, String tag) {
-        return "{Tags:[\"" + SIGN_TAG + "\",\"" + tag + "\"],text:{text:\"" + role.word() + "\",color:\""
-                + role.colour() + "\",bold:true},billboard:\"center\",see_through:false,shadow:1b,"
-                + "teleport_duration:2,view_range:0.6f,brightness:{sky:15,block:15},"
+        String sc = String.format(Locale.ROOT, "%.2ff", SIGN_SCALE);
+        return "{Tags:[\"" + SIGN_TAG + "\",\"" + tag + "\"],text:{text:\"" + ArenaRoles.signText(role) + "\",color:\""
+                + role.colour() + "\",bold:true},billboard:\"center\",see_through:false,shadow:1b,background:0,"
+                + "teleport_duration:2,view_range:1.0f,brightness:{sky:15,block:15},"
                 + "transformation:{left_rotation:[0f,0f,0f,1f],right_rotation:[0f,0f,0f,1f],translation:[0f,0f,0f],"
-                + "scale:[0.8f,0.8f,0.8f]}}";
+                + "scale:[" + sc + "," + sc + "," + sc + "]}}";
     }
 
     // ── stopping ────────────────────────────────────────────────────────────────────────────────────────────────────

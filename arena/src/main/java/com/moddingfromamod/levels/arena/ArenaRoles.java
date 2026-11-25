@@ -34,16 +34,23 @@ final class ArenaRoles {
 
     /** A wished creature's battle role. */
     enum Role {
-        FIGHTER("Fighter", "red"),
-        TANK("Tank", "aqua"),
-        HEALER("Healer", "green");
+        FIGHTER("Fighter", "red", "\u2694"),     // crossed swords
+        TANK("Tank", "aqua", "\u26E8"),          // a shield (a black cross on a shield)
+        HEALER("Healer", "green", "\u2764");     // a heart
 
         private final String word;
         private final String colour;
+        private final String symbol;
 
-        Role(String word, String colour) {
+        Role(String word, String colour, String symbol) {
             this.word = word;
             this.colour = colour;
+            this.symbol = symbol;
+        }
+
+        /** The small symbol before its word on the sign: a glyph the game's own font draws (never a box). */
+        String symbol() {
+            return symbol;
         }
 
         /** The role's name as a player reads it ("Healer"). */
@@ -249,5 +256,48 @@ final class ArenaRoles {
 
     private static double sq(double v) {
         return v * v;
+    }
+
+    // ── the sign above a creature ───────────────────────────────────────────────────────────────────────────────────
+
+    /** The sign's words: the role's symbol, then its word ("\u2694 Fighter"). */
+    static String signText(Role role) {
+        return role.symbol() + " " + role.word();
+    }
+
+    /** How far above the creature's top its sign starts: over the name plate a named creature carries. */
+    static final double SIGN_GAP = 0.6;
+    static final double SIGN_GAP_NAMED = 0.95;
+    /** How far apart two signs must be, across and up: closer than this, the later one goes up a row. */
+    static final double SIGN_NEAR = 1.6;
+    static final double SIGN_ROW = 0.75;
+
+    /** Where a creature's sign floats: from its own height, clear of its name plate when it has one. */
+    static double signY(double feetY, double height, boolean named) {
+        return feetY + height + (named ? SIGN_GAP_NAMED : SIGN_GAP);
+    }
+
+    /**
+     * The sign's height, lifted a row at a time while a sign already placed is close across and in height, so two
+     * creatures standing together show both words (at most four rows up).
+     */
+    static double signLift(double x, double z, double y, java.util.List<double[]> placed) {
+        double at = y;
+        for (int row = 0; row < 4; row++) {
+            boolean clash = false;
+            for (double[] p : placed) {
+                double dx = p[0] - x;
+                double dz = p[2] - z;
+                if (dx * dx + dz * dz < SIGN_NEAR * SIGN_NEAR && Math.abs(p[1] - at) < SIGN_ROW) {
+                    clash = true;
+                    break;
+                }
+            }
+            if (!clash) {
+                return at;
+            }
+            at += SIGN_ROW;
+        }
+        return at;
     }
 }

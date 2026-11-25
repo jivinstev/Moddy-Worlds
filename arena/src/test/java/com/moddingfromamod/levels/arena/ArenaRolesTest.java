@@ -185,4 +185,26 @@ class ArenaRolesTest {
             assertTrue(l.startsWith("Your Rex is a " + r.word() + "!"), l);
         }
     }
+
+    /** A role's sign: its symbol and word, over the creature's name plate, and lifted clear of a sign close by. */
+    @Test
+    void aSignIsReadableAndClearOfTheNamePlateAndOtherSigns() {
+        org.junit.jupiter.api.Assertions.assertEquals("\u2694 Fighter", ArenaRoles.signText(ArenaRoles.Role.FIGHTER));
+        for (ArenaRoles.Role r : ArenaRoles.Role.values()) {
+            org.junit.jupiter.api.Assertions.assertEquals(1, r.symbol().length(), "one glyph, in the basic plane");
+        }
+        double plain = ArenaRoles.signY(64, 2.0, false);
+        double named = ArenaRoles.signY(64, 2.0, true);
+        org.junit.jupiter.api.Assertions.assertTrue(plain > 66.4, "above the top, clear of where a name plate floats");
+        org.junit.jupiter.api.Assertions.assertTrue(named > plain, "higher still over a name plate");
+        java.util.List<double[]> placed = new java.util.ArrayList<>();
+        placed.add(new double[] {0, 66.6, 0});
+        double next = ArenaRoles.signLift(0.5, 0.5, 66.6, placed);
+        org.junit.jupiter.api.Assertions.assertTrue(next >= 66.6 + ArenaRoles.SIGN_ROW, "a close sign goes up a row");
+        org.junit.jupiter.api.Assertions.assertEquals(66.6, ArenaRoles.signLift(5, 5, 66.6, placed), 1e-9,
+                "a far one stays");
+        placed.add(new double[] {0.5, next, 0.5});
+        org.junit.jupiter.api.Assertions.assertTrue(ArenaRoles.signLift(0, 0.3, 66.6, placed) >= next + ArenaRoles.SIGN_ROW,
+                "a third goes up again");
+    }
 }

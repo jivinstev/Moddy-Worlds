@@ -351,6 +351,38 @@ public final class ArenaPanel {
         out.add(new Slot(upSign, up, r + 0.64, z, 1.3f, "white"));
     }
 
+    /**
+     * The wish ladder board ({@link ArenaWords#ladderBoard}): one block of words, on a dark backing, on the prep room's
+     * west wall beside the control panel (just inside the glass, facing into the room, its near edge one block from the
+     * panel's wall), at eye height. (x, y, z) is the bottom middle of the words; {@code yaw} which way they face (-90:
+     * east, into the room); {@code scale} how big; {@code lineWidth} where a line wraps, in pixels at scale 1.
+     */
+    public record LadderSign(double x, double y, double z, float yaw, float scale, int lineWidth) {
+    }
+
+    /**
+     * The wish ladder board's blocks: the prep room's west wall, from the floor to the room's top, its first four
+     * columns beside the shared wall (the panel's wall). Seen from the room, they are a black board on the left of the
+     * panel.
+     */
+    public Box ladderBoard() {
+        int z0 = place.sharedWallZ() + 1;
+        return new Box(-h() - 1, place.floorY(), z0, -h() - 1, place.floorY() + ArenaPlace.PREP_HEIGHT - 1, z0 + 3);
+    }
+
+    /** The scale of the ladder board's words. */
+    static final float LADDER_SCALE = 0.65f;
+    /** Where a line of the ladder board wraps, in pixels (a long line is never cut, it wraps). */
+    static final int LADDER_LINE_WIDTH = 190;
+
+    /** Where the wish ladder board floats. */
+    public LadderSign ladderSign() {
+        double width = LADDER_LINE_WIDTH / 40.0 * LADDER_SCALE;                // its widest, in blocks
+        double z = place.sharedWallZ() + 1 + 0.5 + width / 2;                   // its near edge half a block in
+        double x = -h() + IN_FRONT;                                              // the west wall's inside face
+        return new LadderSign(x, place.floorY() + 0.45, z, -90f, LADDER_SCALE, LADDER_LINE_WIDTH);
+    }
+
     /** The box round every line of words (and its buttons), to find the board's words in the world. */
     public Box wordsBox() {
         int z = place.sharedWallZ() + 1;

@@ -50,6 +50,8 @@ public final class ArenaModule implements WorldModule {
     private ArenaBattle battle;
     /** Read by the core from any thread (a Magician pickup comes on an agent thread). */
     private volatile ArenaCharge charge;
+    /** What may be made here, and how strong: the unlock ladder ({@link ArenaMakes}). */
+    private volatile ArenaMakes makes;
     /** Players who arrived for the first time, and the tick until which the core's guide book is looked for. */
     private final Map<UUID, Long> guideDue = new HashMap<>();
 
@@ -73,6 +75,7 @@ public final class ArenaModule implements WorldModule {
             state.markUpgraded(ArenaPlace.UPGRADE_CONTROL_PANEL);
             state.markUpgraded(ArenaPlace.UPGRADE_CHAMPIONS);
             state.markUpgraded(ArenaPlace.UPGRADE_BASE);
+            state.markUpgraded(ArenaPlace.UPGRADE_LADDER_BOARD);
             LOG.info("Moddy Arena: built the place ({}): {} blocks in {} ms", place.describe(), set,
                     (System.nanoTime() - t0) / 1_000_000);
         } else {
@@ -110,6 +113,12 @@ public final class ArenaModule implements WorldModule {
         battle = new ArenaBattle(server, place, state, c);
         c.phase(ArenaWishPolicy.phaseOf(battle.match().phase()));
         charge = c;
+        c.battle(battle);
+        ArenaBattle b0 = battle;
+        makes = new ArenaMakes(ArenaModule::ladder, b0::reached, b0::ladderOn);
+        ArenaLadder ladder = ArenaLadderRule.ladderOf(rulesAtStart());
+        LOG.info("Moddy Arena: wish ladder: {} steps, counted in {}, locked {} {}; every battle starts at the first",
+                ladder.steps().size(), ladder.progress().id(), ladder.locked().kinds(), ladder.locked().tags());
         ArenaWishes w = ArenaWishesRule.wishesOf(rulesAtStart());
         LOG.info("Moddy Arena: wishes: the arena's wish charge is in force (in prep, {} Magician wishes a player;"
                 + " in a battle, hotbar wishes only, each resting {} s)", w.magicianWishes(), w.cooldownSeconds());
@@ -157,6 +166,16 @@ public final class ArenaModule implements WorldModule {
                     LOG.info("Moddy Arena: the place stood in the sky; put a base under it ({} blocks: bedrock, a layer"
                             + " of stone, ground round the floors), so nobody falls out of it", set);
                 }
+                case ArenaPlace.UPGRADE_LADDER_BOARD -> {
+                    int set = ArenaBuilder.addLadderBoard(level, place);
+                    if (set < 0) {
+                        LOG.warn("Moddy Arena: the place has no wish ladder board, and something stands where it goes"
+                                + " (the prep room's west wall beside the panel); its words float there on their own.");
+                        continue;
+                    }
+                    LOG.info("Moddy Arena: the place was missing its wish ladder board; added it on the prep room's"
+                            + " west wall beside the panel ({} blocks)", set);
+                }
                 case ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS -> {
                     level.getGameRules().getRule(GameRules.RULE_DOMOBSPAWNING).set(false, server);
                     LOG.info("Moddy Arena: natural mob spawning switched off in this world (game rule doMobSpawning"
@@ -190,6 +209,7 @@ public final class ArenaModule implements WorldModule {
         }
         battle = null;
         charge = null;
+        makes = null;
         bases = null;
         server = null;
     }
@@ -217,6 +237,20 @@ public final class ArenaModule implements WorldModule {
     @Override
     public com.moddingfromamod.wish.WishCharge charge() {
         return charge;
+    }
+
+    /**
+     * What may be made in an arena world, and how strong ({@link ArenaMakes}): the limits that rise as bosses fall, and
+     * the kinds the ladder keeps for later. Null before the module starts and after it stops (nothing is limited then).
+     */
+    @Override
+    public com.moddingfromamod.world.WorldMakes makes() {
+        return makes;
+    }
+
+    /** The unlock ladder in force: the world's {@code arena_ladder} rule, or the default. */
+    static ArenaLadder ladder() {
+        return ArenaLadderRule.ladderOf(WorldRulesService.current());
     }
 
     @Override

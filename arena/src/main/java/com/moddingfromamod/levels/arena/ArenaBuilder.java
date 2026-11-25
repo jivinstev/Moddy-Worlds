@@ -42,7 +42,7 @@ final class ArenaBuilder {
             case PANEL_SELECT -> Blocks.LIGHT_BLUE_CONCRETE.defaultBlockState();
             case PANEL_START -> Blocks.LIME_CONCRETE.defaultBlockState();
             // the Champions board on the prep room's back wall
-            case CHAMPIONS_BOARD -> Blocks.BLACK_CONCRETE.defaultBlockState();
+            case CHAMPIONS_BOARD, LADDER_BOARD -> Blocks.BLACK_CONCRETE.defaultBlockState();
             // the base the place stands on: ground round it, a layer a blast can break, bedrock under that
             case GROUND -> Blocks.GRASS_BLOCK.defaultBlockState();
             case BASE_FILL -> Blocks.STONE.defaultBlockState();
@@ -191,6 +191,29 @@ final class ArenaBuilder {
         for (int x = b.x0(); x <= b.x1(); x++) {
             for (int z = b.z0(); z <= b.z1(); z++) {
                 set += mendFloorBlock(level, place, x, b.y0(), z) ? 1 : 0;
+            }
+        }
+        return set;
+    }
+
+    /**
+     * Adds the wish ladder board to a place built before it (its west wall's glass beside the control panel turned to
+     * the board), only where that glass still stands as built; -1 (nothing set) when something else stands there.
+     */
+    static int addLadderBoard(ServerLevel level, ArenaPlace place) {
+        Box b = place.panel().ladderBoard();
+        for (int z = b.z0(); z <= b.z1(); z++) {
+            for (int y = b.y0(); y <= b.y1(); y++) {
+                BlockState now = level.getBlockState(new BlockPos(b.x0(), y, z));
+                if (!now.is(Blocks.GLASS) && !now.is(Blocks.BLACK_CONCRETE)) {
+                    return -1;
+                }
+            }
+        }
+        int set = 0;
+        for (int z = b.z0(); z <= b.z1(); z++) {
+            for (int y = b.y0(); y <= b.y1(); y++) {
+                set += put(level, new BlockPos(b.x0(), y, z), ArenaPlace.Kind.LADDER_BOARD, Block.UPDATE_ALL) ? 1 : 0;
             }
         }
         return set;

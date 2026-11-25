@@ -165,7 +165,9 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
         /** the layer of the base under the floors and the ground: a block a blast can break */
         BASE_FILL,
         /** the bottom of the base: bedrock, which nothing breaks, so nobody falls further */
-        BASE_BEDROCK
+        BASE_BEDROCK,
+        /** the wish ladder board's blocks, beside the control panel on the prep room's west wall */
+        LADDER_BOARD
     }
 
     /** One box to fill. Later fills overwrite earlier ones where they overlap. */
@@ -416,7 +418,17 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
         out.add(new Fill(new Box(0, floorY, wz, 0, floorY, wz), Kind.GATE));
         out.addAll(controlFills());
         out.addAll(championsFills());
+        out.addAll(ladderFills());
         return out;
+    }
+
+    /**
+     * The wish ladder board's blocks: over the prep room's west wall's glass, beside the control panel ({@link
+     * ArenaPanel#ladderBoard}). Part of {@link #fills()}; a world built before the board existed gains exactly these
+     * ({@link #UPGRADE_LADDER_BOARD}).
+     */
+    public List<Fill> ladderFills() {
+        return List.of(new Fill(panel().ladderBoard(), Kind.LADDER_BOARD));
     }
 
     /** The Champions board on the prep room's back wall ({@link ArenaChampionsLayout}). */
@@ -477,9 +489,11 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
     public static final String UPGRADE_CHAMPIONS = "champions-board";
     /** The upgrade that puts the base under a place built in the sky ({@link #baseFills()}). */
     public static final String UPGRADE_BASE = "ground-base";
+    /** The upgrade that gives a place its wish ladder board ({@link #ladderFills()}), over the west wall's glass. */
+    public static final String UPGRADE_LADDER_BOARD = "ladder-board";
     /** Every upgrade, in the order a world gets them. A new world gets them all when it is built. */
     public static final List<String> UPGRADES = List.of(UPGRADE_START_CONTROL, UPGRADE_NO_NATURAL_SPAWNS,
-            UPGRADE_CONTROL_PANEL, UPGRADE_CHAMPIONS, UPGRADE_BASE);
+            UPGRADE_CONTROL_PANEL, UPGRADE_CHAMPIONS, UPGRADE_BASE, UPGRADE_LADDER_BOARD);
 
     /** The upgrades a world that has had {@code done} still needs, in order. Pure. */
     public static List<String> pendingUpgrades(Set<String> done) {

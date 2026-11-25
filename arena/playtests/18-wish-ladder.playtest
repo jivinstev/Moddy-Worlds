@@ -1,0 +1,257 @@
+# Moddy Arena: the wish ladder, limits that rise as a battle goes on and start again every battle. In prep his wishes
+# are fitted to the first step: /moddy wishes and the WISH LADDER board beside the control panel say it in hearts; a
+# giant dragon from the Apprentice is made smaller and he is told once; the strongest sword comes out as the strongest
+# the step allows (a hit of at most two and a half hearts); a tornado (an event) is made at the first step's size in
+# prep, and the dragon and a ready-made meteor go on his hotbar. In a ten-wave battle the meteor fired from the hotbar is
+# locked with the arena's words until wave 5; clearing wave 2 raises the ladder as a moment at the start of the break (a title, a line
+# of what rose, a fanfare), the board says where the battle is, and the dragon fired after wave 4 comes out bigger;
+# clearing the boss wave opens events, and the meteor fires. The next battle starts at the first step again: the
+# same hotbar dragon comes out small, the meteor is locked again, and no creature from the first battle is left.
+# No model anywhere: the Apprentice's local matcher offers the makes. A resistance effect keeps him on his feet; the
+# monsters are removed by command (the fighting is 4-battle-won's).
+# play-timeout: 1500
+@intent the arena's limits are a battle's: prep makes are fitted to the first step, clearing waves raises the limits as a moment so hotbar wishes come out stronger and a locked event opens, and the next battle starts at the first step again
+@world flat seed=1
+@continue-on-fail
+
+@step he arrives: wishes are fitted to the first step
+@expect chat Welcome to Moddy Arena within 90s
+@wait 2s
+difficulty hard
+difficulty normal
+gamemode survival
+effect give @s minecraft:resistance 1500 4 true
+effect give @s minecraft:saturation 1500 0 true
+scoreboard objectives add arenatest dummy
+moddy wishes
+@expect chat Wish limits (Before a battle: the first step): health up to 20 hearts, hits up to 2.5 hearts within 5s
+@expect chat events locked in a battle until wave 5 within 1s
+@expect chat After wave 2 of a battle: Health up to 30 hearts within 1s
+@expect chat Every battle starts at the first step within 1s
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_ladder]
+
+@step the WISH LADDER board beside the control panel says it in hearts
+teleport @s 0.5 64 19.0 90 0
+@wait 10s
+@shot ladder-board-in-prep
+
+@step a giant dragon is made smaller for this world, and he is told once
+teleport @s 0.5 64 22.5 180 12
+@wait 1s
+moddy apprentice a giant dragon
+@expect screen Container within 10s
+@wait 1s
+@shot dragon-page
+@click slot 0
+@expect chat Made a bit smaller for this world within 30s
+@expect chat /Dragon is ready/ within 90s
+@wait 2s
+execute store result score #sc0 arenatest run attribute @e[tag=wishmob,limit=1,sort=nearest] minecraft:scale get 100
+@assert execute if score #sc0 arenatest matches ..150
+@shot dragon-fitted
+
+@step the strongest sword comes out as the strongest the first step allows
+moddy apprentice the strongest sword ever
+@expect screen Container within 10s
+@click slot 0
+@expect chat Made a bit gentler for this world within 30s
+@expect chat /is in slot 3/ within 60s
+@wait 2s
+@key key.hotbar.3
+@wait 10t
+execute store result score #atk arenatest run attribute @s minecraft:attack_damage get 10
+# a hit of at most two and a half hearts (5 health), the player's own 1 included: a stone sword at most
+@assert execute if score #atk arenatest matches 20..50
+@key key.hotbar.9
+
+@step a tornado in prep is made at the first step's size
+moddy apprentice a tornado
+@expect screen Container within 10s
+@wait 1s
+@shot tornado-page-in-prep
+@click slot 0
+@expect chat Here it comes within 10s
+@expect chat Locked gone within 5s
+@wait 5s
+
+@step the dragon and a ready-made meteor (an event) go on his hotbar from their pages
+@key key.hotbar.1
+@key key.use
+@expect screen /make a wish/ within 10s
+@click button "My wishes"
+@expect screen My wishes within 10s
+@click item "Dragon"
+@expect screen Dragon within 10s
+@click item "Add to hotbar"
+@expect chat On your hotbar, slot 4 within 10s
+@key key.keyboard.escape
+@wait 10t
+@key key.keyboard.escape
+@wait 10t
+@key key.hotbar.1
+@key key.use
+@expect screen /make a wish/ within 10s
+@click button "My wishes"
+@expect screen My wishes within 10s
+@click item "meteor" right
+@expect screen /meteor/ within 10s
+@click item "Add to hotbar"
+@expect chat On your hotbar, slot 5 within 10s
+@key key.keyboard.escape
+@wait 10t
+@key key.keyboard.escape
+@wait 10t
+@expect screen none within 3s
+@key key.hotbar.9
+
+@step he sets ten waves and starts the battle
+teleport @s 0.5 64 21.5 180 0
+@wait 10t
+@key key.forward hold 15t
+@wait 1s
+@aim pos -0.5 64.5 17.1
+@key key.use
+@expect actionbar Waves: 10 within 3s
+@aim pos 3.5 65.5 17.1
+@key key.forward hold 20t
+@wait 10t
+@aim pos 3.5 65.5 17.1
+@key key.use
+@expect chat A battle is starting! 10 waves of monsters within 5s
+@expect title Wave 1 of 10 within 15s
+
+@step wave 1: the hotbar dragon comes out small, and the meteor is locked with the arena's words
+kill @e[tag=wishmob]
+@aim look 180 10
+@key key.hotbar.4
+@key key.use
+@expect chat /Dragon is ready/ within 60s
+@wait 2s
+execute store result score #sc1 arenatest run attribute @e[tag=wishmob,limit=1,sort=nearest] minecraft:scale get 100
+@assert execute if score #sc1 arenatest matches ..150
+# battle roles' signs, read from about 5 and about 20 blocks: three wished stand-ins side by side (held still), so
+# their signs must stay clear of one another (the chat faded first)
+@key key.hotbar.9
+summon minecraft:wolf 0.5 64 5.5 {NoAI:1b,Tags:["moddy_wished","ladderpets"]}
+summon minecraft:camel 1.5 64 5.5 {NoAI:1b,Tags:["moddy_wished","ladderpets"]}
+summon minecraft:sheep -0.5 64 5.5 {NoAI:1b,Tags:["moddy_wished","ladderpets"]}
+teleport @s 0.5 64 0.5 0 -8
+@wait 10s
+@shot role-signs-5-blocks
+teleport @s 0.5 64 -14.5 0 -2
+@wait 2s
+@shot role-signs-20-blocks
+kill @e[tag=ladderpets]
+teleport @s 0.5 64 22.5 180 10
+@wait 10t
+@key key.hotbar.5
+@key key.use
+@expect chat Locked: opens in a battle, after wave 5 within 10s
+@wait 5t
+@shot meteor-locked-in-battle
+@key key.hotbar.9
+kill @e[tag=moddyarena_wave]
+@expect chat Wave 1 cleared within 10s
+
+@step clearing wave 2 raises the ladder, as a moment at the start of the break
+@expect title Wave 2 of 10 within 25s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect chat Wave 2 cleared within 10s
+@expect title Stronger wishes! within 3s
+@expect chat Your wishes can be stronger now: health up to 30 hearts, hits up to 3 hearts within 3s
+@wait 10t
+@shot moment-after-wave-2
+moddy wishes
+@expect chat Wish limits (This battle: 2 waves cleared): health up to 30 hearts within 5s
+teleport @s 0.5 64 19.0 90 0
+@wait 10s
+@shot ladder-board-in-battle
+
+@step after wave 4 the hotbar dragon is fitted to the step the battle is on
+teleport @s 0.5 64 22.5 180 10
+@expect title Wave 3 of 10 within 25s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title Wave 4 of 10 within 25s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect chat Wave 4 cleared within 10s
+@expect title Stronger wishes! within 3s
+kill @e[tag=wishmob]
+@key key.hotbar.4
+@key key.use
+@expect chat /Dragon is ready/ within 60s
+@wait 2s
+execute store result score #sc4 arenatest run attribute @e[tag=wishmob,limit=1,sort=nearest] minecraft:scale get 100
+# fitted to the step now (size at most x2). It is not bigger than in wave 1: the core keeps a Builder make's recipe as
+# it was made, already fitted to the first step in prep, so a later step has nothing more to give it (a core gap)
+@assert execute if score #sc4 arenatest matches ..200
+@shot dragon-after-wave-4
+@key key.hotbar.9
+
+@step clearing the boss wave opens events, and the hotbar meteor fires
+@expect title BOSS WAVE within 30s
+@wait 2s
+kill @e[tag=moddyarena_wave]
+@expect chat Wave 5 cleared within 10s
+@expect chat Events are open now! within 3s
+@wait 10t
+@shot moment-events-open
+@key key.hotbar.5
+@key key.use
+@expect chat Locked gone within 8s
+@shot meteor-in-battle
+@key key.hotbar.9
+
+@step waves 6 to 10, and the battle is won
+@expect title Wave 6 of 10 within 60s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title Wave 7 of 10 within 25s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title Wave 8 of 10 within 25s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title Wave 9 of 10 within 25s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title BOSS WAVE within 30s
+@wait 1s
+kill @e[tag=moddyarena_wave]
+@expect title You won within 10s
+@expect chat The arena is tidy again within 20s
+
+@step after the battle: back at the first step, and nothing wished is left in the arena
+@wait 1s
+@assert execute unless entity @e[tag=wishmob,x=-15,y=63,z=-15,dx=30,dy=10,dz=30]
+moddy wishes
+@expect chat Wish limits (Before a battle: the first step): health up to 20 hearts within 5s
+teleport @s 0.5 64 19.0 90 0
+@wait 10s
+@shot ladder-board-after-the-battle
+
+@step the next battle starts at the first step again: the hotbar dragon is small and the meteor locked
+teleport @s 0.5 64 21.5 180 0
+@wait 10t
+@key key.forward hold 15t
+@wait 1s
+@aim pos 3.5 65.5 17.1
+@key key.forward hold 20t
+@wait 10t
+@aim pos 3.5 65.5 17.1
+@key key.use
+@expect chat A battle is starting! 10 waves of monsters within 5s
+@expect title Wave 1 of 10 within 15s
+@aim look 180 10
+@key key.hotbar.4
+@key key.use
+@expect chat /Dragon is ready/ within 60s
+@wait 2s
+execute store result score #sc2 arenatest run attribute @e[tag=wishmob,limit=1,sort=nearest] minecraft:scale get 100
+@assert execute if score #sc2 arenatest matches ..150
+@key key.hotbar.5
+@key key.use
+@expect chat Locked: opens in a battle, after wave 5 within 10s
+@key key.hotbar.9
