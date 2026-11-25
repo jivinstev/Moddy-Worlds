@@ -33,4 +33,4 @@ if [ -n "$have" ] && [ "$have" != "$want" ]; then
 fi
 chmod +x "$top/$want/pre-commit" "$top/$want/pre-push"
 git -C "$top" config core.hooksPath "$want"
-echo "git-hooks: secret and leak checks on in $top (pre-commit + pre-push)$(git -C "$top" config --get moddy.forbidden >/dev/null && echo ', with a forbidden list')"
+echo "git-hooks: secret, leak and licence checks on in $top (pre-commit + pre-push)$(git -C "$top" config --get moddy.forbidden >/dev/null && echo ', with a forbidden list')"
