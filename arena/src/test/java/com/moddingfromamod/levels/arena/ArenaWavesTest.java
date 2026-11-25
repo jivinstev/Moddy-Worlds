@@ -21,7 +21,7 @@ class ArenaWavesTest {
     private static final Set<String> KNOWN = Set.of("minecraft:husk", "minecraft:pillager", "minecraft:witch",
             "minecraft:vindicator", "minecraft:zombie");
     private static final List<WorldRuleType> TYPES = List.of(new ArenaRule(), new ArenaWavesRule(KNOWN::contains),
-            new ArenaWishesRule());
+            new ArenaWishesRule(), new ArenaCreaturesRule());
 
     private static String bundled() throws IOException {
         try (InputStream in = ArenaWavesTest.class.getResourceAsStream("/worlds/rules/arena.rules.json")) {
@@ -55,7 +55,8 @@ class ArenaWavesTest {
         assertNotNull(w);
         assertEquals(5, w.count());
         assertEquals(5, w.countdownSeconds());
-        assertEquals(10, w.breatherSeconds());
+        assertEquals(15, w.breatherSeconds());
+        assertEquals(45, w.bossBreatherSeconds(), "a longer break after a boss wave");
         assertEquals(180, w.waveSeconds());
         for (int i = 2; i <= w.count(); i++) {
             assertTrue(w.wave(i).size() >= w.wave(i - 1).size(), "wave " + i + " brings no fewer mobs");
@@ -158,5 +159,25 @@ class ArenaWavesTest {
                 + "\"countdownSeconds"))).contains("not both"));
         assertTrue(errors(read(waves(one).replace("{\"countdownSeconds", "{\"difficulty\":\"easy\","
                 + "\"maxDifficulty\":\"hard\",\"countdownSeconds"))).contains("not both"));
+    }
+
+    @Test
+    void theBreakAfterABossWaveIsChecked() {
+        String rest = "\"waveSeconds\":180,\"waves\":[[{\"mob\":\"husk\",\"count\":1}]]";
+        assertEquals(30, ArenaWavesRule.wavesOf(read("{\"countdownSeconds\":5,\"breatherSeconds\":10," + rest + "}")
+                .rules()).bossBreatherSeconds(), "not given: 30 seconds");
+        assertEquals(60, ArenaWavesRule.wavesOf(read("{\"countdownSeconds\":5,\"breatherSeconds\":60," + rest + "}")
+                .rules()).bossBreatherSeconds(), "never shorter than the other break");
+        ArenaWaves w = ArenaWavesRule.wavesOf(read("{\"countdownSeconds\":5,\"breatherSeconds\":10,"
+                + "\"bossBreatherSeconds\":90," + rest + "}").rules());
+        assertEquals(90, w.bossBreatherSeconds());
+        assertEquals(w, ArenaWaves.parse(w.toParams(), KNOWN::contains).waves(), "written and read back the same");
+        for (String bad : new String[] {"2", "301", "4.5", "\"long\""}) {
+            WorldRules.Parsed p = read("{\"countdownSeconds\":5,\"breatherSeconds\":10,\"bossBreatherSeconds\":"
+                    + bad + "," + rest + "}");
+            assertFalse(p.ok(), bad);
+            assertTrue(errors(p).contains("bossBreatherSeconds must be a whole number of seconds from 3 to 300"),
+                    errors(p));
+        }
     }
 }

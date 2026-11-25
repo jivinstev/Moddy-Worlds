@@ -18,7 +18,7 @@
 @assert execute at @s if block ~ ~4 ~ minecraft:spruce_planks
 @assert execute if block 3 63 18 minecraft:sea_lantern
 @assert execute if block 5 65 21 minecraft:glass
-@assert execute if block 0 65 26 minecraft:glass
+@assert execute if block 5 65 25 minecraft:glass
 @wait 2s
 @shot prep-room
 
@@ -35,3 +35,15 @@
 @aim look 180 12
 @wait 1s
 @shot arena-in-view
+
+@step the Champions board on the back wall
+# behind him, on the prep room's back wall: its title and the settings it shows (the panel's: no champions yet)
+@assert execute if block 0 65 26 minecraft:black_concrete
+@assert execute if block -4 67 26 minecraft:black_concrete
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_champions_title,nbt={text:{text:"ARENA CHAMPIONS"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_champions_settings,nbt={text:{text:"Normal, 5 waves, 5 monsters"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_champions_none,nbt={text:{text:"No champions here yet. Be the first!"}}]
+@assert execute unless entity @e[type=minecraft:item_display,tag=moddyarena_champions]
+@aim look 0 0
+@wait 1s
+@shot champions-board

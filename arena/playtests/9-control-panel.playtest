@@ -1,16 +1,17 @@
 # Moddy Arena: the battle arena control panel, used the way a player uses it. He arrives and sees the big board on the
-# wall beside the gate: its title, the wave size (5) and the difficulty (Normal) with a down and an up button each,
-# what the size means (the first and the last wave's monsters), and the start button on its green blocks. He walks up
-# to it and presses each selector (he looks at the button and uses it): the number and the word on the board change,
-# each press is said on his action bar, and a press past either end says so. He sets wave size 10 and Extreme, starts
-# the battle, and the waves that come are that: wave 1 is 6 husks with half again their health (30), wave 2 is 10
-# pillagers (Extreme's wave 2), wave 5 brings ravagers. In the battle the board shows its state and a selector does
-# nothing but say so. After the battle the board keeps his settings.
+# wall beside the gate: its title and his best at these settings, three selectors with a down and an up button each
+# (MONSTERS 5, DIFFICULTY Normal, WAVES 5), what the settings mean (the first wave's monsters and the boss waves), and
+# the start button on its green blocks. He walks up to it and presses each selector (he looks at the button and uses
+# it): the number and the word on the board change, each press is said on his action bar, and a press past either end
+# says so. WAVES steps 5, 10, 15, 20, Endless and back. He sets monsters 10 and Extreme, starts the battle, and the
+# waves that come are that: wave 1 is 6 husks with half again their health (30), wave 2 is 10 pillagers (Extreme's
+# wave 2), wave 5 is a boss wave: Rumble the Ravager and a small escort. In the battle the board shows its state and a
+# selector does nothing but say so. After the battle the board keeps his settings.
 # A resistance effect keeps him on his feet; the monsters are removed by command (the battle itself is
 # 4-battle-won's). That the settings survive a restart is a unit test (the saved record) and a dedicated server's
 # restart, since a playtest cannot restart its game (arena/README.md).
 # play-timeout: 900
-@intent the control panel on the prep room's wall shows the wave size and difficulty in big words, its selectors change them with feedback, the battle's waves follow them, and in a battle the board shows its state and the selectors are refused
+@intent the control panel on the prep room's wall shows the monsters, difficulty and waves in big words, its selectors change them with feedback, the battle's waves follow them, and in a battle the board shows its state and the selectors are refused
 @world flat seed=1
 
 @step he arrives and sees the board
@@ -29,19 +30,28 @@ scoreboard objectives add arenatest dummy
 @assert execute if block -4 66 16 minecraft:light_blue_concrete
 @assert execute if block -1 65 16 minecraft:light_blue_concrete
 @assert execute if block 3 65 16 minecraft:lime_concrete
-@assert execute if block 3 64 16 minecraft:lime_concrete
+@assert execute if block 3 64 16 minecraft:black_concrete
+@assert execute if block -4 64 16 minecraft:light_blue_concrete
+@assert execute if block -1 64 16 minecraft:light_blue_concrete
 @assert execute if block -4 66 17 minecraft:stone_button
 @assert execute if block -1 66 17 minecraft:stone_button
 @assert execute if block -4 65 17 minecraft:stone_button
 @assert execute if block -1 65 17 minecraft:stone_button
 @assert execute if block 3 65 17 minecraft:stone_button
-# its words: twelve lines, each once
+@assert execute if block -4 64 17 minecraft:stone_button
+@assert execute if block -1 64 17 minecraft:stone_button
+# its words: seventeen lines, each once
 execute store result score #lines arenatest if entity @e[type=minecraft:text_display,tag=moddyarena_panel]
-@assert execute if score #lines arenatest matches 12
+@assert execute if score #lines arenatest matches 17
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_title,nbt={text:{text:"BATTLE ARENA CONTROL PANEL"}}]
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_value,nbt={text:{text:"5"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_label,nbt={text:{text:"MONSTERS"}}]
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_difficulty_value,nbt={text:{text:"Normal"}}]
-@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_means,nbt={text:{text:"First wave: 3 monsters\nLast wave: 10 monsters"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_waves_label,nbt={text:{text:"WAVES"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_waves_value,nbt={text:{text:"5"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_means,nbt={text:{text:"First wave: 3 monsters\nBoss wave: 5\nHotbar wishes: 5 a wave"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_best]
+@assert execute unless entity @e[type=minecraft:text_display,tag=moddyarena_panel_best,nbt={text:{text:"Press a button to see your best"}}]
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_start_label,nbt={text:{text:"START BATTLE"}}]
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_state,nbt={text:{text:"Ready! Press START."}}]
 # the pictures: where he stands when he arrives, facing the arena and the board, empty-handed (the chat faded), and
@@ -60,28 +70,28 @@ teleport @s 0.5 64 21.5 180 0
 @wait 1s
 @assert execute if entity @s[x=-1,y=63,z=17,dx=3,dy=3,dz=2.5]
 
-@step the wave size goes down, then up to 10, and no further
+@step the monsters go down, then up to 10, and no further
 @aim pos -3.5 66.5 17.1
 @key key.use
-@expect actionbar Wave size 4: the first wave has 2 monsters, the last has 8 within 3s
+@expect actionbar Monsters: 4. The first wave has 2 monsters. within 3s
 @wait 5t
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_value,nbt={text:{text:"4"}}]
-@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_means,nbt={text:{text:"First wave: 2 monsters\nLast wave: 8 monsters"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_means,nbt={text:{text:"First wave: 2 monsters\nBoss wave: 5\nHotbar wishes: 5 a wave"}}]
 @aim pos -0.5 66.5 17.1
 @wait 25t
 @key key.use
-@expect actionbar Wave size 5 within 3s
+@expect actionbar Monsters: 5 within 3s
 @repeat 5
 @wait 25t
 @key key.use
 @wait 5t
 @end-repeat
-@expect actionbar Wave size 10: the first wave has 6 monsters, the last has 20 within 3s
+@expect actionbar Monsters: 10. The first wave has 6 monsters. within 3s
 @wait 25t
 @key key.use
-@expect actionbar The wave size is already the biggest within 3s
+@expect actionbar Monsters is already the biggest within 3s
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_value,nbt={text:{text:"10"}}]
-@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_means,nbt={text:{text:"First wave: 6 monsters\nLast wave: 20 monsters"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_means,nbt={text:{text:"First wave: 6 monsters\nBoss wave: 5\nHotbar wishes: 5 a wave"}}]
 
 @step the difficulty goes down to Easy and no further, then up to Extreme and no further
 @aim pos -3.5 65.5 17.1
@@ -107,6 +117,41 @@ teleport @s 0.5 64 21.5 180 0
 @expect actionbar Extreme is already the hardest within 3s
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_difficulty_value,nbt={text:{text:"Extreme"}}]
 
+@step the waves go up 10, 15, 20, Endless and no further, then back down to 5 and no further
+@aim pos -0.5 64.5 17.1
+@wait 25t
+@key key.use
+@expect actionbar Waves: 10. A boss comes every 5th wave. within 3s
+@wait 5t
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_waves_value,nbt={text:{text:"10"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_means,nbt={text:{text:"First wave: 6 monsters\nBoss waves: 5, 10\nHotbar wishes: 5 a wave"}}]
+@wait 25t
+@key key.use
+@expect actionbar Waves: 15 within 3s
+@wait 25t
+@key key.use
+@expect actionbar Waves: 20 within 3s
+@wait 25t
+@key key.use
+@expect actionbar Waves: Endless. They keep coming until you lose! within 3s
+@wait 5t
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_waves_value,nbt={text:{text:"Endless"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_means,nbt={text:{text:"First wave: 6 monsters\nA boss every 5 waves\nHotbar wishes: 5 a wave"}}]
+@wait 25t
+@key key.use
+@expect actionbar Endless is already the most within 3s
+@aim pos -3.5 64.5 17.1
+@repeat 4
+@wait 25t
+@key key.use
+@wait 5t
+@end-repeat
+@expect actionbar Waves: 5. within 3s
+@wait 25t
+@key key.use
+@expect actionbar 5 waves is already the fewest within 3s
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_waves_value,nbt={text:{text:"5"}}]
+
 @step he starts the battle, and wave 1 follows the panel: 6 husks with half again their health
 # a step back from the board, so the start button is in front of him
 teleport @s 0.5 64 21.5 180 0
@@ -128,7 +173,7 @@ execute store result score #hp arenatest run attribute @e[type=minecraft:husk,ta
 @step in the battle a selector does nothing but say so
 @aim pos -0.5 66.5 17.1
 @key key.use
-@expect actionbar A battle is on. Change the wave size and difficulty when it is over within 3s
+@expect actionbar A battle is on. Change the settings when it is over within 3s
 @wait 5t
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_value,nbt={text:{text:"10"}}]
 # the picture: from where he arrived, in the battle (its boss bar above, the board's state under START BATTLE)
@@ -161,11 +206,13 @@ kill @e[tag=moddyarena_wave]
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 4 cleared within 10s
 
-@step the last wave brings ravagers, and the battle is won
-@expect title Wave 5 of 5 within 20s
+@step the last wave is a boss wave: Rumble the Ravager and an escort (a ravager among it), and the battle is won
+@expect title BOSS WAVE within 20s
 @wait 1s
 execute store result score #n arenatest if entity @e[type=minecraft:ravager,tag=moddyarena_wave]
-@assert execute if score #n arenatest matches 4
+@assert execute if score #n arenatest matches 2
+@assert execute if entity @e[type=minecraft:ravager,tag=moddyarena_wave,name="Rumble the Ravager"]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_state,nbt={text:{text:"BOSS wave 5 of 5!"}}]
 kill @e[tag=moddyarena_wave]
 @expect chat You won the battle within 10s
 @expect chat The arena is tidy again within 15s
@@ -176,10 +223,10 @@ kill @e[tag=moddyarena_wave]
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_value,nbt={text:{text:"10"}}]
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_difficulty_value,nbt={text:{text:"Extreme"}}]
 execute store result score #lines arenatest if entity @e[type=minecraft:text_display,tag=moddyarena_panel]
-@assert execute if score #lines arenatest matches 12
+@assert execute if score #lines arenatest matches 17
 @aim look 180 0
 @key key.forward hold 15t
 @wait 1s
 @aim pos -0.5 66.5 17.1
 @key key.use
-@expect actionbar The wave size is already the biggest within 3s
+@expect actionbar Monsters is already the biggest within 3s

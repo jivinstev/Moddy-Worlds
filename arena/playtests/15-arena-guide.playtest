@@ -1,0 +1,51 @@
+# Moddy Arena: the Arena Guide. On his first arrival the core gives him the world's guide book (the Arena Guide, from
+# the manifest's guide.book) and the arena moves it from the hotbar into his bag, so the hotbar stays for his wishes.
+# He takes it from his bag onto his hotbar (a shift-click in his inventory), opens it and reads it: the first page, and
+# a page whose number comes from the rules in force (lives), filled in by the arena's charge when the book is given.
+@intent on his first arrival he gets the Arena Guide in his bag, not on his hotbar, and its pages show the rules' numbers
+@world flat seed=1
+@continue-on-fail
+
+@step arrive: the guide is in his bag
+@expect chat Welcome to Moddy Arena within 90s
+@expect chat Here is your Arena Guide book within 20s
+@wait 2s
+@assert execute if items entity @s inventory.* minecraft:written_book
+@assert execute unless items entity @s hotbar.* minecraft:written_book
+
+@step he reads it
+# in survival, so the inventory key opens his own inventory
+gamemode survival
+@key key.inventory
+@expect screen Inventory within 5s
+@click item "Arena Guide" shift
+@wait 5t
+@key key.keyboard.escape
+@wait 10t
+@expect screen none within 3s
+@assert execute if items entity @s hotbar.2 minecraft:written_book
+@key key.hotbar.3
+@wait 5t
+# the lives page as given: its number is the rules' lives (3 in the arena's own rules), filled in from the arena's charge
+@assert execute if data entity @s SelectedItem.components."minecraft:written_book_content".pages[{raw:"Lives\n\nYou have 3 lives in a battle.\n\nKnocked out? You go back to the prep room with your hotbar, and run back in!"}]
+@key key.use
+@expect screen /book/ within 5s
+@wait 10t
+@shot guide-first-page
+@key key.keyboard.page.down
+@wait 5t
+@key key.keyboard.page.down
+@wait 5t
+@key key.keyboard.page.down
+@wait 5t
+@key key.keyboard.page.down
+@wait 5t
+@key key.keyboard.page.down
+@wait 10t
+@shot guide-lives-page
+@key key.keyboard.page.down
+@wait 10t
+@shot guide-breaks-page
+@key key.keyboard.escape
+@wait 10t
+@expect screen none within 3s
