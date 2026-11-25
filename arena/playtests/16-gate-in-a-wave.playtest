@@ -63,8 +63,11 @@ teleport @e[type=minecraft:husk,tag=moddyarena_wave,limit=1] 2.5 64 22.5
 
 @step the picture: the shut gate seen from the prep room
 # a fighter put in the prep room by command (not knocked out) is left there
-teleport @s 0.5 64 19.5 180 8
+teleport @s 0.5 64 20.5 180 6
 @wait 2s
+@assert execute if entity @s[x=-4,y=63,z=17,dx=8,dy=3,dz=8]
+# after the chat has faded
+@wait 10s
 @assert execute if entity @s[x=-4,y=63,z=17,dx=8,dy=3,dz=8]
 @shot shut-gate-from-the-prep-room
 

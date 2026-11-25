@@ -16,7 +16,7 @@ difficulty hard
 difficulty normal
 gamemode survival
 effect give @s minecraft:saturation 600 0 true
-scoreboard objectives add hp health
+
 # under the arena's floor: stone, then bedrock; under the prep room's floor too; and round the place, grass on it
 @assert execute if block 0 63 0 minecraft:smooth_sandstone
 @assert execute if block 0 62 0 minecraft:stone
@@ -34,7 +34,7 @@ teleport @s 5.5 64 0.5 180 0
 fill 4 62 -1 6 63 1 minecraft:air
 @wait 2s
 @assert execute if entity @s[x=4,y=61.9,z=-1,dx=3,dy=0.5,dz=3]
-@assert execute if score @s hp matches 20
+@assert execute if entity @s[nbt={Health:20.0f}]
 @aim look 180 60
 @wait 5t
 @shot standing-on-the-bedrock
@@ -67,11 +67,12 @@ teleport @s 0.5 30 0.5
 @expect actionbar Whoops, you fell out! Back to the prep room. within 3s
 @wait 10t
 @assert execute if entity @s[x=-4,y=63.9,z=17,dx=8,dy=0.5,dz=8]
-@assert execute if score @s hp matches 20
+@assert execute if entity @s[nbt={Health:20.0f}]
 
 @step the picture: the place from outside, on its base
 gamemode spectator
 teleport @s -30 74 42 -145 18
-@wait 4s
+# after the chat has faded
+@wait 12s
 @shot the-place-on-its-base
 gamemode survival
