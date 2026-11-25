@@ -59,7 +59,8 @@ public final class ArenaModule implements WorldModule {
             long t0 = System.nanoTime();
             int set = ArenaBuilder.build(level, place);
             state.markBuilt(place);
-            state.markUpgraded(ArenaPlace.UPGRADE_START_CONTROL);   // fills() carries it
+            state.markUpgraded(ArenaPlace.UPGRADE_START_CONTROL);   // fills() carries the panel, which replaced it
+            state.markUpgraded(ArenaPlace.UPGRADE_CONTROL_PANEL);
             LOG.info("Moddy Arena: built the place ({}): {} blocks in {} ms", place.describe(), set,
                     (System.nanoTime() - t0) / 1_000_000);
         } else {
@@ -69,6 +70,17 @@ public final class ArenaModule implements WorldModule {
         if (!s.note().isEmpty()) {
             LOG.warn("Moddy Arena: {}", s.note());
         }
+        if (state.readVersion() > ArenaState.VERSION) {
+            LOG.warn("Moddy Arena: this world's arena record was saved by a newer Moddy Arena (version {}, this one"
+                    + " reads {}); what this one knows of it is used", state.readVersion(), ArenaState.VERSION);
+        }
+        if (state.unknownDifficulty() != null) {
+            LOG.warn("Moddy Arena: control panel: the saved difficulty '{}' is not one this arena knows; it is {}",
+                    state.unknownDifficulty(), ArenaDifficulty.DEFAULT.word());
+        }
+        LOG.info("Moddy Arena: control panel: wave size {}, difficulty {}{}", state.settings().size(),
+                state.settings().difficulty().word(), state.readVersion() < ArenaState.VERSION
+                        ? " (this world was saved before the panel: the defaults)" : "");
         int[] a = place.arrival();
         BlockPos spawn = new BlockPos(a[0], a[1], a[2]);
         var respawn = level.getRespawnData();
@@ -94,23 +106,29 @@ public final class ArenaModule implements WorldModule {
     }
 
     /**
-     * What a place built earlier still needs, each once and recorded ({@link ArenaPlace#pendingUpgrades}): its start
-     * control, placed only where the blocks are still as built; and natural mob spawning switched off in this world,
-     * since nothing should come but a battle's waves (the arena's floor is dark at night).
+     * What a place built earlier still needs, each once and recorded ({@link ArenaPlace#pendingUpgrades}): its battle
+     * arena control panel (which replaced the first start control, so a place that never had that gets the panel
+     * instead), placed only where the blocks are still as built; and natural mob spawning switched off in this world,
+     * since nothing should come but a battle's waves (the arena's floor is dark at night). Then, on every start, the
+     * panel's blocks are put back where one is missing (a button knocked off, say), by the same path, which sets nothing
+     * when the panel stands whole.
      */
     private static void upgrade(MinecraftServer server, ServerLevel level, ArenaState state, ArenaPlace place) {
         for (String u : ArenaPlace.pendingUpgrades(state.upgrades())) {
             switch (u) {
                 case ArenaPlace.UPGRADE_START_CONTROL -> {
-                    int set = ArenaBuilder.addStartControl(level, place);
+                    // the first start control is part of the panel now: the panel's own upgrade places it
+                }
+                case ArenaPlace.UPGRADE_CONTROL_PANEL -> {
+                    int set = ArenaBuilder.addControl(level, place);
                     if (set < 0) {
-                        LOG.warn("Moddy Arena: the place has no start button, and something stands where it goes"
-                                + " (beside the gate, in the prep room); it is not added. /moddy arena start still"
-                                + " starts a battle.");
+                        LOG.warn("Moddy Arena: the place has no control panel, and something stands where it goes"
+                                + " (the wall between the prep room and the arena, or the prep room's first row);"
+                                + " it is not added. /moddy arena start still starts a battle.");
                         continue;
                     }
-                    LOG.info("Moddy Arena: the place was missing its start control; added the start button and its"
-                            + " sign beside the gate ({} blocks)", set);
+                    LOG.info("Moddy Arena: the place was missing its battle arena control panel; added it on the wall"
+                            + " beside the gate ({} blocks)", set);
                 }
                 case ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS -> {
                     level.getGameRules().set(GameRules.SPAWN_MOBS, false, server);
@@ -122,6 +140,12 @@ public final class ArenaModule implements WorldModule {
                 }
             }
             state.markUpgraded(u);
+        }
+        if (state.upgrades().contains(ArenaPlace.UPGRADE_CONTROL_PANEL)) {
+            int set = ArenaBuilder.addControl(level, place);
+            if (set > 0) {
+                LOG.info("Moddy Arena: the control panel was missing {} of its blocks; put back", set);
+            }
         }
     }
 

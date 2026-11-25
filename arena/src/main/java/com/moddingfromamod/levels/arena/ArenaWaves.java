@@ -20,8 +20,11 @@ import java.util.regex.Pattern;
  * @param breatherSeconds  the seconds between a wave cleared and the next one
  * @param waveSeconds      how long one wave may last before the battle is lost (so a stuck mob cannot hang it)
  * @param waves            the waves, in order (at least one)
+ * @param limits           what the rule fixes or limits about the control panel's wave size and difficulty
+ *                         ({@link ArenaSettings.Limits}; by default the player chooses)
  */
-public record ArenaWaves(int countdownSeconds, int breatherSeconds, int waveSeconds, List<Wave> waves) {
+public record ArenaWaves(int countdownSeconds, int breatherSeconds, int waveSeconds, List<Wave> waves,
+                         ArenaSettings.Limits limits) {
 
     public static final int MIN_COUNTDOWN = 3;
     public static final int MAX_COUNTDOWN = 60;
@@ -53,6 +56,22 @@ public record ArenaWaves(int countdownSeconds, int breatherSeconds, int waveSeco
 
     public ArenaWaves {
         waves = List.copyOf(waves);
+        limits = limits == null ? ArenaSettings.Limits.NONE : limits;
+    }
+
+    /** A table whose control panel the player chooses freely. */
+    public ArenaWaves(int countdownSeconds, int breatherSeconds, int waveSeconds, List<Wave> waves) {
+        this(countdownSeconds, breatherSeconds, waveSeconds, waves, ArenaSettings.Limits.NONE);
+    }
+
+    /** The same timings and limits with other waves (what the wave size and the difficulty make of them). */
+    public ArenaWaves withWaves(List<Wave> other) {
+        return new ArenaWaves(countdownSeconds, breatherSeconds, waveSeconds, other, limits);
+    }
+
+    /** How many mobs the first wave brings and how many the last does: what the control panel shows. */
+    public int[] firstAndLastSize() {
+        return new int[] {waves.get(0).size(), waves.get(waves.size() - 1).size()};
     }
 
     /** How many waves a battle has. */
@@ -94,7 +113,8 @@ public record ArenaWaves(int countdownSeconds, int breatherSeconds, int waveSeco
             Map.entry("minecraft:ender_dragon", "flies over the walls and breaks blocks"));
 
     private static final Pattern ID = Pattern.compile("[a-z0-9_.-]+:[a-z0-9_./-]+");
-    private static final Set<String> KEYS = Set.of("countdownSeconds", "breatherSeconds", "waveSeconds", "waves");
+    private static final Set<String> KEYS = Set.of("countdownSeconds", "breatherSeconds", "waveSeconds", "waves",
+            "waveSize", "maxWaveSize", "difficulty", "maxDifficulty");
 
     /** A mob id as the table names it: lower case, {@code minecraft:} when no namespace is given. Pure. */
     static String normalId(String raw) {
@@ -118,7 +138,8 @@ public record ArenaWaves(int countdownSeconds, int breatherSeconds, int waveSeco
         Map<String, ?> p = params == null ? Map.of() : params;
         for (String key : p.keySet()) {
             if (!key.startsWith("_") && !KEYS.contains(key)) {
-                return fail("unknown param '" + key + "' (countdownSeconds, breatherSeconds, waveSeconds, waves)");
+                return fail("unknown param '" + key + "' (countdownSeconds, breatherSeconds, waveSeconds, waves,"
+                        + " waveSize, maxWaveSize, difficulty, maxDifficulty)");
             }
         }
         int[] t = new int[3];
@@ -186,7 +207,11 @@ public record ArenaWaves(int countdownSeconds, int breatherSeconds, int waveSeco
             }
             waves.add(wave);
         }
-        return new Parsed(new ArenaWaves(t[0], t[1], t[2], waves), null);
+        ArenaSettings.LimitsParsed lim = ArenaSettings.Limits.parse(p);
+        if (lim.problem() != null) {
+            return fail(lim.problem());
+        }
+        return new Parsed(new ArenaWaves(t[0], t[1], t[2], waves, lim.limits()), null);
     }
 
     /** The table as plain values, the shape {@link #parse} reads (what the rule type hands the core). */
@@ -207,6 +232,7 @@ public record ArenaWaves(int countdownSeconds, int breatherSeconds, int waveSeco
         out.put("breatherSeconds", breatherSeconds);
         out.put("waveSeconds", waveSeconds);
         out.put("waves", ws);
+        out.putAll(limits.toParams());
         return out;
     }
 
