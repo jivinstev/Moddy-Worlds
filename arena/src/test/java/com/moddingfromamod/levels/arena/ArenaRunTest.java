@@ -45,12 +45,12 @@ class ArenaRunTest {
     @Test
     void longerBattlesHaveABossEveryFifthWaveAndEndlessNeverEnds() throws Exception {
         ArenaWaves base = ArenaSettingsTest.bundled();
-        ArenaRun twenty = new ArenaSettings(5, ArenaDifficulty.NORMAL, 20).run(base);
+        ArenaRun twenty = new ArenaSettings(ArenaDifficulty.NORMAL, 20).run(base);
         assertEquals(List.of(5, 10, 15, 20), twenty.bossWaves(99));
         assertEquals(List.of("Rumble the Ravager", "Captain Chop", "Bruno the Brute", "King Husk"),
                 twenty.bossWaves(99).stream().map(n -> twenty.boss(n).name()).toList());
         assertTrue(twenty.isLast(20));
-        ArenaRun endless = new ArenaSettings(5, ArenaDifficulty.NORMAL, 0).run(base);
+        ArenaRun endless = new ArenaSettings(ArenaDifficulty.NORMAL, 0).run(base);
         assertTrue(endless.endless());
         assertFalse(endless.isLast(10_000));
         for (int n = 1; n <= 300; n++) {
@@ -63,15 +63,16 @@ class ArenaRunTest {
     }
 
     @Test
-    void theSizeAndTheDifficultyApplyToGeneratedWavesAndBosses() throws Exception {
+    void theDifficultysSizeAndSwapsApplyToGeneratedWavesAndBosses() throws Exception {
         ArenaWaves base = ArenaSettingsTest.bundled();
-        ArenaRun easy = new ArenaSettings(5, ArenaDifficulty.EASY, 0).run(base);
+        ArenaRun easy = new ArenaSettings(ArenaDifficulty.EASY, 0).run(base);
         for (int n = 1; n <= 40; n++) {
             assertEquals(List.of("husk"), List.copyOf(counts(easy.wave(n)).keySet()), "Easy is husks: wave " + n);
         }
-        ArenaRun big = new ArenaSettings(10, ArenaDifficulty.HARD, 20).run(base);
-        ArenaRun normal = new ArenaSettings(5, ArenaDifficulty.HARD, 20).run(base);
-        assertTrue(big.size(12) > normal.size(12), "a bigger size brings more");
+        ArenaRun big = new ArenaSettings(ArenaDifficulty.HARD, 20).run(base);
+        ArenaRun normal = new ArenaSettings(ArenaDifficulty.NORMAL, 20).run(base);
+        assertTrue(big.size(12) > normal.size(12), "Hard's bigger wave size brings more, in generated waves too");
+        assertTrue(easy.size(12) < normal.size(12), "Easy's brings fewer");
         assertEquals(1.25 * ArenaGenerator.DEFAULT.health(12, 5), big.health(12), 1e-9);
         assertEquals(1.25, big.bossHealth());
     }

@@ -449,10 +449,10 @@ public final class ArenaWords {
     /** What a difficulty means, said when it is picked. */
     public static String difficultyMeans(ArenaDifficulty d) {
         return switch (d) {
-            case EASY -> "Fewer and weaker monsters.";
+            case EASY -> "Fewer monsters, and weaker.";
             case NORMAL -> "The usual monsters.";
-            case HARD -> "More monsters, tougher, and strong ones sooner.";
-            case EXTREME -> "The most monsters and the toughest!";
+            case HARD -> "More monsters, and tougher.";
+            case EXTREME -> "The most, and the toughest!";
         };
     }
 
