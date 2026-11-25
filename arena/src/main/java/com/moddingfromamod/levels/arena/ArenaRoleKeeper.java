@@ -140,7 +140,7 @@ final class ArenaRoleKeeper {
         }
         AABB arena = arenaBox(level);
         List<Mob> creatures = level.getEntities(EntityTypeTest.forClass(Mob.class), arena,
-                m -> m.isAlive() && ArenaRoles.wished(m.getTags(), arenasOwn) && !waveMobs.contains(m.getUUID()));
+                m -> m.isAlive() && ArenaRoles.wished(com.moddingfromamod.world.Wished.isWished(m), m.getTags(), arenasOwn) && !waveMobs.contains(m.getUUID()));
         Set<UUID> seen = new HashSet<>();
         List<double[]> signs = new ArrayList<>();   // where this tick's signs went, so two never sit on each other
         for (Mob m : creatures) {

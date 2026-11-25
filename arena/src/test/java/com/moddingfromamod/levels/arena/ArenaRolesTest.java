@@ -98,13 +98,19 @@ class ArenaRolesTest {
 
     @Test
     void onlyAWishedCreatureGetsARole() {
-        assertTrue(ArenaRoles.wished(Set.of("wishmob", "wishmob_buddy_the_cat"), ARENAS_OWN), "a wished creature");
-        assertTrue(ArenaRoles.wished(Set.of("moddy_wished"), ARENAS_OWN), "a mob a wish summoned");
-        assertFalse(ArenaRoles.wished(Set.of(), ARENAS_OWN), "a mob that wandered in, or a /summon: no tags");
-        assertFalse(ArenaRoles.wished(Set.of("his_own_tag"), ARENAS_OWN));
-        assertFalse(ArenaRoles.wished(null, ARENAS_OWN));
-        assertFalse(ArenaRoles.wished(Set.of("wishmob", "moddyarena_wave"), ARENAS_OWN), "never a wave's monster");
-        assertFalse(ArenaRoles.wished(Set.of("moddy_wished", ArenaRoleKeeper.SIGN_TAG), ARENAS_OWN), "never a sign");
+        assertTrue(wished(Set.of("wishmob", "wishmob_buddy_the_cat")), "a wished creature");
+        assertTrue(wished(Set.of("moddy_wished")), "a mob a wish summoned");
+        assertFalse(wished(Set.of()), "a mob that wandered in, or a /summon: no tags");
+        assertFalse(wished(Set.of("his_own_tag")));
+        assertFalse(ArenaRoles.wished(false, null, ARENAS_OWN));
+        assertTrue(ArenaRoles.wished(true, null, ARENAS_OWN), "the core says a wish made it, with no tags read");
+        assertFalse(wished(Set.of("wishmob", "moddyarena_wave")), "never a wave's monster");
+        assertFalse(wished(Set.of("moddy_wished", ArenaRoleKeeper.SIGN_TAG)), "never a sign");
+    }
+
+    /** The arena's decision on a body's tags, with the core's own documented reader deciding "a wish made it". */
+    private static boolean wished(Set<String> tags) {
+        return ArenaRoles.wished(com.moddingfromamod.world.Wished.byTags(tags), tags, ARENAS_OWN);
     }
 
     @Test

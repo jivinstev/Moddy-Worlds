@@ -888,18 +888,39 @@ final class ArenaBattle {
 
     /** The ladder back at its first step: a battle starting ({@code on}), or the arena ready again after one. */
     private void ladderReset(boolean on) {
+        boolean wasUp = ladderTold > 0 || wavesCleared > 0 || bossesBeaten > 0;
         wavesCleared = 0;
         bossesBeaten = 0;
         ladderTold = 0;
         ladderOn = on;
         ladderBoard.changed();
+        if (wasUp) {
+            refitWished("the ladder is back at its first step");
+        }
+    }
+
+    /**
+     * The ladder's step changed, so the limits the arena answers the core's {@code WorldMakes.limits} with changed too,
+     * for everyone (the ladder is the battle's, the same for every fighter): the core is told for every player on the
+     * server, and it fits each one's living wished creatures again from their own numbers (stronger as a step opens,
+     * held down again at the battle's end), keeping how hurt each was, and tells him once if anything moved. The arena
+     * never writes the core's fit itself. Server thread.
+     */
+    private void refitWished(String why) {
+        List<ServerPlayer> everyone = List.copyOf(server.getPlayerList().getPlayers());
+        LOG.info("Moddy Arena: ladder: {}; the core re-fits the living wished creatures of {} player(s)", why,
+                everyone.size());
+        for (ServerPlayer p : everyone) {
+            com.moddingfromamod.world.WorldMakes.limitsChanged(p.getUUID());
+        }
     }
 
     /**
      * A wave was cleared and a break begins: the battle's place on the ladder may have risen (a wave cleared, or a boss
      * beaten during it). If its step did, everyone in the battle is told at once, as a moment, so the break is his to use
      * the stronger wishes: a title, one or two lines saying what rose and what opened ({@link ArenaWords#ladderRose}),
-     * and a fanfare. The core reads the new limits at the next make or hotbar fire.
+     * and a fanfare. The core reads the new limits at the next make or hotbar fire, and fits the living wished creatures
+     * again at once ({@link #refitWished}).
      */
     private void ladderUp() {
         ArenaLadder ladder = ArenaLadderRule.ladderOf(com.moddingfromamod.world.WorldRulesService.current());
@@ -914,14 +935,6 @@ final class ArenaBattle {
         LOG.info("Moddy Arena: ladder: {} -> {} ({}): step {} -> {}; rose {}, opened {}", was, now,
                 ladder.progress().id(), ladder.stepIndex(was) + 1, ladder.stepIndex(now) + 1, rise.rose().keySet(),
                 rise.opened());
-        // ── WAITS FOR A CORE CALL: re-fitting living wished creatures ─────────────────────────────────────────────
-        // A wished creature already alive keeps the limits it was fitted to when it was spawned: the core fits its
-        // health and attack on the live entity at spawn (and again when it is loaded or rebuilt), and gives a world no
-        // documented way to ask for a re-fit when the world's limits change. When the core has that call ("the limits
-        // changed for this player": re-fit his living wished creatures up to their own values, within the new limits,
-        // and tell him once), this is the one place the arena calls it: for every fighter in the battle, here, when a
-        // step has opened, and again when the battle ends and the ladder is back at its first step (ladderReset). The
-        // arena never writes the core's world_fit modifiers itself. See README, "The wish ladder".
         for (ServerPlayer p : audience()) {
             p.connection.send(new ClientboundSetTitlesAnimationPacket(10, 60, 20));
             p.connection.send(new ClientboundSetSubtitleTextPacket(Component.literal(
@@ -932,6 +945,8 @@ final class ArenaBattle {
             }
             p.playNotifySound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.PLAYERS, 1.0f, 1.0f);
         }
+        // after the arena's own lines, so the core's one line about his creatures ("stronger now") follows them
+        refitWished("step " + (ladder.stepIndex(now) + 1) + " opened");
     }
 
     /** The id of the difficulty's change to a wave mob's most health. */
@@ -1049,7 +1064,7 @@ final class ArenaBattle {
 
     /** A creature a player's wish made ({@link ArenaRoles#wished}). */
     private static boolean wished(Entity e) {
-        return ArenaRoles.wished(e.getTags(), List.of(TAG, ArenaBoard.TAG, ArenaChampionsBoard.TAG,
+        return ArenaRoles.wished(com.moddingfromamod.world.Wished.isWished(e), e.getTags(), List.of(TAG, ArenaBoard.TAG, ArenaChampionsBoard.TAG,
                 ArenaRoleKeeper.SIGN_TAG, ArenaLadderBoard.TAG));
     }
 

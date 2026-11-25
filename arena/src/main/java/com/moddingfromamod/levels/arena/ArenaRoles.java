@@ -98,29 +98,17 @@ final class ArenaRoles {
     // ── which creatures ─────────────────────────────────────────────────────────────────────────────────────────────
 
     /**
-     * The tag the Moddy core puts on every creature a wish makes (a Builder or Apprentice make, a Magician's sculpt, a
-     * spawn egg), on the body that stands in the world: its public handle for "the things I made", which the core's own
-     * docs tell a datapack to select creatures by ({@code @e[tag=wishmob]}).
+     * True for a creature a player wished for: one the core says a wish made ({@code madeByAWish}, from the core's
+     * documented {@code com.moddingfromamod.world.Wished.isWished}, whatever path made it) and that carries none of the
+     * arena's own tags (a wave's monster, the control panel's or the Champions board's words, a role's sign). A mob
+     * that wandered in, or was put there by a command, is not wished and is left alone.
      */
-    static final String WISHED_CREATURE = "wishmob";
-
-    /**
-     * The tag the core puts on a plain game mob a wish summoned (a Magician's {@code summon}, an event, a datapack the
-     * wish made): the creatures its wish-made-mob limit counts. Not one of the core's documented handles (only its
-     * source names it), so this is the best approximation the arena has for "a creature the player's wish summoned";
-     * see the arena's README.
-     */
-    static final String WISH_SUMMONED = "moddy_wished";
-
-    /**
-     * True for a creature a player wished for, by its tags: the core's {@link #WISHED_CREATURE} or
-     * {@link #WISH_SUMMONED}, and none of the arena's own (a wave's monster, the control panel's or the Champions
-     * board's words, a role's sign). A mob that wandered in, or was put there by a command, has neither and is left
-     * alone.
-     */
-    static boolean wished(Collection<String> tags, Collection<String> arenasOwn) {
-        if (tags == null || !(tags.contains(WISHED_CREATURE) || tags.contains(WISH_SUMMONED))) {
+    static boolean wished(boolean madeByAWish, Collection<String> tags, Collection<String> arenasOwn) {
+        if (!madeByAWish) {
             return false;
+        }
+        if (tags == null) {
+            return true;
         }
         for (String t : arenasOwn) {
             if (tags.contains(t)) {

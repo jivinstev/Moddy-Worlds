@@ -317,6 +317,12 @@ class ArenaLadderTest {
         assertEquals("Up to 2 at once", ArenaWords.limit(MakeFacts.COUNT_MADE, 2));
         assertEquals("Size up to 1.5 times", ArenaWords.limit(MakeFacts.SCALE_TIMES, 1.5));
         assertEquals("Powers last up to 10 seconds", ArenaWords.limit(MakeFacts.DURATION_TICKS, 200));
+        assertEquals("Armour up to 8", ArenaWords.limit(MakeFacts.ARMOR_POINTS, 8));
+        assertEquals("Knockback resistance up to 50%", ArenaWords.limit(MakeFacts.KNOCKBACK_RESISTANCE_FRACTION, 0.5));
+        for (String fact : MakeFacts.NUMBERS) {
+            assertFalse(ArenaWords.limit(fact, 3).startsWith(fact), "every core number has the arena's words: " + fact);
+            assertFalse(ArenaWords.noLimit(fact).endsWith(fact), "every core number has the arena's words: " + fact);
+        }
         assertEquals("brandNewFact up to 3", ArenaWords.limit("brandNewFact", 3), "a newer core's number still shows");
         assertEquals("Locked: opens in a battle, after wave 5.", ArenaWords.ladderLocked(ArenaLadder.Count.WAVES, 5));
         assertEquals("Locked: opens in a battle, after you beat boss 1.",
@@ -324,25 +330,25 @@ class ArenaLadderTest {
     }
 
     @Test
-    void theBoardSaysTheLimitsTheLocksAndWhatIsNext() {
-        List<String> b = ArenaWords.ladderBoard(ArenaLadder.DEFAULT, false, 7);
-        assertEquals(ArenaWords.LADDER_TITLE, b.get(0));
-        assertEquals("Before a battle: the first step", b.get(1), "in prep: the first step, whatever was reached");
-        assertTrue(b.contains("Health up to 20 hearts"), b.toString());
-        assertTrue(b.contains("Hits up to 2.5 hearts"), b.toString());
-        assertTrue(b.contains("In a battle, locked: Events (until wave 5)"), b.toString());
-        assertTrue(b.contains("In a battle, locked: World rules (until wave 10)"), b.toString());
-        assertTrue(ArenaWords.ladderBoard(ArenaLadder.DEFAULT, true, 1).contains("Locked: Events (until wave 5)"));
-        assertTrue(b.contains("After wave 2:"), b.toString());
-        assertTrue(b.contains("Health up to 30 hearts, hits up to 3 hearts and more"), b.toString());
-        List<String> mid = ArenaWords.ladderBoard(ArenaLadder.DEFAULT, true, 3);
-        assertEquals("This battle: 3 waves cleared", mid.get(1));
-        assertTrue(mid.contains("Health up to 30 hearts"), mid.toString());
-        List<String> top = ArenaWords.ladderBoard(ArenaLadder.DEFAULT, true, 20);
-        assertTrue(top.contains("No limits: wish for anything!"), top.toString());
-        assertFalse(String.join("\n", top).contains("Locked"));
-        assertTrue(ArenaWords.ladderBoard(ArenaLadder.DEFAULT, true, 4).contains("Events, health up to 60 hearts and more"));
-        assertTrue(b.size() <= 16, "it fits the wall: " + b.size() + " lines");
+    void theBoardSaysTheStepTheMostImportantLimitsTheLocksAndWhatIsNext() {
+        ArenaWords.LadderBoardWords b = ArenaWords.ladderBoard(ArenaLadder.DEFAULT, false, 7);
+        assertEquals(ArenaWords.LADDER_TITLE, b.title());
+        assertEquals("Before a battle: step 1", b.where(), "in prep: the first step, whatever was reached");
+        assertEquals(List.of("Health: 20 hearts", "Hits: 2.5 hearts", "Size: x1.5", "2 at once"), b.now(),
+                "health, hits, size and how many at once first, four at most");
+        assertEquals("Battle locks: Events, World rules", b.locked());
+        assertEquals("After wave 2: health 30 hearts", b.next());
+        ArenaWords.LadderBoardWords mid = ArenaWords.ladderBoard(ArenaLadder.DEFAULT, true, 3);
+        assertEquals("This battle: 3 waves cleared", mid.where());
+        assertEquals("Health: 30 hearts", mid.now().get(0));
+        assertEquals("Locked: Events, World rules", mid.locked());
+        assertEquals("After wave 5: events open", ArenaWords.ladderBoard(ArenaLadder.DEFAULT, true, 4).next());
+        assertEquals("This battle: 0 waves cleared", ArenaWords.ladderBoard(ArenaLadder.DEFAULT, true, 0).where());
+        ArenaWords.LadderBoardWords top = ArenaWords.ladderBoard(ArenaLadder.DEFAULT, true, 20);
+        assertEquals(List.of("No limits!"), top.now());
+        assertNull(top.locked());
+        assertNull(top.next());
+        assertEquals("After wave 20: no limits!", ArenaWords.ladderBoard(ArenaLadder.DEFAULT, true, 15).next());
     }
 
     @Test
@@ -370,8 +376,18 @@ class ArenaLadderTest {
         for (ArenaLadder.Count pr : ArenaLadder.Count.values()) {
             ArenaLadder l = new ArenaLadder(pr, ArenaLadder.DEFAULT.steps(), ArenaLadder.DEFAULT.locked());
             for (int b = 0; b <= 21; b++) {
-                lines.addAll(ArenaWords.ladderBoard(l, true, b));
-                lines.addAll(ArenaWords.ladderBoard(l, false, b));
+                for (boolean in : new boolean[] {true, false}) {
+                    ArenaWords.LadderBoardWords w = ArenaWords.ladderBoard(l, in, b);
+                    lines.add(w.title());
+                    lines.add(w.where());
+                    lines.addAll(w.now());
+                    if (w.locked() != null) {
+                        lines.add(w.locked());
+                    }
+                    if (w.next() != null) {
+                        lines.add(w.next());
+                    }
+                }
                 lines.addAll(ArenaWords.ladderWishes(l, true, b));
                 lines.addAll(ArenaWords.ladderWishes(l, false, b));
                 lines.addAll(ArenaWords.ladderRose(l.rise(b, b + 1)));
@@ -395,18 +411,17 @@ class ArenaLadderTest {
     @Test
     void theBoardHangsInsideThePrepRoomBesideThePanel() {
         ArenaPlace place = ArenaPlace.DEFAULT;
-        ArenaPanel.LadderSign s = place.panel().ladderSign();
         ArenaPlace.Box prep = place.prepInside();
-        assertEquals(prep.x0() + ArenaPanel.IN_FRONT, s.x(), 1e-9, "on the west wall's inside face");
-        double half = ArenaPanel.LADDER_LINE_WIDTH / 40.0 * s.scale() / 2;
-        assertTrue(s.z() - half >= prep.z0() && s.z() + half <= prep.z1() + 1, "within the room's depth");
-        assertTrue(s.y() >= place.floorY() && s.y() < place.floorY() + 1, "starting low enough to read");
-        assertEquals(-90f, s.yaw(), "facing east, into the room");
         ArenaPlace.Box board = place.panel().ladderBoard();
         assertEquals(prep.x0() - 1, board.x0(), "the board is the west wall");
-        assertTrue(s.z() - half >= board.z0() && s.z() + half <= board.z1() + 1, "the words are on the board");
-        int lines = ArenaWords.ladderBoard(ArenaLadder.DEFAULT, false, 0).size() + 2;   // a long line wraps
-        assertTrue(s.y() + lines * ArenaPanel.LINE * s.scale() < place.floorY() + ArenaPlace.PREP_HEIGHT,
-                "under the roof");
+        for (ArenaPanel.LadderSlot s : place.panel().ladderSlots(ArenaWords.ladderBoard(ArenaLadder.DEFAULT, false, 0))) {
+            assertEquals(prep.x0() + ArenaPanel.IN_FRONT, s.x(), 1e-9, "on the west wall's inside face");
+            assertEquals(-90f, s.yaw(), "facing east, into the room");
+            double half = ArenaPanel.width(s.text()) * s.scale() * (s.bold() ? 1.17 : 1.0) / 2;
+            assertTrue(s.z() - half >= board.z0() && s.z() + half <= board.z1() + 1, "on the board: " + s);
+            assertTrue(s.z() - half >= prep.z0() && s.z() + half <= prep.z1() + 1, "within the room's depth: " + s);
+            assertTrue(s.y() >= place.floorY() && s.y() + ArenaPanel.LINE * s.scale()
+                    <= place.floorY() + ArenaPlace.PREP_HEIGHT, "under the roof: " + s);
+        }
     }
 }

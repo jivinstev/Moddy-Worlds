@@ -355,14 +355,10 @@ whenever a creature is outside the arena (in the prep room, say), its role stops
 go, its walk stops, the Resistance it was given is taken off, and every monster a tank held is let go (its target
 cleared). A role touches nothing else: no attribute, no name, nothing saved.
 
-**Which creatures.** A creature carrying the core's tag `wishmob`: the tag the core puts on the body of every creature
-a wish makes (a Builder or Apprentice make, a Magician's sculpt), which the core's own lessons tell a wish's datapack to
-select creatures by, and which its client-validation playtests look for. A plain game mob that a Magician's wish
-summoned carries the core's `moddy_wished` tag instead; that tag is **not** a documented handle (only the core's source
-names it, as the mobs its wish-made-mob limit counts), so reading it is an approximation, labelled so in
-`ArenaRoles.WISH_SUMMONED`. What would make it exact is one documented core marker for "a creature a player's wish
-made", on every such body, whatever made it. A mob nobody wished (one that wandered in, or a `/summon`) has neither tag
-and gets nothing; nor do the arena's own (a wave's monster, a board's words, a role's sign).
+**Which creatures.** A creature the core says a wish made: `com.moddingfromamod.world.Wished.isWished(entity)`, the
+core's one documented reader for a wish-made body, whatever made it (a Builder or Apprentice make, a Magician's sculpt
+or `summon`, "Make another one", a recipe or a hotbar fire). The arena reads no core tag itself. A mob nobody wished (one
+that wandered in, or a `/summon`) is not wished and gets nothing; nor do the arena's own (a wave's monster, a board's words, a role's sign).
 
 **A healer never makes a player unbeatable.** `arena_creatures` refuses heal numbers above 1 health a second for one
 player from all his healers together (`healAmount / healSeconds`), and the default is half that: 0.5 a second, while one
@@ -408,11 +404,13 @@ ladder starts again. Nothing is hidden: every wished creature has a battle role.
 **What he sees.**
 - **The WISH LADDER board** beside the control panel: the prep room's west wall's first four columns are a black board
   (blocks, like the panel's; a place built before it gains it once, the upgrade `ladder-board`, only where the glass
-  still stands), its words one text display (`ArenaLadderBoard`, tagged `moddyarena_ladder`, kept like the panel's):
-  where the battle is ("Before a battle: the first step", "This battle: 3 waves cleared"), what wishes can have now in
-  real numbers ("Health up to 20 hearts", "Hits up to 2.5 hearts", "Up to 2 at once", "Powers last up to 10 seconds"),
-  what is still locked and until when, and what the next step brings ("After wave 2: Health up to 30 hearts, hits up to
-  3 hearts and more").
+  still stands), its words a few big lines read from across the room, one text display each (`ArenaLadderBoard`, each
+  tagged `moddyarena_ladder` and its line's own tag, kept like the panel's; laid out by the pure `ArenaLadderLayout`,
+  whose test holds every line on the board and none over another): the title; where the battle is ("Before a battle:
+  step 1", "This battle: 2 waves cleared"); at most four big lines of what wishes can have now, health, hits, size and
+  how many at once first ("Health: 30 hearts", "Hits: 3 hearts", "Size: x1.75", "2 at once"); one line of what is
+  locked ("Locked: Events, World rules"); and one of what the next step brings ("After wave 4: health 40 hearts",
+  "After wave 5: events open"). The full list is `/moddy wishes` and the Arena Guide's.
 - **A step is a moment**, said at the start of the break after the wave that reached it, so the break is his to use:
   the title "Stronger wishes!" with "Wave 2 cleared" under it, one or two lines ("Your wishes can be stronger now: health
   up to 30 hearts, hits up to 3 hearts, size up to 1.75 times, and more." and "Events are open now!"), and a fanfare.
@@ -441,14 +439,24 @@ at least as fast as the monsters' health all the way (`ArenaLadderTest.theDefaul
 nothing is limited. Movement speed and a building's length are never limited by default: the core cannot lower them, so
 a limit on them would lock rather than fit.
 
-**What a living creature does when a step opens (waits for the core).** The core fits a creature's health and attack
-on the live entity when it is spawned (and again when it is loaded or rebuilt). A creature spawned at one step keeps
-that step's fit when the next step opens, until it is made again (a hotbar fire after the step comes out at the new
-step) or its chunk is reloaded; its size is its make's and never grows. The owner wants a living wished creature to grow
-"up to" its own values as the battle's limits rise; the core gives a world no documented way to ask for that re-fit yet,
-so the arena does not do it (it never writes the core's `world_fit` modifiers itself). The one place it will call the
-core's re-fit is marked in `ArenaBattle.ladderUp` (each step reached, for every fighter) and `ladderReset` (the battle's
-end).
+**What a living creature does when a step opens: it grows.** The arena tells the core whenever the ladder's step
+changes (`WorldMakes.limitsChanged`, the core's documented call), for every player on the server, since the ladder is
+the same for all: when a step opens (`ArenaBattle.ladderUp`, at the start of the break, after the arena's own "Stronger
+wishes!" lines) and when the battle is over and the ladder is back at its first step (`ladderReset`). The core fits
+every living creature that player's wishes made again from its own numbers: a dragon made at the first step and held
+to 20 hearts of health has more as the steps open, up to what it was made to have, keeping how hurt it was (half its
+hearts before, half after), and is held back to the first step's numbers after the battle. The core tells him once for
+the change, after the arena's lines ("Your creatures are stronger now! This world lets them do more.", or "Your
+creatures are held back a little in this world for now."), and says nothing when no creature of his moved. What it
+fits again is health, hits, armour and knockback resistance; a creature's size is its make's and does not grow. The
+arena never writes the core's fit itself.
+
+**Armour is not limited by default** (`armorPoints` and `knockbackResistanceFraction`, the core's newer facts, may be
+named in a step like any number, and the board and `/moddy wishes` have words for them). No Builder or Apprentice
+ready-made creature has armour, so a limit would only ever hold a Magician's sculpt, which is already held by its
+health and hits, and the board would carry a line that means nothing to most players. If play shows Magician tanks
+with armour are too strong, a ladder starting at 4 (leather) and rising to 8 (iron) at wave 5, 12 at wave 10 and 20
+(diamond) at wave 15 keeps pace with the bosses; the rules file can set it today.
 
 **Between battles** (fairness on the Champions board): the battle's end clears every creature a wish made from the arena,
 also one a player tamed (a plain pet someone owns is still kept), so no creature made at a high step fights in the next
@@ -857,7 +865,6 @@ everything else.
   Recommended: (b), the items a battle's hotbar fires handed over go back at its end, like the creatures, with a line
   saying so, once the core marks wish-made items; until then (a). Nothing is taken from a player without the owner's
   say.
-- **Re-fitting living creatures when a step opens**: waits for a core call (above, "The wish ladder").
 - **A hotbar wish growing with the ladder**: the core keeps a Builder make's recipe as it was made, fitted to the step
   it was made at (in prep, the first), so firing it after a step opens gives it no more than that. For "the strongest
   dragon ever, held down early and unleashed later" the core would keep the make as he ASKED for it and fit it at each
