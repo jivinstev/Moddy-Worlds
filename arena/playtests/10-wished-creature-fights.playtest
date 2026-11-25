@@ -1,0 +1,58 @@
+# Moddy Arena: a creature wished into the arena fights the wave. In prep he makes a cat with the Apprentice on the
+# arena's floor (a cat has no attack of its own: the arena gives it one), goes back to the prep room, presses the start
+# button and fights nothing himself. Wave 1 is husks, which daylight does not burn; he stands in the prep room, so
+# nothing but the cat can hurt them: a husk's health going down is the cat's doing.
+# play-timeout: 900
+@intent a creature wished into the arena fights the wave's mobs by itself, though it is a cat
+@world flat seed=1
+
+@step arrive
+@expect chat Welcome to Moddy Arena within 90s
+@wait 2s
+difficulty hard
+difficulty normal
+gamemode survival
+effect give @s minecraft:resistance 900 4 true
+scoreboard objectives add pt_h0 dummy
+scoreboard objectives add pt_h1 dummy
+
+@step a cat on the arena floor, made in prep
+# he opens the gate in the shared wall and walks through it, into the arena, as in 7-creature-in-the-arena
+@aim pos 0.5 64.5 16.5
+@key key.use
+@wait 10t
+@aim look 180 0
+@key key.forward hold 45t
+@wait 10t
+@assert execute if entity @s[z=-15,dz=29]
+@aim look 180 12
+@wait 2s
+moddy apprentice a cat
+@expect screen Container within 10s
+@click slot 0
+@expect chat /is ready/ within 90s
+@wait 3s
+@assert execute if entity @e[type=minecraft:cat,x=-15,y=60,z=-15,dx=30,dy=12,dz=30]
+@shot the-cat-in-the-arena
+
+@step back in the prep room, he presses the start button
+# SHORTCUT: he is put back in the prep room beside the start button (walking back is not what the step tests)
+tp @s 2.5 64 20.5 180 0
+@wait 1s
+@aim pos 3.5 65.5 17.1
+@key key.use
+@expect chat A battle is starting within 5s
+@expect title Wave 1 of 5 within 20s
+@wait 1s
+@assert execute if entity @e[type=minecraft:husk,tag=moddyarena_wave]
+@assert execute if entity @e[type=minecraft:cat,x=-15,y=60,z=-15,dx=30,dy=12,dz=30]
+# each husk's health as it came in (tenths of a point)
+execute as @e[tag=moddyarena_wave] store result score @s pt_h0 run data get entity @s Health 10
+
+@step the cat fights the husks: one of them loses health, and he has struck nothing
+@repeat 40 until execute as @e[tag=moddyarena_wave] if score @s pt_h1 < @s pt_h0
+@wait 1s
+execute as @e[tag=moddyarena_wave] store result score @s pt_h1 run data get entity @s Health 10
+@end-repeat
+@assert execute as @e[tag=moddyarena_wave] if score @s pt_h1 < @s pt_h0
+@shot the-cat-fights

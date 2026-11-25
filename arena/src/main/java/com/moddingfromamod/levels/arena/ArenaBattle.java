@@ -83,6 +83,9 @@ final class ArenaBattle {
     /** Everyone who fought in this battle, out or not: they are told how it ends, wherever they respawned. */
     private final Set<UUID> told = new HashSet<>();
     private final List<UUID> waveMobs = new ArrayList<>();
+    /** Each wished creature fighting the wave: the foe it fights ({@link ArenaAllies}) and the tick it last struck. */
+    private final Map<UUID, UUID> allyFoe = new HashMap<>();
+    private final Map<UUID, Long> allyStruck = new HashMap<>();
     /** What fighters dropped when they were knocked out: moved to the prep room at the reset, never cleared. */
     private final Set<UUID> fightersDrops = new HashSet<>();
     /** Told when a battle is over and the arena is ready again (the wishes' counts and cooldowns start again). */
@@ -198,6 +201,12 @@ final class ArenaBattle {
             fightersIn = Math.max(1, fightersIn);
         }
         int mobsLeft = match.phase() == ArenaMatch.Phase.WAVE ? mobsLeft(level) : 0;
+        if (match.phase() == ArenaMatch.Phase.WAVE) {
+            alliesFight(level);
+        } else if (!allyFoe.isEmpty()) {
+            allyFoe.clear();
+            allyStruck.clear();
+        }
         watchBoss(level);
         ArenaMatch.Event ev = match.tick(mobsLeft, fightersIn);
         if (ev != null) {
@@ -595,6 +604,60 @@ final class ArenaBattle {
     /** The wave table the world's rules name now (the panel's settings are applied on top), or null. */
     private static ArenaWaves baseWaves() {
         return ArenaWavesRule.wavesOf(com.moddingfromamod.world.WorldRulesService.current());
+    }
+
+    /**
+     * <b>Every creature wished into the arena fights the wave</b>, whatever its own nature: each one in the arena that
+     * is not the wave's (nor the panel's or the Champions board's, nor carrying a player) is set on the wave mob
+     * {@link ArenaAllies#pick} gives it, walked to it and, beside it, strikes it once a second, with its own attack or
+     * {@link ArenaAllies#NO_ATTACK_DAMAGE}. Its target is set again every tick, so one that would go for a player goes
+     * for the wave.
+     */
+    private void alliesFight(ServerLevel level) {
+        List<ArenaAllies.Foe> foes = new ArrayList<>();
+        Map<UUID, LivingEntity> foeOf = new HashMap<>();
+        for (UUID id : waveMobs) {
+            if (level.getEntity(id) instanceof LivingEntity f && f.isAlive()) {
+                foes.add(new ArenaAllies.Foe(id, f.getX(), f.getY(), f.getZ()));
+                foeOf.put(id, f);
+            }
+        }
+        ArenaPlace.Box r = place.resetBox(level.getMaxY());
+        AABB arena = new AABB(r.x0(), r.y0() - 1, r.z0(), r.x1() + 1, r.y1() + 1, r.z1() + 1);
+        List<Mob> allies = level.getEntities(EntityTypeTest.forClass(Mob.class), arena, m -> m.isAlive()
+                && !m.getTags().contains(TAG) && !m.getTags().contains(ArenaBoard.TAG)
+                && !m.getTags().contains(ArenaChampionsBoard.TAG) && !m.hasPassenger(p -> p instanceof Player)
+                && place.keeps(m.getX(), m.getY(), m.getZ()));
+        Set<UUID> seen = new HashSet<>();
+        for (Mob m : allies) {
+            seen.add(m.getUUID());
+            UUID foeId = ArenaAllies.pick(m.getX(), m.getY(), m.getZ(), allyFoe.get(m.getUUID()), foes);
+            if (foeId == null) {
+                allyFoe.remove(m.getUUID());
+                continue;
+            }
+            LivingEntity foe = foeOf.get(foeId);
+            if (!foeId.equals(allyFoe.put(m.getUUID(), foeId))) {
+                LOG.info("Moddy Arena: battle: a wished {} fights a {}", EntityType.getKey(m.getType()),
+                        EntityType.getKey(foe.getType()));
+            }
+            m.setTarget(foe);
+            if (ArenaAllies.inReach(m.distanceToSqr(foe), m.getBbWidth(), foe.getBbWidth())) {
+                long last = allyStruck.getOrDefault(m.getUUID(), -1L);
+                if (ArenaAllies.mayStrike(last, ticks)) {
+                    AttributeInstance attack = m.getAttribute(Attributes.ATTACK_DAMAGE);
+                    float dmg = ArenaAllies.damage(attack == null ? 0 : attack.getValue());
+                    m.getLookControl().setLookAt(foe);
+                    m.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
+                    foe.hurtServer(level, m.damageSources().mobAttack(m), dmg);
+                    allyStruck.put(m.getUUID(), ticks);
+                }
+            } else if (ticks % ArenaAllies.REPATH_TICKS == 0 || m.getNavigation().isDone()) {
+                m.getNavigation().moveTo(foe, ArenaAllies.SPEED);
+            }
+        }
+        allyFoe.keySet().retainAll(seen);
+        allyStruck.keySet().retainAll(seen);
     }
 
     /** How many of the wave's mobs are left; one that has left the place is removed and counts as cleared. */
