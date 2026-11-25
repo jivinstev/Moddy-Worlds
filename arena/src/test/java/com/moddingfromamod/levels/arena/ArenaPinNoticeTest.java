@@ -1,6 +1,7 @@
 package com.moddingfromamod.levels.arena;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.moddingfromamod.levels.arena.ArenaLadder.Count;
@@ -49,8 +50,9 @@ class ArenaPinNoticeTest {
     void aDragonTooBigAndTooStrongIsSmallerAndWeakerAtFirst() {
         Notice n = ArenaPinNotice.of(L, 0, facts("creature", Map.of(MakeFacts.SCALE_TIMES, 4.0,
                 MakeFacts.HEALTH_HALF_HEARTS, 200.0, MakeFacts.COUNT_MADE, 1.0), Set.of("fights")));
-        assertEquals(new Notice(Type.FITTED, 0, List.of(Held.SMALLER, Held.WEAKER)), n);
-        assertEquals("Your Dragon will be smaller and weaker at first. It grows as you clear waves.", say("Dragon", n));
+        assertEquals(new Notice(Type.FITTED, 0, List.of(Held.SMALLER, Held.WEAKER), ArenaPinNotice.Later.SOME), n);
+        assertEquals("Your Dragon will be smaller and weaker in this arena. It gets stronger as you clear waves.",
+                say("Dragon", n), "its strength comes back as steps open; its size is not promised (nothing regrows it)");
     }
 
     @Test
@@ -114,10 +116,10 @@ class ArenaPinNoticeTest {
 
     @Test
     void manyHoldsReadAsOneList() {
-        Notice n = new Notice(Type.FITTED, 0, List.of(Held.WEAKER, Held.FEWER, Held.GENTLER));
-        assertEquals("Your Wolf Pack will be weaker, fewer and gentler at first. It gets stronger as you clear waves.",
-                say("Wolf Pack", n));
-        assertEquals("This wish will be weaker, fewer and gentler at first. It gets stronger as you clear waves.",
+        Notice n = new Notice(Type.FITTED, 0, List.of(Held.WEAKER, Held.FEWER, Held.GENTLER), ArenaPinNotice.Later.SOME);
+        assertEquals("Your Wolf Pack will be weaker, fewer and gentler in this arena. It gets stronger as you clear"
+                + " waves.", say("Wolf Pack", n));
+        assertEquals("This wish will be weaker, fewer and gentler in this arena. It gets stronger as you clear waves.",
                 say("", n), "a wish with no name");
     }
 
@@ -131,5 +133,23 @@ class ArenaPinNoticeTest {
         assertEquals("", ArenaPinNotice.nameOf("\u2728 Wish: A meteor that makes a crater!"),
                 "a ready-made's label is a sentence, not a name: the line says This wish");
         assertEquals("", ArenaPinNotice.nameOf("Wish: A very long name for a thing"));
+    }
+
+    @Test
+    void onlyWhatComesBackIsPromised() {
+        Notice sword = ArenaPinNotice.of(L, 0, facts("item", Map.of(MakeFacts.ATTACK_DAMAGE_HALF_HEARTS, 40.0),
+                Set.of("fights")));
+        assertEquals(Type.FITTED, sword.type());
+        assertEquals(ArenaPinNotice.Later.NONE, sword.later(), "nothing re-fits an item as steps open");
+        assertEquals("Your Fire Sword will be weaker in this arena.", say("Fire Sword", sword));
+        Notice small = ArenaPinNotice.of(L, 0, facts("creature", Map.of(MakeFacts.SCALE_TIMES, 4.0), Set.of()));
+        assertEquals("Your Dragon will be smaller in this arena.", say("Dragon", small),
+                "a creature held only in size: its size is not regrown, so nothing is promised");
+        Notice ride = ArenaPinNotice.of(L, 0, facts("ride", Map.of(MakeFacts.HEALTH_HALF_HEARTS, 100.0), Set.of()));
+        assertEquals(ArenaPinNotice.Later.ALL, ride.later(), "a ride's strength comes back like a creature's");
+        for (Notice n : List.of(sword, small)) {
+            assertFalse(say("X", n).contains("stronger") || say("X", n).contains("grows") || say("X", n).contains("at first"),
+                    say("X", n));
+        }
     }
 }

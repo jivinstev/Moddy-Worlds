@@ -208,6 +208,9 @@ moddy apprentice a cozy house
 @assert execute if items entity @s hotbar.3 minecraft:paper
 moddy wishes
 @expect chat Magician wishes left before the next battle: 3 of 3 within 5s
+# where the fight ended depends on where the last monster stood (he walks up to each), so the house is wished from
+# a known spot: the arena's centre, facing north (SHORTCUT: a teleport), so its slide never depends on the fight
+teleport @s 0.5 64 0.5 180 12
 @aim look 180 12
 @wait 2s
 moddy apprentice a cozy house

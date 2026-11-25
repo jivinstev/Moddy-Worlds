@@ -451,7 +451,10 @@ ladder starts again. Nothing is hidden: every wished creature has a battle role.
 - **A wish he puts on his hotbar** that the step the battle is on would lock or hold back (a battle starts at the first,
   and prep is the first) tells him so once, as it lands ("On your hotbar, slot 5" is the core's line, this one follows
   it): "Your Meteor is locked in a battle until wave 5 is cleared.", "Your Rock Golem will be weaker at first. It gets
-  stronger as you clear waves.", "Your Dragon will be smaller at first. It grows as you clear waves." (a number the core
+  stronger as you clear waves.", "Your Dragon will be smaller and weaker in this arena. It gets stronger as you clear
+  waves.", "Your Fire Sword will be weaker in this arena." (it promises only what comes back as steps open: a
+  creature's health and hits, which the core refits on the living creature, and how many a fire makes; nothing re-fits
+  an item, or a creature's size, today) (a number the core
   cannot lower: "Your Castle is too much for now. It opens when wave 6 is cleared."; a wish whose label is a sentence
   rather than a name, as a ready-made's is, is "This wish"). The arena reads his hotbar wishes
   twice a second through the core's public `WishHotbar.recipeOf` and asks what each makes with

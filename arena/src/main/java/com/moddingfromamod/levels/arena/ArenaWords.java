@@ -241,9 +241,13 @@ public final class ArenaWords {
                 }
                 String what = how.size() == 1 ? how.get(0) : String.join(", ", how.subList(0, how.size() - 1))
                         + " and " + how.get(how.size() - 1);
-                String grows = n.held().contains(ArenaPinNotice.Held.SMALLER) ? "It grows" : "It gets stronger";
-                yield your + " will be " + what + " at first. " + grows + " as you "
-                        + (bosses ? "beat bosses." : "clear waves.");
+                // only what really comes back is promised (ArenaPinNotice.Later): a creature's strength and number
+                String when = bosses ? "beat bosses." : "clear waves.";
+                yield switch (n.later()) {
+                    case ALL -> your + " will be " + what + " at first. It gets stronger as you " + when;
+                    case SOME -> your + " will be " + what + " in this arena. It gets stronger as you " + when;
+                    case NONE -> your + " will be " + what + " in this arena.";
+                };
             }
             default -> null;
         };
