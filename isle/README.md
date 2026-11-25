@@ -5,7 +5,22 @@ where every wish counts.** Your goal is to grow it from almost nothing into a ho
 
 ## How to play
 
-1. **Install** the Moddy core jar and the Scarcity Isle jar in a NeoForge 1.21.8 game (the Isle's
+1. **Install** it with one command. It installs NeoForge, the Isle, the Moddy core it was built for and a
+   launcher profile; it asks which Minecraft version you want and shows its plan before it changes anything.
+
+   Mac and Linux:
+
+   ```bash
+   curl -fsSL https://github.com/jivinstev/mc-mod-version-upgrade/releases/download/player-install-v2/install.sh | bash -s -- jivinstev/Moddy-Worlds:isle
+   ```
+
+   Windows (PowerShell):
+
+   ```powershell
+   & ([scriptblock]::Create((irm https://github.com/jivinstev/mc-mod-version-upgrade/releases/download/player-install-v2/install.ps1))) jivinstev/Moddy-Worlds:isle
+   ```
+
+   Or by hand: the Moddy core jar and the Scarcity Isle jar in a NeoForge game (the Isle's
    [release notes](../../../releases) name the core it was built for).
 2. **Create World**, open the **World** tab and pick **World Type: Moddy Isle**. That is all: the world switches
    itself on in that world and nowhere else.
