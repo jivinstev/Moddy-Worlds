@@ -105,19 +105,25 @@ teleport @s 0.5 64 17.5 180 10
 @wait 1t
 @end-repeat
 @assert execute if entity @e[type=minecraft:camel,tag=moddyarena_tank,nbt={active_effects:[{id:"minecraft:resistance"}]}]
-teleport @s 0.5 64 17.5 180 10
+# for the picture he steps just inside the arena, where nothing can hurt him, and back after it
+teleport @s 0.5 64 12.5 180 10
 @aim entity @e[type=minecraft:camel,limit=1]
 @wait 5t
 @shot a-tank-holding-monsters
+teleport @s 0.5 64 18.5 180 0
+@wait 5t
 
 @step the Fighter goes for the monsters
 @repeat 600 until execute as @e[type=minecraft:wolf,tag=moddyarena_fighter] at @s if entity @e[tag=moddyarena_wave,distance=..2.5]
 @wait 1t
 @end-repeat
-teleport @s 0.5 64 17.5 180 10
+# for the picture he steps just inside the arena, where nothing can hurt him, and back after it
+teleport @s 0.5 64 12.5 180 10
 @aim entity @e[type=minecraft:wolf,limit=1]
 @wait 3t
 @shot a-fighter-engaging
+teleport @s 0.5 64 18.5 180 0
+@wait 5t
 
 @step when the wave ends every role stops
 # the Fighters may well have beaten the wave already; whatever is left of it is ended by command (SHORTCUT)
