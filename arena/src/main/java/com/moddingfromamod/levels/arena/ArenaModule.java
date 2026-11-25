@@ -10,11 +10,19 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.WrittenBookContent;
 import net.minecraft.world.level.GameRules;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +50,8 @@ public final class ArenaModule implements WorldModule {
     private ArenaBattle battle;
     /** Read by the core from any thread (a Magician pickup comes on an agent thread). */
     private volatile ArenaCharge charge;
+    /** Players who arrived for the first time, and the tick until which the core's guide book is looked for. */
+    private final Map<UUID, Long> guideDue = new HashMap<>();
 
     @Override
     public String id() {
@@ -177,6 +187,9 @@ public final class ArenaModule implements WorldModule {
 
     @Override
     public void onTick() {
+        if (!guideDue.isEmpty()) {
+            shelveGuides();
+        }
         ArenaBattle b = battle;
         if (b != null) {
             b.tick();
@@ -226,7 +239,62 @@ public final class ArenaModule implements WorldModule {
         ServerLevel level = s.overworld();
         player.teleportTo(level, a[0] + 0.5, a[1], a[2] + 0.5, Set.of(), ArenaPlace.ARRIVAL_YAW, 0f, true);
         player.fallDistance = 0;
+        guideDue.put(player.getUUID(), (long) s.getTickCount() + ArenaGuide.SHELVE_TICKS);
         LOG.info("Moddy Arena: {} arrived in the prep room", player.getScoreboardName());
+    }
+
+    /**
+     * The core gives the Arena Guide on a first arrival, into the first free slot, which is on the hotbar. Once, for the
+     * copy given then, the arena moves it into his bag ({@link ArenaGuide#bagSlot}): the hotbar is for the wishes he
+     * fights with. A copy he asks for later, or moves back himself, is left where it is.
+     */
+    private void shelveGuides() {
+        MinecraftServer s = server;
+        if (s == null) {
+            guideDue.clear();
+            return;
+        }
+        long now = s.getTickCount();
+        for (Iterator<Map.Entry<UUID, Long>> it = guideDue.entrySet().iterator(); it.hasNext(); ) {
+            Map.Entry<UUID, Long> e = it.next();
+            ServerPlayer p = s.getPlayerList().getPlayer(e.getKey());
+            if (p == null || now > e.getValue()) {
+                it.remove();
+                continue;
+            }
+            var inv = p.getInventory();
+            int book = -1;
+            for (int i = 0; i < ArenaGuide.HOTBAR; i++) {
+                if (isGuide(inv.getItem(i))) {
+                    book = i;
+                    break;
+                }
+            }
+            if (book < 0) {
+                continue;
+            }
+            boolean[] empty = new boolean[ArenaGuide.BAG_END];
+            for (int i = 0; i < empty.length; i++) {
+                empty[i] = inv.getItem(i).isEmpty();
+            }
+            int to = ArenaGuide.bagSlot(book, empty);
+            if (to >= 0) {
+                inv.setItem(to, inv.getItem(book));
+                inv.setItem(book, ItemStack.EMPTY);
+                p.containerMenu.broadcastChanges();
+                LOG.info("Moddy Arena: {}'s Arena Guide went from hotbar slot {} into his bag", p.getScoreboardName(),
+                        book + 1);
+            }
+            it.remove();
+        }
+    }
+
+    private static boolean isGuide(ItemStack st) {
+        if (!st.is(Items.WRITTEN_BOOK)) {
+            return false;
+        }
+        WrittenBookContent c = st.get(DataComponents.WRITTEN_BOOK_CONTENT);
+        return c != null && ArenaGuide.TITLE.equals(c.title().raw()) && ArenaGuide.AUTHOR.equals(c.author());
     }
 
     /**

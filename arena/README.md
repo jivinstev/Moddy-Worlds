@@ -248,6 +248,55 @@ them.
   dropped things and experience, which a fighter may pick up in the break (the battle's end clears or carries them as
   before).
 
+### Wished creatures help in a battle
+
+So a creature a player wishes into the arena never just stands about, **in a wave every wished creature in the arena
+takes one battle role**, automatically, on top of whatever it is (`ArenaRoles` decides, pure and unit-tested;
+`ArenaRoleKeeper` carries it out):
+
+- **Fighter**: a creature whose own attack is at least `fighterAttack` (3, a zombie's punch), or that the game counts a
+  monster, goes for the wave's nearest monster, walks to it and strikes it once a second with its own attack (a
+  crit spark and a strong-hit sound on each strike). A wished monster never goes for a player.
+- **Tank**: a creature that does not fight and has at least `tankHealth` (40) most health or is at least `tankWidth`
+  (1.3) blocks wide, and any creature that neither fights nor walks: once a second every wave monster within
+  `tauntRadius` (8) blocks that no other tank holds turns to it (an angry cloud over the monster, a shield clang), and
+  while it holds any it has Resistance `tankResistance` (I, a fifth less damage) for two seconds at a time. A monster
+  that gets farther than one and a half times that reach is let go.
+- **Healer**: any other creature (it walks, it does not fight, it is small and soft) stays by its player and heals every
+  fighter within `healRadius` (6) blocks who is hurt, by `healAmount` (2, one heart), at most once every `healSeconds`
+  (4) per fighter **whatever the number of healers**: hearts over him and over it, and a soft chime.
+
+The choice reads only what the game says about the creature (its attack damage and most health, its width, whether it
+is a monster, whether it moves of its own accord): never its name, kind or what it was made from, so a creature nobody
+has wished before gets a role by the same rule, and there is always one (a property test over 20,000 random creatures
+and rules finds none without). Chosen the first time it is seen in a battle's wave and kept to the battle's end.
+
+**What he sees.** When a battle starts: "Creatures you wished into the arena help you: each one is a Fighter, a Healer
+or a Tank." The first time each creature takes its role in a battle, one line to the player it helps (its tamer when
+the game says so, else the nearest fighter): "Your Puff is a Healer! It will keep you healthy." Above the creature, its
+role's word in its colour (Fighter red, Tank aqua, Healer green), a text display that follows it, the game's own kind
+of floating words a stock client draws; the creature's own name is never changed.
+
+**Nothing lasts past the wave.** At the wave's end, in a break, when the battle ends, when the server stops, and
+whenever a creature is outside the arena (in the prep room, say), its role stops completely: its sign and role tags
+go, its walk stops, the Resistance it was given is taken off, and every monster a tank held is let go (its target
+cleared). A role touches nothing else: no attribute, no name, nothing saved.
+
+**Which creatures.** A creature carrying the core's tag `wishmob`: the tag the core puts on the body of every creature
+a wish makes (a Builder or Apprentice make, a Magician's sculpt), which the core's own lessons tell a wish's datapack to
+select creatures by, and which its client-validation playtests look for. A plain game mob that a Magician's wish
+summoned carries the core's `moddy_wished` tag instead; that tag is **not** a documented handle (only the core's source
+names it, as the mobs its wish-made-mob limit counts), so reading it is an approximation, labelled so in
+`ArenaRoles.WISH_SUMMONED`. What would make it exact is one documented core marker for "a creature a player's wish
+made", on every such body, whatever made it. A mob nobody wished (one that wandered in, or a `/summon`) has neither tag
+and gets nothing; nor do the arena's own (a wave's monster, a board's words, a role's sign).
+
+**A healer never makes a player unbeatable.** `arena_creatures` refuses heal numbers above 1 health a second for one
+player from all his healers together (`healAmount / healSeconds`), and the default is half that: 0.5 a second, while one
+zombie on Normal takes 3 a second from a player who stands still, so a fighter must still fight and dodge
+(`ArenaCreaturesTest.aHealerNeverMakesAPlayerUnbeatable`). A heal never gives more than he is missing, and one heal at a
+time per fighter whatever the number of healers.
+
 A server that stops in the middle of a battle ends it: on the next start the arena is tidied (after 5 seconds, so
 everything in it has loaded) and no battle is on.
 
@@ -428,10 +477,36 @@ it is ready would give in a wave of about a minute (6, at a 10-second rest), so 
 wish to fire. All three are optional, and **all three first values are guesses** to be tuned by playing. A wrong value refuses the file whole, in words;
 a file with no `arena_wishes` rule gets these values.
 
+### `arena_creatures`, the wished creatures' battle roles
+
+```json
+{"id": "wished-creatures-help", "type": "arena_creatures", "params": {"fighterAttack": 3, "tankHealth": 40, "tankWidth": 1.3, "healAmount": 2, "healSeconds": 4, "healRadius": 6, "tauntRadius": 8, "tankResistance": 1}}
+```
+
+Every key is optional: `fighterAttack` (0.5 to 50), `tankHealth` (10 to 1000), `tankWidth` (0.5 to 5 blocks),
+`healAmount` (0.5 to 4), `healSeconds` (2 to 20, whole), `healRadius` (2 to 16 blocks), `tauntRadius` (3 to 16 blocks),
+`tankResistance` (0 to 3, whole; 0 none). A heal faster than 1 health a second (`healAmount / healSeconds`) refuses the
+file. First values are guesses, to be tuned by playing.
+
 ### Where the file comes from
 
 A world made with the World Type uses this file from the jar. A dedicated server may name its own with
 `-Dmoddingfromamod.world.rules=<file>`; it then replaces the jar's rules as soon as it is read.
+
+## The Arena Guide
+
+`worlds/arena.json` carries a `guide.book`: the **Arena Guide**, sixteen short pages by Moddy, one idea a page (the
+prep room and the gate; the control panel; START; waves and boss waves; lives; the breaks; READY; the arena mending;
+making wishes; Magician wishes; the hotbar; firing a wish and its rest; wishes a wave; the creatures' roles; the
+Champions board). The core turns it into a vanilla written book (a stock client reads it) and gives it on a player's
+first arrival and again on `/moddy guide` (the watch's guide page). **No page types a number**: a rules number is a
+placeholder the core fills in when it gives the book, from the arena's charge (`ArenaCharge.guideValues`, `ArenaGuide`):
+`{arena_lives}`, `{arena_boss_every}`, `{arena_break_seconds}`, `{arena_boss_break_seconds}`,
+`{arena_magician_wishes}`, `{arena_rest_seconds}`, `{arena_wishes_per_wave}`. A rule that turns a thing off (no boss
+waves, no Magician wishes) leaves its key out, and the core then leaves that page out. The book given on the first
+arrival lands on the hotbar; the arena moves that one copy into his bag, so the hotbar stays for his wishes.
+`ArenaGuideTest` holds every page to the core's book page (14 lines of 19 characters, 16 pages, a 32-character title),
+also with the largest numbers the rules allow, and fails a placeholder with no value or a page with a digit in it.
 
 ## Play it locally
 
@@ -481,11 +556,16 @@ each with its named boss, its health on the boss bar and the BOSS WAVE title, ge
 replaces it and a worse one does not; changing the difficulty switches the board), `12-wishes-per-wave` (the panel
 and `/moddy wishes` say 5 hotbar wishes a wave; in the battle his own bar says 5 of 5 and empties with each fire, the
 slot sweeps for the arena's 10 seconds and a click while it sweeps makes nothing, the sixth fire is refused in one line
-with the wish still on his hotbar, and when the wave is cleared the count is 5 again and the next fire costs one) and
+with the wish still on his hotbar, and when the wave is cleared the count is 5 again and the next fire costs one),
 `13-intermission` (WAVES 10: after a wave a 15-second break counted down on the boss bar, READY on the board and the
 arena mended, a house from prep gone, a hole in the floor filled, an arrow tidied and a creature kept; READY ends the
 break in 3 seconds; after the boss wave a 45-second break, in which he puts another of his makes on his hotbar from My
-wishes, presses READY, and fires it in the next wave). A playtest cannot restart its game,
+wishes, presses READY, and fires it in the next wave), `14-creature-roles` (an Apprentice cat and three wished
+stand-ins take their roles in wave 1, each told once and shown above it; the wolf goes for the monsters, the camel's
+held monsters target it and it has Resistance, a cow nobody wished gets nothing; in the break every role, sign and
+Resistance is gone; in wave 2 the sheep heals him when he is near it and not when he is ten blocks away, and taken into
+the prep room it loses its role at once) and `15-arena-guide` (the Arena Guide on his first arrival, in his bag and not
+on his hotbar; a copy opened and read, its lives page showing the rules' number). A playtest cannot restart its game,
 so the settings and the champions surviving a restart are `ArenaStateTest` (the saved record) and a dedicated
 server's restart.
 
@@ -521,13 +601,19 @@ All of it in `com.moddingfromamod.levels.arena`:
 | `ArenaWords` | **pure**: every word a player reads about a battle and on the control panel |
 | `ArenaBattle` | carries a battle out: the button, the fighters and their lives, spawning and counting the monsters and the boss, the boss bar and titles, recording the runs, READY in a break, the arena mended between waves, each fighter's own bar of hotbar wishes, the reset |
 | `ArenaRule` | `arena_place` as a `WorldRuleType`, and reading the place back from a world's rules |
-| `ArenaModule` | the world module: builds once, gives a built place its upgrades, sets the spawn, the first arrival, the bases, the fallback rules, ticks the battle |
+| `ArenaModule` | the world module: builds once, gives a built place its upgrades, sets the spawn, the first arrival (and the first guide book into the bag), the bases, the fallback rules, ticks the battle |
 | `ArenaBuilder` | each kind of box as a block, placed; the control panel added to (or mended in) a place; the reset |
 | `ArenaBases` | the arena as the core's `Bases`: every player's base, home in the prep room |
 | `ArenaWishPolicy` | **pure**: the two phases, which kinds of wish each lets through, the Magician count, the cooldowns, the hotbar wishes a wave |
 | `ArenaWishes` | **pure**: the wish tunables and their checks |
 | `ArenaWishesRule` | `arena_wishes` as a `WorldRuleType`, and reading it back from a world's rules |
-| `ArenaCharge` | the core's `WishCharge` for arena worlds: sorts each wish, refuses or counts it, gives counts back, says what is left |
+| `ArenaCharge` | the core's `WishCharge` for arena worlds: sorts each wish, refuses or counts it, gives counts back, says what is left, the guide's numbers |
+| `ArenaRoles` | **pure**: the wished creatures' battle roles: which creature is wished, the role its facts give (never none), whose it is, a heal, a taunt's reach |
+| `ArenaAllies` | **pure**: how a Fighter picks its monster, its reach, how often and how hard it strikes |
+| `ArenaCreatures` | **pure**: the roles' numbers and their checks (a heal never faster than 1 health a second) |
+| `ArenaCreaturesRule` | `arena_creatures` as a `WorldRuleType`, and reading it back from a world's rules |
+| `ArenaRoleKeeper` | carries the roles out in a wave: each creature's sign and one line, the Fighter's strikes, the Healer's heals, the Tank's held monsters and Resistance, and stopping all of it |
+| `ArenaGuide` | **pure**: the Arena Guide's rules numbers (its placeholders), and where the first copy goes in the bag |
 | `ArenaState` | the world's saved record (versioned): the built sizes, who has arrived, the upgrades it has had, whether a battle is on, the panel's settings, the champions |
 
 **A place built before the control panel existed** gains it on its next start, once (the upgrade `control-panel`,

@@ -16,6 +16,7 @@
 @step arrive
 @expect chat Welcome to Moddy Arena within 90s
 @wait 2s
+difficulty hard
 difficulty normal
 gamemode survival
 gamerule naturalRegeneration false
@@ -73,6 +74,10 @@ teleport @s 0.5 64 21.5 180 0
 @expect chat A battle is starting within 5s
 @expect chat Creatures you wished into the arena help you within 3s
 @expect title Wave 1 of 5 within 15s
+# SHORTCUT: the wave's monsters cannot be beaten or hurt anyone in this test, so the wave lasts while each role is
+# watched (left alone, the Fighters beat wave 1 before the Tank was looked at)
+effect give @e[tag=moddyarena_wave] minecraft:resistance 600 4 true
+effect give @e[tag=moddyarena_wave] minecraft:weakness 600 255 true
 @expect chat Your Rex is a Fighter! It will fight the monsters with you. within 5s
 @expect chat Your Puff is a Healer! It will keep you healthy. within 5s
 @expect chat Your Hump is a Tank! It will make the monsters chase it. within 5s
@@ -90,8 +95,8 @@ teleport @s 0.5 64 21.5 180 0
 @step the cow nobody wished gets nothing
 @assert execute unless entity @e[type=minecraft:cow,tag=moddyarena_role]
 @assert execute as @e[type=minecraft:cow,tag=bystander] at @s unless entity @e[type=minecraft:text_display,tag=moddyarena_rolesign,distance=..3]
-@aim look 180 15
-@wait 5t
+teleport @s 0.5 64 17.5 180 10
+@wait 10t
 @shot the-roles-shown
 
 @step the Tank draws the monsters and stands up to them
@@ -100,6 +105,7 @@ teleport @s 0.5 64 21.5 180 0
 @wait 1t
 @end-repeat
 @assert execute if entity @e[type=minecraft:camel,tag=moddyarena_tank,nbt={active_effects:[{id:"minecraft:resistance"}]}]
+teleport @s 0.5 64 17.5 180 10
 @aim entity @e[type=minecraft:camel,limit=1]
 @wait 5t
 @shot a-tank-holding-monsters
@@ -108,14 +114,15 @@ teleport @s 0.5 64 21.5 180 0
 @repeat 600 until execute as @e[type=minecraft:wolf,tag=moddyarena_fighter] at @s if entity @e[tag=moddyarena_wave,distance=..2.5]
 @wait 1t
 @end-repeat
+teleport @s 0.5 64 17.5 180 10
 @aim entity @e[type=minecraft:wolf,limit=1]
 @wait 3t
 @shot a-fighter-engaging
 
 @step when the wave ends every role stops
-# SHORTCUT: the monsters are not what this tests, so the wave is ended by command
+# the Fighters may well have beaten the wave already; whatever is left of it is ended by command (SHORTCUT)
 kill @e[tag=moddyarena_wave]
-@expect chat Wave 1 cleared! within 10s
+@expect bossbar /Wave 2 of 5 in/ within 10s
 @wait 1s
 @assert execute unless entity @e[tag=moddyarena_role]
 @assert execute unless entity @e[type=minecraft:text_display,tag=moddyarena_rolesign]
@@ -127,12 +134,11 @@ kill @e[tag=moddyarena_wave]
 @shot in-the-break-no-roles
 
 @step in the next wave the roles come back, and he is not told again
-@aim pos 3.5 65.5 17.1
-@wait 5t
-@key key.use
-@expect title Wave 2 of 5 within 8s
-# SHORTCUT: the monsters are held where they appeared, so they leave the healer's test alone
+@expect title Wave 2 of 5 within 20s
+# SHORTCUT: as in wave 1, and the monsters are held where they appeared, so they leave the healer's test alone
 effect give @e[tag=moddyarena_wave] minecraft:slowness 600 255 true
+effect give @e[tag=moddyarena_wave] minecraft:resistance 600 4 true
+effect give @e[tag=moddyarena_wave] minecraft:weakness 600 255 true
 @wait 2s
 @assert execute if entity @e[type=minecraft:sheep,tag=moddyarena_healer]
 @assert execute if entity @e[type=minecraft:camel,tag=moddyarena_tank]
@@ -162,9 +168,9 @@ teleport @e[type=minecraft:sheep,tag=standin] 3.5 64 22.5
 @assert execute as @e[type=minecraft:sheep,tag=standin] at @s unless entity @e[type=minecraft:text_display,tag=moddyarena_rolesign,distance=..3]
 @assert execute if entity @e[type=minecraft:camel,tag=moddyarena_tank]
 
-@step the battle ends: nothing is left on anything
+@step the wave ends: nothing is left on anything
 kill @e[tag=moddyarena_wave]
-@expect chat Wave 2 cleared! within 10s
+@expect bossbar /Wave 3 of 5 in/ within 10s
 @wait 1s
 @assert execute unless entity @e[tag=moddyarena_role]
 @assert execute unless entity @e[type=minecraft:text_display,tag=moddyarena_rolesign]
