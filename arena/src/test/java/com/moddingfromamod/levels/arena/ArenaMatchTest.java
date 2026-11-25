@@ -169,7 +169,7 @@ class ArenaMatchTest {
     void reachSaysHowFarTheBattleGotAndABossFillsTheBar() throws Exception {
         ArenaWaves base = ArenaSettingsTest.bundled();
         ArenaMatch m = new ArenaMatch();
-        assertTrue(m.start(new ArenaSettings(5, ArenaDifficulty.NORMAL, 10).run(base)));
+        assertTrue(m.start(new ArenaSettings(ArenaDifficulty.NORMAL, 10).run(base)));
         until(m, 0, 1, 5 * T + 1);
         assertEquals(new ArenaChampions.Reach(1, false, false, 0), m.reach());
         m.spawned(3);
@@ -238,7 +238,7 @@ class ArenaMatchTest {
         ArenaWaves base = new ArenaWaves(5, 4, 30, List.of(new ArenaWaves.Wave(List.of(
                 new ArenaWaves.Group("minecraft:husk", 1)))));
         assertEquals(ArenaWaves.DEFAULT_BOSS_BREATHER, base.bossBreatherSeconds(), "by default 30 seconds");
-        ArenaRun run = new ArenaSettings(5, ArenaDifficulty.NORMAL, 10).run(base);
+        ArenaRun run = new ArenaSettings(ArenaDifficulty.NORMAL, 10).run(base);
         assertEquals(4, run.breatherAfter(4));
         assertEquals(30, run.breatherAfter(5));
         assertEquals(4, run.breatherAfter(6));
@@ -248,7 +248,7 @@ class ArenaMatchTest {
     @Test
     void anEndlessBattleIsNeverWon() throws Exception {
         ArenaMatch m = new ArenaMatch();
-        m.start(new ArenaSettings(1, ArenaDifficulty.NORMAL, 0).run(ArenaSettingsTest.bundled()));
+        m.start(new ArenaSettings(ArenaDifficulty.EASY, 0).run(ArenaSettingsTest.bundled()));
         for (int w = 1; w <= 30; w++) {
             assertEquals(w, until(m, 0, 1, 45 * T + 1).wave());
             m.spawned(1);

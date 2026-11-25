@@ -243,21 +243,22 @@ class ArenaPlaceTest {
     void upgradesAreGivenOnceInOrder() {
         assertEquals(ArenaPlace.UPGRADES, ArenaPlace.pendingUpgrades(java.util.Set.of()));
         assertEquals(List.of(ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS, ArenaPlace.UPGRADE_CONTROL_PANEL,
-                ArenaPlace.UPGRADE_CHAMPIONS), ArenaPlace.pendingUpgrades(java.util.Set.of(ArenaPlace.UPGRADE_START_CONTROL)));
-        assertEquals(List.of(ArenaPlace.UPGRADE_CONTROL_PANEL, ArenaPlace.UPGRADE_CHAMPIONS),
+                ArenaPlace.UPGRADE_CHAMPIONS, ArenaPlace.UPGRADE_BASE), ArenaPlace.pendingUpgrades(java.util.Set.of(ArenaPlace.UPGRADE_START_CONTROL)));
+        assertEquals(List.of(ArenaPlace.UPGRADE_CONTROL_PANEL, ArenaPlace.UPGRADE_CHAMPIONS, ArenaPlace.UPGRADE_BASE),
                 ArenaPlace.pendingUpgrades(java.util.Set.of(ArenaPlace.UPGRADE_START_CONTROL,
                         ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS)), "a world from before the panel gets it once");
-        assertEquals(List.of(ArenaPlace.UPGRADE_CHAMPIONS), ArenaPlace.pendingUpgrades(java.util.Set.of(
+        assertEquals(List.of(ArenaPlace.UPGRADE_CHAMPIONS, ArenaPlace.UPGRADE_BASE), ArenaPlace.pendingUpgrades(java.util.Set.of(
                 ArenaPlace.UPGRADE_START_CONTROL, ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS,
                 ArenaPlace.UPGRADE_CONTROL_PANEL)), "a world from before the Champions board gets it once");
         assertTrue(ArenaPlace.pendingUpgrades(java.util.Set.copyOf(ArenaPlace.UPGRADES)).isEmpty());
     }
 
     @Test
-    void aMobIsKeptInsideThePlaceAndLostBelowTheFloorOrPastTheWalls() {
+    void aMobIsKeptInsideThePlaceAndLostBelowTheBaseOrPastTheWalls() {
         assertTrue(P.keeps(0.5, 64, 0.5));
         assertTrue(P.keeps(0.5, 64, 21.5), "in the prep room, through an open gate");
-        assertTrue(!P.keeps(0.5, 61.9, 0.5), "fallen below the floor");
+        assertTrue(P.keeps(0.5, 62, 0.5), "in a hole a blast made, on the base");
+        assertTrue(!P.keeps(0.5, 60.9, 0.5), "fallen below the base");
         assertTrue(!P.keeps(20.5, 64, 0.5), "past the east wall");
         assertTrue(!P.keeps(0.5, 64, -18.5), "past the north wall");
     }
@@ -289,6 +290,8 @@ class ArenaPlaceTest {
         assertEquals(null, r.kindAt(3, 65, 17), "the start button is the prep room's");
         assertEquals(Kind.PANEL_START, r.kindAt(3, 65, 16), "the board is put back as built");
         assertEquals(Kind.PANEL_BOARD, r.kindAt(0, 66, 16));
-        assertEquals(null, r.kindAt(0, 62, 0), "never below the floor");
+        assertEquals(Kind.BASE_FILL, r.kindAt(0, 62, 0), "the base under the floor is mended too");
+        assertEquals(Kind.BASE_BEDROCK, r.kindAt(0, 61, 0));
+        assertEquals(null, r.kindAt(0, 60, 0), "never below the base");
     }
 }

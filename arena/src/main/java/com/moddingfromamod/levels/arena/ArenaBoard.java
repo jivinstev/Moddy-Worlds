@@ -106,7 +106,7 @@ final class ArenaBoard {
     }
 
     /**
-     * A selector was pressed: one step of the wave size or the difficulty (as the world's rules allow), said on the
+     * A selector was pressed: one step of the difficulty or the number of waves (as the world's rules allow), said on the
      * presser's action bar with a click; during a battle ({@code busy}) nothing moves, and that is said.
      */
     void select(ServerLevel level, Control c, boolean busy, ArenaWaves base) {
@@ -120,34 +120,29 @@ final class ArenaBoard {
         }
         ArenaSettings.Limits limits = base == null ? ArenaSettings.Limits.NONE : base.limits();
         ArenaSettings now = state.settings();
-        boolean up = c == Control.SIZE_UP || c == Control.DIFFICULTY_UP || c == Control.WAVES_UP;
-        boolean size = c == Control.SIZE_DOWN || c == Control.SIZE_UP;
+        boolean up = c == Control.DIFFICULTY_UP || c == Control.WAVES_UP;
         boolean count = c == Control.WAVES_DOWN || c == Control.WAVES_UP;
-        ArenaSettings.Step step = size ? now.stepSize(up, limits) : count ? now.stepWaves(up, limits)
-                : now.stepDifficulty(up, limits);
+        ArenaSettings.Step step = count ? now.stepWaves(up, limits) : now.stepDifficulty(up, limits);
         ArenaSettings next = step.settings();
         java.util.List<Integer> options = limits.waveOptions();
         String words = switch (step.result()) {
-            case CHANGED -> size ? ArenaWords.sizeChanged(next.size(), next.run(base))
-                    : count ? ArenaWords.wavesChanged(next.waves()) : ArenaWords.difficultyChanged(next.difficulty());
-            case AT_END -> size ? ArenaWords.sizeAtEnd(up, limits.maxSize())
-                    : count ? ArenaWords.wavesAtEnd(up, options.get(0), options.get(options.size() - 1),
+            case CHANGED -> count ? ArenaWords.wavesChanged(next.waves())
+                    : ArenaWords.difficultyChanged(next.difficulty(), next.run(base));
+            case AT_END -> count ? ArenaWords.wavesAtEnd(up, options.get(0), options.get(options.size() - 1),
                             limits.maxCount() != ArenaSettings.ENDLESS)
                     : ArenaWords.difficultyAtEnd(up, limits.maxDifficulty());
-            case FIXED -> size ? ArenaWords.sizeFixed(next.size()) : count ? ArenaWords.wavesFixed(next.waves())
-                    : ArenaWords.difficultyFixed(next.difficulty());
+            case FIXED -> count ? ArenaWords.wavesFixed(next.waves()) : ArenaWords.difficultyFixed(next.difficulty());
         };
         if (step.result() == ArenaSettings.Result.CHANGED) {
             state.settings(next);
             dirty = true;
-            LOG.info("Moddy Arena: control panel: {} set the {} to {} (monsters {}, difficulty {}, waves {})", who,
-                    size ? "monsters" : count ? "waves" : "difficulty", size ? next.size() : count
-                            ? ArenaWords.wavesValue(next.waves()) : next.difficulty().word(), next.size(),
-                    next.difficulty().word(), ArenaWords.wavesValue(next.waves()));
+            LOG.info("Moddy Arena: control panel: {} set the {} to {} (difficulty {}, so wave size {}; waves {})", who,
+                    count ? "waves" : "difficulty", count ? ArenaWords.wavesValue(next.waves())
+                            : next.difficulty().word(), next.difficulty().word(), next.size(limits),
+                    ArenaWords.wavesValue(next.waves()));
         }
         int idx = Math.max(0, options.indexOf(next.waves()));
-        float pitch = size ? 0.6f + 0.1f * next.size() : count ? 0.7f + 0.25f * idx
-                : 0.7f + 0.3f * next.difficulty().ordinal();
+        float pitch = count ? 0.7f + 0.25f * idx : 0.7f + 0.3f * next.difficulty().ordinal();
         tell(level, presser, at, words, step.result() == ArenaSettings.Result.CHANGED, pitch);
     }
 

@@ -5,8 +5,8 @@
 # and the wish stays on his hotbar. When the wave is cleared the count starts again, and the next fire costs one of the
 # new five. The control panel says the number a wave. No model anywhere: the Apprentice's local matcher offers the
 # make, and the hotbar replays its recipe.
-# He stays in the prep room behind the closed gate (husks cannot open it) and a resistance effect keeps him on his
-# feet: the monsters are not what this tests, so the wave is ended by command once the count has been shown.
+# The wave takes him into the arena (the gate shuts) and a resistance effect keeps him on his feet among the husks:
+# the monsters are not what this tests, so the wave is ended by command once the count has been shown.
 # play-timeout: 1200
 @intent in a battle each hotbar fire costs one of the wave's wishes, shown on his own bar; its sweep lasts the arena's rest; out of wishes a fire is refused in one line and the wish stays; the count starts again at the next wave
 @world flat seed=1
@@ -22,7 +22,7 @@ effect give @s minecraft:resistance 1200 4 true
 effect give @s minecraft:saturation 1200 0 true
 
 @step the panel and /moddy wishes say the hotbar wishes a wave
-@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_size_means,nbt={text:{text:"First wave: 3 monsters\nBoss wave: 5\nHotbar wishes: 5 a wave"}}]
+@assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_means,nbt={text:{text:"Boss wave: 5\nHotbar wishes: 5 a wave"}}]
 # the picture: the board straight ahead once the chat has faded
 @aim pos 3.5 64.6 17.1
 @wait 11s
