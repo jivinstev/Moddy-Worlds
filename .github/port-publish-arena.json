@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "own_mod": true,
+  "auto": false,
+  "modid": "moddyarena",
+  "title": "Moddy Arena",
+  "summary": "Moddy Arena, a Moddy world: a prep room beside a walled arena, where waves of mobs come to fight.",
+  "body_file": ".github/port-publish/description-arena.md",
+  "icon": null,
+  "license": "MPL-2.0",
+  "categories": [],
+  "additional_categories": [],
+  "ledger_issues": [],
+  "differences": [],
+  "original_name": "Moddy Arena",
+  "environment": "client_and_server",
+  "disclosures": [
+    {
+      "type": "ai_content",
+      "uses": [
+        "text"
+      ],
+      "note": "This page's text was drafted with an AI assistant."
+    }
+  ],
+  "dependencies": [
+    {
+      "modrinth": null,
+      "curseforge": null,
+      "type": "required",
+      "modid": "moddingfromamod"
+    }
+  ],
+  "modrinth": {
+    "slug": "moddyarena",
+    "asset": ""
+  },
+  "curseforge": {
+    "project_id": null,
+    "slug": "moddyarena",
+    "asset": ""
+  },
+  "tag_name": "arena",
+  "mod_dir": "arena"
+}
