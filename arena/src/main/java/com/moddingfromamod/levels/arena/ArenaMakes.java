@@ -30,7 +30,7 @@ import java.util.function.Supplier;
  *       hotbar, and a kind locked there too could never reach his hotbar at all, since a new make in a battle is refused
  *       and a battle's ladder starts again at every battle.</li>
  *   <li>says where a finished make goes ({@link #landing}): one finished in the prep room is handed over (the real
- *       item, or a hotbar wish), one aimed into the arena lands ({@link ArenaHandOver}); the core then tells it what
+ *       item, or a hotbar wish), one started in the arena lands ({@link ArenaHandOver}); the core then tells it what
  *       was handed over ({@link #handedOver}) or what it could not keep ({@link #notKept}), and the module shows it.</li>
  * </ul>
  * It decides from the make's facts alone (its kind, its tags, its numbers): never a Builder id or name, so a core that
@@ -50,7 +50,7 @@ final class ArenaMakes implements WorldMakes {
      * @param ladder  the ladder in force (the world's {@code arena_ladder} rule, read when asked)
      * @param reached  how far the battle on now has got, as that ladder counts it (0 outside a battle)
      * @param inBattle whether a battle is on (from its button to the arena being ready again)
-     * @param where      where a player's make is finished now (where he stands, and where he aims)
+     * @param where      where a player's make is finished now (where he stands)
      * @param handedOver what to do when the core has handed a kept make over (show it, say the line)
      * @param notKept    what to do when the core could not keep a make the arena asked it to (say so)
      */
@@ -94,8 +94,8 @@ final class ArenaMakes implements WorldMakes {
 
     /**
      * Where a finished make goes ({@link ArenaHandOver}): asked by the core once per new make, before it is placed. A
-     * make finished in the prep room is kept (an item as the real item); anything else lands. Cheap: a player lookup
-     * and one look along his gaze.
+     * make started while he stands in the prep room is kept (an item as the real item); anything else lands. Cheap: a
+     * player lookup.
      */
     @Override
     public Landing landing(MakeFacts facts, WishAsk ask) {

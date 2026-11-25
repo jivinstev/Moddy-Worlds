@@ -205,15 +205,6 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
         return new int[] {0, floorY, sharedWallZ()};
     }
 
-    /**
-     * True for a block of the gateway between the prep room and the arena: the gate's block and the opening above it.
-     * Looking through it from the prep room, a player looks at the arena ({@link ArenaHandOver}).
-     */
-    public boolean inGateway(int x, int y, int z) {
-        int[] g = gate();
-        return x == g[0] && z == g[2] && (y == g[1] || y == g[1] + 1);
-    }
-
     /** Where a player arrives: the middle of the prep room, facing the arena (north). Block coordinates. */
     public int[] arrival() {
         Box p = prepInside();

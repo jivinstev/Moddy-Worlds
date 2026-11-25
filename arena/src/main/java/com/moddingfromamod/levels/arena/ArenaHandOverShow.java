@@ -18,17 +18,12 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.HitResult;
-import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * <b>The hand-over, shown</b> ({@link ArenaHandOver}): where a player's make is finished (read from where he stands and
- * where he looks), and, when the core has handed a kept make over, the moment he sees it: the make shows on the prep
+ * <b>The hand-over, shown</b> ({@link ArenaHandOver}): where a player's make is finished (where he stands), and, when the core has handed a kept make over, the moment he sees it: the make shows on the prep
  * room's hand-over spot ({@link ArenaPlace#handOverSpot}) for {@link ArenaHandOver#SHOW_TICKS} ticks, then flies to him
  * with the game's own pick-up motion and sound, and one action-bar line names it and where it went (the first time, a
  * chat line says the difference between a wish and an item). Everything a stock client draws: an item entity and the
@@ -49,12 +44,6 @@ final class ArenaHandOverShow {
     /** How often a copy left behind is looked for: every 5 seconds. */
     private static final int SWEEP_TICKS = 100;
 
-    /** How far "where he looks" reaches, as the core's own aim does. */
-    private static final double REACH = 64.0;
-
-    /** Where a make put in front of a player who aims at nothing goes: this far ahead (the core's Builder's). */
-    private static final double AHEAD = 12.0;
-
     private final MinecraftServer server;
     private final ArenaPlace place;
     private final ArenaState state;
@@ -72,36 +61,13 @@ final class ArenaHandOverShow {
         this.state = state;
     }
 
-    /**
-     * Where this player's make is finished now ({@link ArenaHandOver#where}): where he stands, and the column in front
-     * of what he looks at, read the way the core reads its aim (a ray along his gaze through blocks' outlines, stopping at water), or
-     * the column {@value #AHEAD} blocks ahead of him when he looks at nothing. The gateway (the gate, or the bars a wave
-     * puts there, and the opening above it) is looked through: a player who looks at the arena through the gate aims
-     * into the arena. Not in the arena's world: outside.
-     */
+    /** Where this player's make is finished now ({@link ArenaHandOver#where}): where he stands. Not in the arena's world: outside. */
     ArenaHandOver.Where where(UUID id) {
         ServerPlayer p = server.getPlayerList().getPlayer(id);
         if (p == null || p.level() != server.overworld()) {
             return ArenaHandOver.Where.OUTSIDE;
         }
-        Vec3 eye = p.getEyePosition(1.0f);
-        Vec3 look = p.getViewVector(1.0f);
-        Vec3 end = eye.add(look.scale(REACH));
-        Vec3 from = eye;
-        BlockHitResult r = null;
-        for (int i = 0; i < 3; i++) {
-            r = p.level().clip(new ClipContext(from, end, ClipContext.Block.OUTLINE, ClipContext.Fluid.SOURCE_ONLY, p));
-            if (r.getType() != HitResult.Type.BLOCK || !place.inGateway(r.getBlockPos().getX(),
-                    r.getBlockPos().getY(), r.getBlockPos().getZ())) {
-                break;
-            }
-            from = r.getLocation().add(look.scale(1.5));   // on through the gateway
-        }
-        // a make stands in front of the face he looks at (on the floor, before a wall): that block's column
-        Vec3 at = r.getType() == HitResult.Type.BLOCK ? Vec3.atCenterOf(r.getBlockPos().relative(r.getDirection()))
-                : eye.add(look.scale(AHEAD));
-        return ArenaHandOver.where(place, p.getX(), p.getY(), p.getZ(), true, (int) Math.floor(at.x),
-                (int) Math.floor(at.z));
+        return ArenaHandOver.where(place, p.getX(), p.getY(), p.getZ());
     }
 
     /** The core handed a kept make over: shown on the next tick. Any thread. */

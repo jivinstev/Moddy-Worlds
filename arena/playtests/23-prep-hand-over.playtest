@@ -4,19 +4,19 @@
 # one action-bar line names it and the slot. A Builder creature goes on his hotbar as a wish and is not in the room; a
 # Builder sword is a real sword; an Apprentice creature and an Apprentice sword likewise. The first time, a longer chat
 # line says the difference between a wish and an item. With the hotbar full a wish goes to his Wish Bag and the line
-# says so. A make aimed into the arena through the gate still lands in the arena. Nothing is charged when a make is
+# says so. A make started standing in the arena still lands in the arena. Nothing is charged when a make is
 # kept (his Magician wishes are untouched, Builder and Apprentice wishes are free), and in a battle a fire of the kept
 # creature costs one of the wave's hotbar wishes. No model anywhere: the Builder's pages and the Apprentice's local
 # matcher make everything, and the hotbar replays the kept make's recipe.
 # A resistance effect keeps him on his feet; the monsters are not what this tests, so they are removed by command.
 # play-timeout: 1500
-@intent a make finished in the prep room is handed over on the hand-over spot: a creature as a hotbar wish (none in the room), a sword as the real sword, Builder and Apprentice alike, with one line naming it and the slot, a longer first-time line, the Wish Bag when the hotbar is full; a make aimed into the arena still lands there; keeping charges nothing and a fire in a battle costs one of the wave's wishes
+@intent a make finished in the prep room is handed over on the hand-over spot: a creature as a hotbar wish (none in the room), a sword as the real sword, Builder and Apprentice alike, with one line naming it and the slot, a longer first-time line, the Wish Bag when the hotbar is full; a make started standing in the arena still lands there; keeping charges nothing and a fire in a battle costs one of the wave's wishes
 @world flat seed=1
 @continue-on-fail
 
 @step arrive
 @expect chat Welcome to Moddy Arena within 90s
-@expect chat press Add to hotbar within 10s
+@expect chat comes to you on the gold spot within 10s
 @wait 2s
 difficulty hard
 difficulty normal
@@ -29,8 +29,8 @@ scoreboard objectives add arenatest dummy
 # the middle of the prep room's east side (x 4, z 21), one block of its floor, gold
 @assert execute if block 4 63 21 minecraft:gold_block
 @assert execute if block 3 63 21 minecraft:oak_planks
-# he stands in the middle and looks down at the floor toward the spot (east): what he makes now is finished in the
-# prep room, not aimed into the arena
+# he stands in the middle of the prep room: what he makes now is finished in the prep room (where he stands decides,
+# not where he looks), and he looks down at the spot to see it
 teleport @s 0.5 64 21.5 -90 35
 @wait 1s
 @shot the-hand-over-spot
@@ -141,9 +141,9 @@ moddy apprentice a fire sword
 @assert execute if items entity @s hotbar.5 #minecraft:swords
 @shot apprentice-sword
 
-@step a make aimed into the arena through the gate still lands in the arena
-# from the prep room he looks north through the gate at the arena's floor: the make is aimed into the arena
-teleport @s 0.5 64 19.5 180 12
+@step a make started standing in the arena still lands in the arena
+# where he stands decides: just inside the gate, in the arena, facing its floor
+teleport @s 0.5 64 14.5 180 12
 @wait 1s
 moddy apprentice a cat
 @expect screen Container within 10s

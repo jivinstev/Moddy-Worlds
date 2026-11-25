@@ -39,43 +39,23 @@ class ArenaHandOverTest {
     // ── where it is finished ─────────────────────────────────────────────────────────────────────────────────────────
 
     @Test
-    void inThePrepRoomAimingAtThePrepRoomItIsThePrepRoom() {
+    void standingInThePrepRoomItIsThePrepRoomWhereverHeLooks() {
         double[] at = inPrep();
-        int[] floor = P.handOverSpot();
-        assertEquals(ArenaHandOver.Where.PREP_ROOM,
-                ArenaHandOver.where(P, at[0], at[1], at[2], true, floor[0], floor[2]));
-        assertEquals(ArenaHandOver.Where.PREP_ROOM, ArenaHandOver.where(P, at[0], at[1], at[2], false, 0, 0),
-                "aiming at nothing he can be read by: where he stands decides");
+        assertEquals(ArenaHandOver.Where.PREP_ROOM, ArenaHandOver.where(P, at[0], at[1], at[2]));
+        ArenaPlace.Box in = P.prepInside();
+        assertEquals(ArenaHandOver.Where.PREP_ROOM, ArenaHandOver.where(P, in.x0() + 0.5, in.y0(), in.z0() + 0.5),
+                "its corner by the gate");
+        assertEquals(ArenaHandOver.Where.PREP_ROOM, ArenaHandOver.where(P, in.x1() + 0.5, in.y0(), in.z1() + 0.5),
+                "its far corner");
     }
 
     @Test
-    void inThePrepRoomAimingIntoTheArenaItLandsInTheArena() {
-        double[] at = inPrep();
-        assertEquals(ArenaHandOver.Where.ARENA, ArenaHandOver.where(P, at[0], at[1], at[2], true, 0, 0),
-                "the arena's middle, seen through the gate");
-        assertEquals(ArenaHandOver.Where.ARENA, ArenaHandOver.where(P, at[0], at[1], at[2], true, 0, -15),
-                "its far side");
-        assertEquals(ArenaHandOver.Where.PREP_ROOM,
-                ArenaHandOver.where(P, at[0], at[1], at[2], true, 0, P.sharedWallZ()),
-                "the shared wall (the glass, the gate) is not the arena's inside: what hits it stays in the prep room");
-    }
-
-    @Test
-    void theGatewayIsLookedThroughAndNothingElseOfTheSharedWall() {
-        int[] g = P.gate();
-        assertTrue(P.inGateway(g[0], g[1], g[2]), "the gate (or a wave's bars)");
-        assertTrue(P.inGateway(g[0], g[1] + 1, g[2]), "the opening above it");
-        assertFalse(P.inGateway(g[0] + 1, g[1], g[2]), "the control panel's board beside it");
-        assertFalse(P.inGateway(g[0], g[1] + 2, g[2]), "the board above it");
-        assertFalse(P.inGateway(g[0], g[1], g[2] + 1), "the prep room's floor before it");
-    }
-
-    @Test
-    void inTheArenaAndOutsideThePlace() {
-        assertEquals(ArenaHandOver.Where.ARENA, ArenaHandOver.where(P, 0.5, 64, 0.5, true, 4, 21),
-                "standing in the arena, wherever he aims");
-        assertEquals(ArenaHandOver.Where.OUTSIDE, ArenaHandOver.where(P, 200, 64, 200, true, 0, 0));
-        assertEquals(ArenaHandOver.Where.OUTSIDE, ArenaHandOver.where(null, 0.5, 64, 21.5, true, 0, 0));
+    void standingInTheArenaItLandsAndOutsideThePlaceNothingChanges() {
+        assertEquals(ArenaHandOver.Where.ARENA, ArenaHandOver.where(P, 0.5, 64, 0.5), "the arena's middle");
+        assertEquals(ArenaHandOver.Where.ARENA, ArenaHandOver.where(P, 0.5, 64, P.sharedWallZ() - 0.5),
+                "just inside the gate");
+        assertEquals(ArenaHandOver.Where.OUTSIDE, ArenaHandOver.where(P, 200, 64, 200));
+        assertEquals(ArenaHandOver.Where.OUTSIDE, ArenaHandOver.where(null, 0.5, 64, 21.5));
     }
 
     // ── the answer ───────────────────────────────────────────────────────────────────────────────────────────────────
@@ -127,7 +107,7 @@ class ArenaHandOverTest {
         assertEquals(Landing.KEPT, m.landing(MakeFacts.cautious("creature"), magician));
         assertEquals(Landing.LANDS, m.landing(dragon, WishAsk.replay(HIM, "builder:dragon_1")), "a fire lands");
         where[0] = ArenaHandOver.Where.ARENA;
-        assertEquals(Landing.LANDS, m.landing(dragon, builder), "aimed into the arena: it lands");
+        assertEquals(Landing.LANDS, m.landing(dragon, builder), "started in the arena: it lands");
         assertEquals(Landing.LANDS, m.landing(sword, builder));
         assertEquals(Landing.LANDS, m.landing(null, builder));
         assertEquals(Landing.LANDS, m.landing(dragon, null));

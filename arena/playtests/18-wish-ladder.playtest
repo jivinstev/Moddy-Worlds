@@ -47,7 +47,8 @@ teleport @s 0.5 64 19.0 90 0
 @shot ladder-board-in-prep
 
 @step a giant dragon is made smaller for this world, and he is told once
-teleport @s 0.5 64 22.5 180 12
+# made standing just inside the arena, so it lands (one started in the prep room is handed over: 23-prep-hand-over)
+teleport @s 0.5 64 14.5 180 12
 @wait 1s
 moddy apprentice a giant dragon
 @expect screen Container within 10s

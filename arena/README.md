@@ -16,7 +16,7 @@
    battle starts. (The arena's own Easy, Normal, Hard and Extreme are picked on its control panel.)
 5. In the prep room, make wishes with the Builder or the Apprentice: what you make comes to you on the gold
    **hand-over spot** (a sword as a real sword, a creature, a building or an event as a wish on your hotbar). A make
-   you aim into the arena, through the gate, lands there instead. On the control panel pick the **difficulty** (it sets how many monsters come) and the
+   you start while standing in the arena lands there instead. On the control panel pick the **difficulty** (it sets how many monsters come) and the
    **waves**, then press **START BATTLE**. When a wave comes the gate shuts and you are taken into the arena; fight with
    your hotbar wishes, rest in the breaks, and try to get on the Champions board.
 
@@ -42,7 +42,8 @@ place once, around x 0, z 0, standing at y 64:
   a few seconds later reads three lines (`worlds/arena.json`'s `intro`, which the core says once per player per world):
   > Welcome to Moddy Arena! You are in the prep room. The arena is past the gate.
   >
-  > Get ready in the prep room: make things, then put them on your hotbar. Open one in My wishes and press Add to hotbar.
+  > Get ready in the prep room: what you make there comes to you on the gold spot. A sword is yours to hold; a creature,
+  > a building or an event goes on your hotbar as a wish.
   >
   > The battle arena control panel is on the wall: pick the difficulty and the waves, then press START BATTLE. When a
   > wave comes the gate shuts and you are taken into the arena. Only your hotbar wishes work in a battle, and you have
@@ -562,11 +563,10 @@ The owner's rule: **a thing you hold is a real item; a thing that happens or app
   that appears or happens, like a creature, a building or an event, is a wish on your hotbar: aim and use it in the
   arena to make it appear. Each use costs one of the wave's hotbar wishes." Once per player per world (the saved
   record remembers it).
-- **A make aimed into the arena lands there**, as it always did: a player in the arena, or one in the prep room who
-  looks into the arena through the gate (the gate, the bars a wave puts there, and the opening above them are looked
-  through; the control panel's board and the glass are not). Where he aims is read from his gaze, the way the core reads
-  its aim (a ray along his look, the block in front of the face he looks at; 12 blocks ahead when he looks at nothing).
-  **Outside the place** nothing changes.
+- **Where he stands decides**, never where he looks: "things you make in the prep room go to your loadout". A make
+  started while he stands in the prep room (its floor, walls included) is handed over; one started while he stands in
+  the arena lands where he aims, as it always did (so he can still wish straight into the fight where the arena's rules
+  allow a make at all). **Outside the place** nothing changes.
 - **A fire never becomes a wish again**: a hotbar fire or "Make another one" always lands.
 - **What could not be kept is said honestly**, in one short line: a picture ("Your picture went up where you aimed: a
   picture cannot be kept as a wish."), a change to something he has ("Your change was made where your thing stands."),
@@ -1018,5 +1018,6 @@ What the public core does not let a world do yet (so the arena does not do it ei
 
 - **Telling a hand-over's real item for sure**: the core tells a world that it handed over the real item, but not
   which stack it is, so the hand-over spot shows the wish-made item in his hand (or the last one in his inventory).
-- **The aim the core will use**: `landing` is asked before the core locks a make's aim, and carries no aim, so the
-  arena reads his gaze itself (above); a make the core then aims elsewhere is still kept or landed as the arena said.
+- **Where a make is aimed**: `landing` carries no aim point (the core asks before it locks a make's aim), so the arena
+  decides by where he stands, not where the make would go: a player in the prep room who aims into the arena still gets
+  it handed over.

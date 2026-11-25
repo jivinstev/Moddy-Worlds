@@ -58,6 +58,9 @@ scoreboard players get #atk0 arenatest
 @expect screen none within 3s
 
 @step a rock golem on his hotbar: he is told it is held back at first (its own health is far over the first step's)
+# made standing just inside the arena, so it lands and he puts it on his hotbar by hand, from its page (one started
+# in the prep room is handed over to his hotbar by itself: 23-prep-hand-over)
+teleport @s 0.5 64 14.5 180 12
 moddy apprentice a rock golem
 @expect screen Container within 10s
 @wait 1s
@@ -65,6 +68,7 @@ moddy apprentice a rock golem
 @expect chat /Golem is ready/ within 90s
 @wait 2s
 kill @e[tag=wishmob]
+teleport @s 0.5 64 22.5 180 12
 @key key.hotbar.1
 @key key.use
 @expect screen /make a wish/ within 10s

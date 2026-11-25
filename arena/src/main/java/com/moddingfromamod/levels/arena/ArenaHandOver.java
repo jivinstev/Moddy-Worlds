@@ -8,15 +8,17 @@ package com.moddingfromamod.levels.arena;
  *   <li>A make finished in the <b>prep room</b> (Builder, Apprentice or Magician) does not appear beside him: an item is
  *       handed over as the real item ({@code KEPT_AS_ITEM}); a creature, ride, building or event is kept and handed
  *       over as a hotbar wish ({@code KEPT}), drawn however the core draws a hotbar wish.</li>
- *   <li>A make aimed <b>inside the arena</b> lands as it always did (so he can still wish straight into the fight where
- *       the arena's rules allow a make at all), and so does one made anywhere <b>outside the place</b>.</li>
+ *   <li>A make started while he stands <b>inside the arena</b> lands as it always did (so he can still wish straight
+ *       into the fight where the arena's rules allow a make at all), and so does one made anywhere <b>outside the
+ *       place</b>.</li>
  *   <li>A thing made again from its own recipe (a hotbar fire, "Make another one") always lands: firing a wish makes
  *       the thing, never another wish.</li>
  * </ul>
  * The core's own "Add to hotbar" is never asked here and is unchanged. Nothing is charged when a make is kept: the
  * prep room's makes are free ({@link ArenaWishPolicy}), a Magician wish was counted when it was asked, and each fire of
- * the hotbar wish is one of the wave's wishes, as any hotbar fire is. Pure: no Minecraft. {@link ArenaModule} reads where
- * he stands and where he looks, and shows the hand-over on the {@link ArenaPlace#handOverSpot hand-over spot}.
+ * the hotbar wish is one of the wave's wishes, as any hotbar fire is. Where he STANDS when the make starts decides, never
+ * where he looks: "things you make in the prep room go to your loadout". Pure: no Minecraft. {@link ArenaHandOverShow}
+ * reads where he stands, and shows the hand-over on the {@link ArenaPlace#handOverSpot hand-over spot}.
  */
 final class ArenaHandOver {
 
@@ -25,9 +27,9 @@ final class ArenaHandOver {
 
     /** Where a make is finished, as far as the hand-over cares. */
     enum Where {
-        /** he stands in the prep room and does not aim into the arena */
+        /** he stands in the prep room */
         PREP_ROOM,
-        /** he stands in the arena, or aims into it from the prep room */
+        /** he stands in the arena (or anywhere in the place but the prep room) */
         ARENA,
         /** anywhere else */
         OUTSIDE
@@ -44,18 +46,14 @@ final class ArenaHandOver {
     }
 
     /**
-     * Where a make is finished, for a player standing at (x, y, z) who aims at the column (aimX, aimZ); {@code aimed}
-     * false when he aims at nothing the arena can read (then where he stands decides). A player in the prep room who
-     * aims into the arena (through the glass or the gate) makes it there.
+     * Where a make is finished, for a player standing at (x, y, z) when it starts: the prep room (its columns, walls
+     * included), the rest of the place (the arena), or outside it. Where he looks plays no part.
      */
-    static Where where(ArenaPlace place, double x, double y, double z, boolean aimed, int aimX, int aimZ) {
+    static Where where(ArenaPlace place, double x, double y, double z) {
         if (place == null || !place.keeps(x, y, z)) {
             return Where.OUTSIDE;
         }
-        if (!place.inPrepRoom(x, z)) {
-            return Where.ARENA;
-        }
-        return aimed && place.arenaReach().contains(aimX, aimZ) ? Where.ARENA : Where.PREP_ROOM;
+        return place.inPrepRoom(x, z) ? Where.PREP_ROOM : Where.ARENA;
     }
 
     /** The kinds the core hands over as a thing he holds: an item, and a machine or magic block (made as an item). */
