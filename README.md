@@ -273,9 +273,15 @@ A `dep_override` run (Port CI's dependent gate: a candidate core) never releases
 
 **The Release workflow (`.github/workflows/release.yml`) is kept for now**, from `neoforge-1.21.8` only, for what Port
 CI does not do: `SHA256SUMS` beside the jar, release notes that name the core release and sha256 to install beside it,
-the World Type and `<world>/RELEASE-NOTES.md`, the jar's leak scan with the private forbidden list, and notes that do
-not call a world an "unofficial port" (Port CI's wording until a world has a publish config saying it is this
-repository's own, `.github/port-publish-<world>.json`). Use it only for a version Port CI has not released.
+the World Type and `<world>/RELEASE-NOTES.md`, and the jar's leak scan with the private forbidden list. Use it only for
+a version Port CI has not released.
+
+**Each world has a publish config saying it is this repository's own**, `.github/port-publish-<world>.json` (`"own_mod":
+true`, written by MMVU's `tools/port-publish.py setup --mod <world> --mod-dir <world> --branch neoforge-1.21.8` with no
+`--permission`), and its store page text, `.github/port-publish/description-<world>.md`. Port CI reads it when the
+workflow is rendered, so its pre-release notes say "**<mod id>** for NeoForge ..., built by this repository's own CI",
+never "Unofficial port". `"auto": false`: promoting a release does not upload it to Modrinth or CurseForge; no store
+project exists yet, and the listings stay with the owner.
 
 ## Bumping the core pin
 
@@ -303,6 +309,15 @@ and every pinned core inside its world's range. `--write` rewrites every `core.l
 **The branch the worlds release from is named once**, in `.github/port-ci-branch` (`neoforge-1.21.8`). `--set` and
 `python3 tools/core-pins.py --regenerate <world|all>` (each workflow regenerated with its pin unchanged and the newest
 Port CI kit) pass it to `port-ci.py` as `--branch`, and `--check` fails a workflow on any other branch.
+
+**On a version branch** (`neoforge-1.21.10` and up) the pin is MMVU's, not `--set`'s. `core-pins.py` reads the worlds'
+common `minecraft_version` and its `.port/<mc>/branch.properties`: its `branch=` is the branch the workflows run on (in
+place of `.github/port-ci-branch`), and when it holds `port_jar.com.moddingfromamod\:moddingfromamod=<asset URL>
+<sha256>` (with `substitute.com.moddingfromamod\:moddingfromamod=...:<version>`, written by the round's `layer-deps.py
+resolve --port-release`), `--write` and `--check` take each `core.lock` from it, and `--check` also holds each workflow's
+`--dep-jar` to it (else: run MMVU's `fork-branches.py ci --target <mc> --run`). The version may be `<ver>` or
+`<ver>-mc<mc>`; `shared/level.gradle` looks in mavenLocal under both. There `--set` and `--regenerate` refuse and name
+the re-pin commands; `--write` is the round's `after_repin`. On `main` and `neoforge-1.21.8` nothing changes.
 
 MMVU's `real-install` reads the same step to find the jars a world needs beside it: a line holding `curl` and the
 release URL, with the jar's sha256 on the next line.
