@@ -7,7 +7,7 @@ core and the world's jar; nothing else.
 | world | folder | mod id | what it is |
 |---|---|---|---|
 | Scarcity Isle | [`isle/`](isle/) | `moddyisle` | a tiny island in the sky for every player, and a wish bank where every wish counts |
-| Moddy Arena | [`arena/`](arena/) | `moddyarena` | a lit prep room beside a walled arena in the sky, where wishes stay inside the arena and its prep room, and a battle arena control panel sets the wave size and difficulty and starts a battle: five waves of monsters, each harder, fought with the wishes on your hotbar |
+| Moddy Arena | [`arena/`](arena/) | `moddyarena` | a lit prep room beside a walled arena in the sky, where wishes stay inside the arena and its prep room, and a battle arena control panel sets the monsters, difficulty and number of waves (5 to 20, or Endless) and starts a battle: waves of monsters with a boss every 5th wave, fought with the wishes on your hotbar (5 fires a wave) and 3 lives, a break between waves to change them, and a Champions board of the best runs |
 
 Minecraft 1.21.10, NeoForge 21.10.64, Java 21 (branch `neoforge-1.21.10`; `main` is 1.21.8). Licence: [MPL-2.0](LICENSE). Third-party datapacks keep their own
 licences (each world's `THIRD_PARTY_NOTICES.txt`).
@@ -30,7 +30,7 @@ shared/                  written once, compiled into EVERY world's jar (never a 
   level.gradle           the build every world shares
   src/main/java          the shared level code: Level, LevelPacks, LevelWorldType, LevelClaim
   resources/META-INF     neoforge.mods.toml (templated) and the World Type listener's access transformer
-tools/                   new-world.sh (the scaffold), play.sh, fetch-core.sh, core-pins.py, check-level-jar.py,
+tools/                   new-world.sh (the scaffold), play.sh, fetch-core.sh, core-pins.py, check-level-jar.py (incl. the stock-client rule),
                          changed-worlds.py, the leak and secret scans and the git hooks
 ```
 
@@ -73,6 +73,25 @@ A world compiles against the **public core jar only**: the release asset its `co
 **sha256** (the workflows' fetch step is generated from it: "The core pin in the workflows" below). The build downloads it into `<world>/.core/` and refuses any other bytes. While the core's repository is
 private, fetch it first with a token that can read it: `GH_TOKEN=… tools/fetch-core.sh isle`. `-PcoreJar=<jar>`
 builds against another core jar (a local build of the core); such a build is never released.
+
+## A stock client is all a player needs
+
+**Every world is played with a vanilla Minecraft client.** A player who joins a world (on a server, or a friend's
+LAN game) installs nothing: everything he sees and hears is something a stock client already draws: blocks,
+vanilla mobs (made tougher by their attributes, named by a custom name), text and item displays, boss bars, titles,
+chat, sounds, player heads. So a world jar:
+
+- carries **no client-side code** but the one host-side piece every world shares: the World Type picker that ticks
+  its packs on the HOST's Create World screen (`shared/`'s `LevelWorldType`, compiled into the world's own
+  `<world>/shared` package), registered from the `@Mod` class behind its one `Dist` check;
+- opens **no network channel** and sends no custom payload;
+- **registers no content**: no new block, item, entity type, menu or other registry entry (a stock client could not
+  draw it); it builds from vanilla blocks and mobs instead;
+- ships **no client resources** but `assets/<modid>/lang/` (the World Type's name on the host's screen).
+
+`tools/check-level-jar.py` refuses a jar that breaks this, naming the class or file and what it referenced (CI and the
+release run it on every world). If a world needs something a stock client cannot draw, it is a change to this
+principle, discussed first, not a quiet exception.
 
 ## How a world jar switches itself on
 
