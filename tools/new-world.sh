@@ -6,7 +6,7 @@
 # <world> is the folder, the level id and the mod id's suffix (lower-case letters and digits, 2-16 long, starting with
 # a letter): `arena` makes arena/ with mod id moddyarena, World Type "Moddy Arena". It writes:
 #   <world>/settings.gradle, build.gradle, gradle.properties (level_packages=com/moddingfromamod/<world>), core.lock (a copy of the
-#     newest world's pin), datapacks.lock.json with no packs, THIRD_PARTY_NOTICES.txt;
+#     first world's pin, until its own Port CI workflow is generated), datapacks.lock.json with no packs, THIRD_PARTY_NOTICES.txt;
 #   src/main/java, all in com.moddingfromamod.levels.<world> (a name the core never uses): the @Mod class
 #     (<World>Mod: its Level, LevelPacks, LevelWorldType), a ModdyPlugin that adds its WorldModuleType (claims
 #     through LevelClaim) and a WorldModule;
@@ -119,7 +119,11 @@ core_version_range={src['core_version_range']}
 # refuses to load the two jars together).
 level_packages=
 """)
-w("core.lock", lock.read_text(encoding="utf-8"))
+# a copy of that world's pin; core.lock is generated from the world's own Port CI workflow (tools/core-pins.py), which
+# README "Adding a world" makes next
+src_world = lock.parent.name
+w("core.lock", lock.read_text(encoding="utf-8").replace(f"port-ci-{src_world}.yml", f"port-ci-{world}.yml")
+  .replace(f"--set {src_world} ", f"--set {world} "))
 w("datapacks.lock.json", json.dumps({
     "_comment": "This world's built-in third-party DATAPACKS, pinned by version AND sha1 (see another world's lock "
                 "for a row's fields). Read a pack's LICENSE before adding it, and add it to THIRD_PARTY_NOTICES.txt.",
@@ -259,6 +263,6 @@ class {Cls}LevelTest {{
 w("playtests/README.md", f"# {name} playtests\n\nReal-client playtests for tools/play.sh {world}: one `*.playtest` per thing a "
   "player should see (MMVU's playtest format). `play.props` (optional) lists launcher properties, `key=value`, "
   f"`@manifest:a.b` read from worlds/{world}.json.\n")
-print(f"new-world: wrote {world}/ (mod id {modid}, World Type \"{name}\"). Next: ./gradlew -p {world} test jar, then "
-      "README.md \"Adding a world\" (its table row; its playtests).")
+print(f"new-world: wrote {world}/ (mod id {modid}, World Type \"{name}\"). Next: ./gradlew -p {world} build, then "
+      "README.md \"Adding a world\" (its Port CI workflow, then tools/core-pins.py --write; its table row; its playtests).")
 PY

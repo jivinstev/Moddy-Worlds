@@ -22,7 +22,8 @@ licences (each world's `THIRD_PARTY_NOTICES.txt`).
 <world>/                 one folder per world, a standalone Gradle build (./gradlew -p <world> ...)
   build.gradle           a few lines: its level id, anything it adds, then `apply from: '../shared/level.gradle'`
   gradle.properties      its mod id, name, versions, the core version range, its own Java packages
-  core.lock              the public core jar it builds and plays against, pinned by version and sha256
+  core.lock              the public core jar it builds and plays against, pinned by version and sha256 (generated from
+                         its Port CI workflow's pin: tools/core-pins.py)
   datapacks.lock.json    its built-in third-party packs, pinned by sha1 (with THIRD_PARTY_NOTICES.txt)
   src/main/java          its code: its @Mod class in com.moddingfromamod.levels.<world>, its own packages
   src/main/resources     its plug-in list (META-INF/services/...ModdyPlugin) and its structures
@@ -75,9 +76,22 @@ one instance and runs the root `playtests/` instead (worlds side by side: each k
 ```
 
 A world compiles against the **public core jar only**: the release asset its `core.lock` pins by version and
-**sha256** (the workflows' fetch step is generated from it: "The core pin in the workflows" below). The build downloads it into `<world>/.core/` and refuses any other bytes. While the core's repository is
-private, fetch it first with a token that can read it: `GH_TOKEN=… tools/fetch-core.sh isle`. `-PcoreJar=<jar>`
-builds against another core jar (a local build of the core); such a build is never released.
+**sha256** (written from the world's Port CI workflow: "Bumping the core pin" below). The build takes that jar from
+mavenLocal when Port CI has put it there (`com.moddingfromamod:moddingfromamod:<version>` in `~/.m2`), else downloads
+it into `<world>/.core/`, and either way refuses any other bytes. `tools/fetch-core.sh isle` fetches the same jar into
+`isle/.core/` (with `GH_TOKEN=…` if the core's repository is ever private).
+
+**The build is sha-checked against core.lock unless -PcoreJar or Port CI's dependent-gate signal
+(PORT_CI_DEP_OVERRIDE); neither is ever released.** `-PcoreJar=<jar>` builds against another core jar (a local build
+of the core). On Port CI's dependent gate (a run with `dep_override`, which swaps a candidate core into mavenLocal),
+the run sets `PORT_CI_DEP_OVERRIDE` to the coordinates it swapped; when that list names exactly
+`com.moddingfromamod:moddingfromamod`, the build takes the mavenLocal jar unchecked (any other coordinates change
+nothing). Both print a loud warning and mark the jar (the manifest attribute `Moddy-Unpinned-Core`), which
+`tools/check-level-jar.py` refuses; Port CI never releases a `dep_override` run either.
+
+Every `./gradlew -p <world> build` (and `assemble`) also checks the jar it made (task `checkLevelJar`):
+`tools/check-level-jar.py` (below) and `tools/leak-scan.py` over the jar's contents but its third-party `datapacks/`.
+Both need `python3`; without it the build stops and says so. `./gradlew -p <world> jar` alone skips the check.
 
 ## A stock client is all a player needs
 
@@ -94,8 +108,8 @@ chat, sounds, player heads. So a world jar:
   draw it); it builds from vanilla blocks and mobs instead;
 - ships **no client resources** but `assets/<modid>/lang/` (the World Type's name on the host's screen).
 
-`tools/check-level-jar.py` refuses a jar that breaks this, naming the class or file and what it referenced (CI and the
-release run it on every world). If a world needs something a stock client cannot draw, it is a change to this
+`tools/check-level-jar.py` refuses a jar that breaks this, naming the class or file and what it referenced (every
+world's `build` runs it, so Port CI does on every world). If a world needs something a stock client cannot draw, it is a change to this
 principle, discussed first, not a quiet exception.
 
 ## How a world jar switches itself on
@@ -134,13 +148,14 @@ The rules a world jar keeps:
   its copy of the shared code live there too): the core never uses that name, while a package like
   `com.moddingfromamod.<world>` may already be the core's (`com.moddingfromamod.example` is). Any other package of a
   world is listed as `level_packages` in its gradle.properties (the Isle's `isle` and `bank`).
-  `tools/check-level-jar.py` refuses a class outside them, and a package the pinned core jar also carries, on every CI
-  run and every release.
+  `tools/check-level-jar.py` refuses a class outside them, and a package the core jar it was built against also
+  carries, in every `build` (so every Port CI run and every release).
 - **`@EventBusSubscriber` with no `modid`**, so FML binds it to the jar it ships in.
 - **One world jar per server.** `WishCharge` is read with `first`: two world jars that both fill it would race.
 - **`shared/` compiles against every world's pinned core, so against the OLDEST one.** A change to `shared/` builds
-  every world (CI), which catches a break. A shared change that needs a newer core bumps every world's `core.lock` in
-  the same PR, or guards itself so it still compiles and behaves on the oldest pin.
+  every world (each world's Port CI), which catches a break. A shared change that needs a newer core bumps every
+  world's pin in the same PR (`tools/core-pins.py --set all <core tag>`), or guards itself so it still compiles and
+  behaves on the oldest pin.
 - **GameTests stay with the core** (they need its test harness, which no shipped jar carries); a world ships unit
   tests and playtests.
 
@@ -160,8 +175,12 @@ The rules a world jar keeps:
    field, name the folder in its `Level`, and rewrite `THIRD_PARTY_NOTICES.txt`), its rules, its module. World files
    carry gameplay only: no hostnames, ports, machines, cameras, spend caps or agent briefs (the leak scan refuses those
    keys).
-4. Add a row to the table above. CI picks the new folder up by itself, and so does the release (both find every folder
-   with a `core.lock`, `tools/changed-worlds.py`).
+4. Give it its Port CI workflow, the same command as the other worlds' with its own folder (MMVU's
+   `tools/port-ci.py --repo . --mod-dir <world> --also-path shared --also-path gradle --also-path gradlew --dep-jar
+   <the same core pin as another world's workflow> --branch <.github/port-ci-branch> --gatec … --no-commit`;
+   `port-ci.py args --file .github/workflows/port-ci-arena.yml` prints the arena's), then
+   `python3 tools/core-pins.py --write` (its `core.lock` from that workflow) and `--check`. Commit both. Add a row
+   to the table above.
 5. Write `<world>/playtests/*.playtest` (and `play.props` if it needs launcher properties) and run
    `tools/play.sh <world> --build`; a playtest across worlds goes in the root `playtests/`.
 
@@ -174,8 +193,12 @@ no operations tooling, no player ids or players' words, no credentials. Every ch
   over what you stage; `pre-push` scans every outgoing commit (so something added and deleted again is still
   refused). A maintainer adds the private forbidden list, kept OUTSIDE the repository:
   `./tools/git-hooks/install.sh --forbidden ~/.moddy/forbidden.txt`.
-- **CI** (`.github/workflows/ci.yml`, on pull requests to `main` and by hand): the leak scan over the tree and every
-  commit, the secret scan over the tree and the history, and each changed world's build, unit tests and jar check.
+- **CI** (`.github/workflows/ci.yml`, on pull requests to `main` and by hand): the scanners' self-tests,
+  `tools/core-pins.py --check`, the leak scan over the tree and every commit, the secret scan over the tree and the
+  history, and each changed world's `build` (unit tests and the jar check). Each world's **Port CI** workflow
+  (`.github/workflows/port-ci-<world>.yml`, on pull requests to `main`, pushes to `main` that touch the world,
+  `shared/` or the Gradle wrapper, its release tags and by hand) runs the same `build` and then the gates; once its
+  gates can run here (below), CI's world build is dropped.
 - **The rules**: `tools/leak-scan.py`'s built-in shapes (emails, routable IPs, bucket URLs, every credential shape in
   `tools/secret_patterns.py`, children's-data file names, the private side's packages), plus
   [`tools/leak-rules.txt`](tools/leak-rules.txt) (committed, shapes only), plus the private list (never committed;
@@ -183,25 +206,66 @@ no operations tooling, no player ids or players' words, no credentials. Every ch
 
 Never bypass a refusal with `--no-verify`. A real credential that reached any commit is rotated first.
 
-## Releases
+## Releases: cutting one
 
-Only the **Release** workflow makes a release (Actions → Release → Run workflow, from `main`, typing the world's folder,
-which it checks against the same discovery CI uses): it
-builds that world against its pinned core, runs its unit tests, checks the jar holds only the world's own packages,
-resources and packs, scans its contents, and publishes the jar with `SHA256SUMS` as a pre-release tagged
-`<world>-<version>-mc<minecraft>` whose notes name the core release and sha256 to install beside it.
+A world is released by **its own Port CI workflow**, `.github/workflows/port-ci-<world>.yml`, generated by
+[MMVU](https://github.com/jivinstev/mc-mod-version-upgrade)'s `tools/port-ci.py` (one per world; never edited by hand,
+regenerated instead). It builds the world from `main` with its Gradle `build` against the core its pin names (unit
+tests, the jar check and the jar's leak scan included), runs the gates, and publishes the jar as a **pre-release**
+tagged `<world>-<mod_version>-mc<minecraft>` (from `<world>/gradle.properties`) with each gate summary beside it:
 
-## The core pin in the workflows, and MMVU
+1. Bump `mod_version` in `<world>/gradle.properties` (and `<world>/RELEASE-NOTES.md`) in a pull request; merge it.
+2. Either push the tag `<world>-<mod_version>-mc1.21.8` on that `main` commit, or run the world's workflow
+   (Actions → Port CI <world> → Run workflow, on `main`) with **release** ticked. Running it again for a version
+   already released makes `-r2`, `-r3`, …; it never moves a tag.
+3. A person plays the pre-release, then promotes it: the same workflow with **promote** = the tag and **played_by** =
+   their GitHub login (or MMVU's `tools/port-ci.py promote --fork jivinstev/Moddy-Worlds --mod <world> --tag <tag>
+   --played-by <login>`). Nothing becomes a full Release unplayed.
 
-MMVU's `real-install` finds the jars a mod needs beside it by reading the repository's workflows: a line holding
-`curl` and a release URL (`https://github.com/<owner>/<repo>/releases/download/<tag>/<asset>.jar`) with the jar's
-sha256 on one of the next two lines. So the step that fetches the core in CI and in the release IS that pin.
-`tools/core-pins.py --write` writes it from the worlds' `core.lock` files into both workflows, between the
-`BEGIN core pins` / `END core pins` markers (one fetch per distinct core release; every world pins the same one today).
-CI runs `tools/core-pins.py --check` and fails when a workflow disagrees with a `core.lock`. **Bumping the core is
-therefore: edit `core.lock`, run `tools/core-pins.py --write`, commit both.** While the core's repository is private the
-plain download is refused and the step falls back to `gh release download` with the `CORE_READ_TOKEN` secret; the
-sha256 check is the same either way. Locally, `tools/fetch-core.sh` fetches the same bytes.
+**Not yet:** MMVU's gates have no harness for a Minecraft 1.21.8 checkout that is not a version branch, so today
+every Port CI run of a world goes red at Gate A (`UnknownTarget: minecraft_version='1.21.8'`) after its `build`
+passed, and no Port CI release can be cut. Until MMVU closes that, release with the Release workflow (below).
+
+A `dep_override` run (Port CI's dependent gate: a candidate core) never releases. Pre-releases made before Port CI
+(by the Release workflow) stay valid and installable as they are.
+
+**The Release workflow (`.github/workflows/release.yml`) is kept for now**, for what Port CI does not do yet:
+`SHA256SUMS` beside the jar, release notes that name the core release and sha256 to install beside it, the World Type
+and `<world>/RELEASE-NOTES.md`, the jar's leak scan with the private forbidden list, and notes that do not call a
+world an "unofficial port" (Port CI's wording for a repository with no publish config saying it is its own). Use it
+only for a version Port CI has not released.
+
+Playtests are not part of Port CI: run them with `tools/play.sh` (above) before promoting.
+
+## Bumping the core pin
+
+Each world's core pin is written in exactly one place: the `--dep-jar` step of its Port CI workflow, which downloads
+the core release jar, checks its sha256 and installs it into mavenLocal as
+`com.moddingfromamod:moddingfromamod:<version>`. `<world>/core.lock` (same keys as ever: `core_repo`, `core_tag`,
+`core_asset`, `core_sha256`) is **generated** from it, with a header saying so; the build, `tools/fetch-core.sh`,
+`tools/play.sh` and `tools/check-level-jar.py` read it. Each world, and each branch, keeps its own pin. To bump one:
+
+```bash
+python3 tools/core-pins.py --set isle moddingfromamod-1.0.11-mc1.21.8    # one world; `all` for every world
+python3 tools/core-pins.py --check
+./gradlew -p isle build
+```
+
+`--set` finds the release's core jar and its sha256 (from the release's `SHA256SUMS` when it has one, else by
+hashing the download), regenerates `port-ci-<world>.yml` with MMVU's `tools/port-ci.py` (its other options read back
+unchanged; MMVU from `--mmvu DIR`, `$MMVU` or `../mc-mod-version-upgrade`) and rewrites `core.lock`. It refuses a core
+for another Minecraft version, and one outside the world's `core_version_range` in its `gradle.properties`, which
+stays hand-kept: widen it first when a world needs a newer core. Commit the workflow and `core.lock` together, in a
+pull request of their own. CI runs `tools/core-pins.py --check`: every `core.lock` must be exactly its workflow's pin,
+and every pinned core inside its world's range. `--write` rewrites every `core.lock` from the workflows.
+
+**The branch the worlds release from is named once**, in `.github/port-ci-branch` (`main` today). `--set` and
+`python3 tools/core-pins.py --regenerate <world|all>` (each workflow regenerated with its pin unchanged and the newest
+Port CI kit) pass it to `port-ci.py` as `--branch`, and `--check` fails a workflow on any other branch. Moving releases
+to a release-line branch (e.g. `neoforge-1.21.8`) is: write its name there, `--regenerate all`, commit.
+
+MMVU's `real-install` reads the same step to find the jars a world needs beside it: a line holding `curl` and the
+release URL, with the jar's sha256 on the next line.
 
 **Known gap:** `real-install` models ONE mod per repository, on a `neoforge-<mc>` branch, taking the newest release
 whose tag ends `-mc<mc>`. This repository has several worlds on `main`, each tagged `<world>-<version>-mc<mc>`, so with

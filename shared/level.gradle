@@ -29,43 +29,82 @@ def digestOf = { File f, String algo ->
 }
 
 // ── the public core jar, pinned ──────────────────────────────────────────────────────────────────────────────────────
+// core.lock is GENERATED from this world's Port CI workflow (.github/workflows/port-ci-<world>.yml, its --dep-jar pin) by
+// tools/core-pins.py; the build reads it and refuses bytes it does not pin. Where the jar comes from, in this order:
+//   1. -PcoreJar=<jar>: a local core build, taken UNCHECKED (a loud warning; the jar is marked, never released);
+//   2. mavenLocal (~/.m2) holding com.moddingfromamod:moddingfromamod:<the pinned core's version>, which Port CI's
+//      --dep-jar step puts there: sha256-checked against core.lock like any other copy, EXCEPT on Port CI's dependent
+//      gate, when PORT_CI_DEP_OVERRIDE (a comma list of group:artifact the run swapped for a candidate) names exactly
+//      com.moddingfromamod:moddingfromamod: then that jar is taken unchecked, exactly like -PcoreJar (warned, marked);
+//   3. else <world>/.core/<asset>: downloaded from the core's release when absent, sha256-checked against core.lock.
+// A marked jar carries the manifest attribute Moddy-Unpinned-Core, which tools/check-level-jar.py refuses.
 def lock = new Properties()
 file('core.lock').withInputStream { lock.load(it) }
 def coreDir = file('.core')
 def coreJar
+def unpinned = null                     // why this build is NOT against the pinned core (the jar's marker), or null
+def coreGa = 'com.moddingfromamod:moddingfromamod'
+def coreTagPrefix = 'moddingfromamod-'
+def coreTagSuffix = "-mc${minecraft_version}"
+// The pinned core's version: its tag is moddingfromamod-<version>-mc<minecraft> (tools/core-pins.py --check holds the
+// workflow's G:A:V to the same version).
+def coreVersion = (lock.core_tag ?: '').startsWith(coreTagPrefix) && (lock.core_tag ?: '').endsWith(coreTagSuffix) ?
+        lock.core_tag.substring(coreTagPrefix.length(), lock.core_tag.length() - coreTagSuffix.length()) : null
+def m2Jar = coreVersion ? new File(System.getProperty('user.home'),
+        ".m2/repository/${coreGa.replace(':', '/').replace('.', '/')}/${coreVersion}/moddingfromamod-${coreVersion}.jar") : null
+def depOverride = ((System.getenv('PORT_CI_DEP_OVERRIDE') ?: '') as String).split(',').collect { it.trim() }.findAll { it }
 if (project.hasProperty('coreJar')) {
     coreJar = file(project.property('coreJar'))
     if (!coreJar.isFile()) {
         throw new GradleException("${levelId}: -PcoreJar=${coreJar} is not a file")
     }
-    logger.warn("${levelId}: building against ${coreJar}, NOT the pinned core (core.lock); this build is for local use only")
+    unpinned = "-PcoreJar=${coreJar.name}"
+    logger.warn("${levelId}: WARNING: building against ${coreJar} (-PcoreJar), NOT the pinned core (core.lock); " +
+            "the jar is marked Moddy-Unpinned-Core and is never released")
+} else if (m2Jar != null && m2Jar.isFile() && depOverride.contains(coreGa)) {
+    coreJar = m2Jar
+    unpinned = "PORT_CI_DEP_OVERRIDE=${coreGa}"
+    logger.warn("${levelId}: WARNING: building against ${m2Jar} UNCHECKED: Port CI's dependent gate replaced ${coreGa} " +
+            "(PORT_CI_DEP_OVERRIDE), so this is NOT the pinned core (core.lock); the jar is marked Moddy-Unpinned-Core " +
+            "and is never released")
 } else {
-    coreJar = new File(coreDir, lock.core_asset)
     if (!(lock.core_sha256 ==~ /[0-9a-f]{64}/)) {
         throw new GradleException("${levelId}: core.lock has no sha256 for ${lock.core_asset} yet (core_sha256=${lock.core_sha256}). " +
-                "Fill it in from the release, or build against a local core jar with -PcoreJar=<jar>")
+                "Set the pin with tools/core-pins.py --set ${levelId} <core tag>, or build against a local core jar with -PcoreJar=<jar>")
     }
-    if (!coreJar.isFile()) {
-        // While the core's repository is private its assets need a token: CI and tools/play.sh download the jar into
-        // .core/ with tools/fetch-core.sh first. Once it is public this plain download is all it takes.
-        def url = "https://github.com/${lock.core_repo}/releases/download/${lock.core_tag}/${lock.core_asset}"
-        logger.lifecycle("${levelId}: downloading the core jar ${url}")
-        coreDir.mkdirs()
-        def part = new File(coreDir, lock.core_asset + '.part')
-        try {
-            new URL(url).withInputStream { i -> part.withOutputStream { o -> o << i } }
-        } catch (Exception e) {
-            part.delete()
-            throw new GradleException("${levelId}: could not download ${url} (${e.message}). While the core's repository " +
-                    "is private: GH_TOKEN=<a token that can read it> tools/fetch-core.sh ${levelId}")
+    if (m2Jar != null && m2Jar.isFile()) {
+        // Port CI's --dep-jar step put the pinned core into mavenLocal: the same bytes, checked again here.
+        coreJar = m2Jar
+        def got = digestOf(coreJar, 'SHA-256')
+        if (got != lock.core_sha256) {
+            throw new GradleException("${levelId}: sha256 MISMATCH for ${m2Jar} (mavenLocal): core.lock pins ${lock.core_sha256}, " +
+                    "got ${got}; refusing to build against bytes nobody pinned (delete that file to fall back to the " +
+                    "pinned download)")
         }
-        part.renameTo(coreJar)
-    }
-    def got = digestOf(coreJar, 'SHA-256')
-    if (got != lock.core_sha256) {
-        coreJar.delete()
-        throw new GradleException("${levelId}: sha256 MISMATCH for ${lock.core_asset}: pinned ${lock.core_sha256}, got ${got}. " +
-                "The file was deleted; refusing to build against bytes nobody pinned")
+        logger.lifecycle("${levelId}: the pinned core from mavenLocal (${coreGa}:${coreVersion}), sha256 matches core.lock")
+    } else {
+        coreJar = new File(coreDir, lock.core_asset)
+        if (!coreJar.isFile()) {
+            // tools/fetch-core.sh fetches the same bytes (with a token, if the core's repository is ever private again).
+            def url = "https://github.com/${lock.core_repo}/releases/download/${lock.core_tag}/${lock.core_asset}"
+            logger.lifecycle("${levelId}: downloading the core jar ${url}")
+            coreDir.mkdirs()
+            def part = new File(coreDir, lock.core_asset + '.part')
+            try {
+                new URL(url).withInputStream { i -> part.withOutputStream { o -> o << i } }
+            } catch (Exception e) {
+                part.delete()
+                throw new GradleException("${levelId}: could not download ${url} (${e.message}). If the core's repository " +
+                        "is private: GH_TOKEN=<a token that can read it> tools/fetch-core.sh ${levelId}")
+            }
+            part.renameTo(coreJar)
+        }
+        def got = digestOf(coreJar, 'SHA-256')
+        if (got != lock.core_sha256) {
+            coreJar.delete()
+            throw new GradleException("${levelId}: sha256 MISMATCH for ${lock.core_asset}: pinned ${lock.core_sha256}, got ${got}. " +
+                    "The file was deleted; refusing to build against bytes nobody pinned")
+        }
     }
 }
 
@@ -195,4 +234,57 @@ tasks.named('processResources') {
 
 tasks.named('jar') {
     from(rootProject.file('../LICENSE')) { rename { "LICENSE_${mod_id}" } }
+    // The marker of a build that is not against the pinned core (-PcoreJar, or Port CI's dependent gate): absent from
+    // every pinned build, refused by tools/check-level-jar.py, so such a jar is never released.
+    inputs.property('unpinnedCore', unpinned ?: '')
+    if (unpinned) {
+        manifest { attributes('Moddy-Unpinned-Core': unpinned) }
+    }
 }
+
+// ── the jar check, in every build ────────────────────────────────────────────────────────────────────────────────────
+// `assemble` (so `build`, which Port CI runs) checks the jar it made: tools/check-level-jar.py (only the world's own
+// packages, resources and packs; nothing a stock client cannot draw; no package the core it was built against carries;
+// no Moddy-Unpinned-Core marker), then tools/leak-scan.py over the jar's contents (datapacks/ is third-party and
+// unmodified, pinned by sha1 in datapacks.lock.json: not our text). Both need python3. A build that is itself unpinned
+// passes --allow-unpinned: it says so and goes on (so a dependent gate still tests), and its jar stays marked.
+def toolsDir = rootProject.file('../tools')
+def jarScanDir = layout.buildDirectory.dir('tmp/level-jar-scan')
+def unpackLevelJar = tasks.register('unpackLevelJarForScan', Sync) {
+    from(zipTree(tasks.named('jar').flatMap { it.archiveFile }))
+    exclude('datapacks/**')
+    into(jarScanDir)
+}
+def runPython = { List<String> args, String what ->
+    def cmd = ['python3'] + args
+    def proc
+    try {
+        proc = new ProcessBuilder(cmd).redirectErrorStream(true).start()
+    } catch (IOException e) {
+        throw new GradleException("${levelId}: ${what} needs python3 on the PATH, and there is none (${e.message}). " +
+                "Install Python 3 (standard library only), then build again")
+    }
+    proc.outputStream.close()
+    // through Gradle's logger, so the findings reach the console (a daemon's own stdout does not)
+    proc.inputStream.withReader('UTF-8') { r -> r.eachLine { logger.lifecycle(it) } }
+    def rc = proc.waitFor()
+    if (rc != 0) {
+        throw new GradleException("${levelId}: ${what} failed (exit ${rc}): see its findings above")
+    }
+}
+def checkLevelJar = tasks.register('checkLevelJar') {
+    group = 'verification'
+    description = 'tools/check-level-jar.py and the leak scan over the world jar this build made'
+    dependsOn(unpackLevelJar)
+    def jarFile = tasks.named('jar').flatMap { it.archiveFile }
+    inputs.file(jarFile)
+    inputs.property('unpinnedCore', unpinned ?: '')
+    doLast {
+        def jar = jarFile.get().asFile
+        runPython([new File(toolsDir, 'check-level-jar.py').path, jar.path, '--level', levelId, '--core', coreJar.path] +
+                (unpinned ? ['--allow-unpinned'] : []), 'tools/check-level-jar.py')
+        runPython([new File(toolsDir, 'leak-scan.py').path, '--dir', jarScanDir.get().asFile.path],
+                'the leak scan of the jar (tools/leak-scan.py --dir)')
+    }
+}
+tasks.named('assemble') { dependsOn(checkLevelJar) }
