@@ -32,7 +32,8 @@ def digestOf = { File f, String algo ->
 // core.lock is GENERATED from this world's Port CI workflow (.github/workflows/port-ci-<world>.yml, its --dep-jar pin) by
 // tools/core-pins.py; the build reads it and refuses bytes it does not pin. Where the jar comes from, in this order:
 //   1. -PcoreJar=<jar>: a local core build, taken UNCHECKED (a loud warning; the jar is marked, never released);
-//   2. mavenLocal (~/.m2) holding com.moddingfromamod:moddingfromamod:<the pinned core's version>, which Port CI's
+//   2. mavenLocal (~/.m2) holding com.moddingfromamod:moddingfromamod:<the pinned core's version> (or
+//      <version>-mc<minecraft>, the spelling a version branch's pin may use), which Port CI's
 //      --dep-jar step puts there: sha256-checked against core.lock like any other copy, EXCEPT on Port CI's dependent
 //      gate, when PORT_CI_DEP_OVERRIDE (a comma list of group:artifact the run swapped for a candidate) names exactly
 //      com.moddingfromamod:moddingfromamod: then that jar is taken unchecked, exactly like -PcoreJar (warned, marked);
@@ -50,9 +51,22 @@ def coreTagSuffix = "-mc${minecraft_version}"
 // workflow's G:A:V to the same version).
 def coreVersion = (lock.core_tag ?: '').startsWith(coreTagPrefix) && (lock.core_tag ?: '').endsWith(coreTagSuffix) ?
         lock.core_tag.substring(coreTagPrefix.length(), lock.core_tag.length() - coreTagSuffix.length()) : null
-def m2Jar = coreVersion ? new File(System.getProperty('user.home'),
-        ".m2/repository/${coreGa.replace(':', '/').replace('.', '/')}/${coreVersion}/moddingfromamod-${coreVersion}.jar") : null
+// Port CI installs it under the version its --dep-jar names: <version> on neoforge-1.21.8, and on a version branch
+// whatever MMVU's substitute.com.moddingfromamod\:moddingfromamod in .port/<mc>/branch.properties says, which may be
+// <version>-mc<minecraft>. Both are looked for, so the dependent gate (PORT_CI_DEP_OVERRIDE) never misses the candidate
+// it put there and silently builds against the pinned core instead (when both are there, the dependent gate takes the
+// newer file: the candidate it has just written).
 def depOverride = ((System.getenv('PORT_CI_DEP_OVERRIDE') ?: '') as String).split(',').collect { it.trim() }.findAll { it }
+def m2Jars = coreVersion ? [coreVersion, "${coreVersion}${coreTagSuffix}".toString()].collect { v ->
+    new File(System.getProperty('user.home'),
+            ".m2/repository/${coreGa.replace(':', '/').replace('.', '/')}/${v}/moddingfromamod-${v}.jar")
+}.findAll { it.isFile() } : []
+def m2Jar = depOverride.contains(coreGa) ? m2Jars.max { it.lastModified() } : (m2Jars ? m2Jars[0] : null)
+if (depOverride.contains(coreGa) && m2Jar == null && !project.hasProperty('coreJar')) {
+    throw new GradleException("${levelId}: PORT_CI_DEP_OVERRIDE names ${coreGa}, but mavenLocal holds no candidate under " +
+            "${coreVersion} or ${coreVersion}${coreTagSuffix} (core.lock's ${lock.core_tag}): refusing to build against " +
+            "the pinned core in its place")
+}
 if (project.hasProperty('coreJar')) {
     coreJar = file(project.property('coreJar'))
     if (!coreJar.isFile()) {
@@ -81,7 +95,7 @@ if (project.hasProperty('coreJar')) {
                     "got ${got}; refusing to build against bytes nobody pinned (delete that file to fall back to the " +
                     "pinned download)")
         }
-        logger.lifecycle("${levelId}: the pinned core from mavenLocal (${coreGa}:${coreVersion}), sha256 matches core.lock")
+        logger.lifecycle("${levelId}: the pinned core from mavenLocal (${coreGa}:${m2Jar.parentFile.name}), sha256 matches core.lock")
     } else {
         coreJar = new File(coreDir, lock.core_asset)
         if (!coreJar.isFile()) {
