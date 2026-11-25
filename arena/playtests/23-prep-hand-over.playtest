@@ -57,9 +57,37 @@ moddy builder
 @click button "Make it!"
 # the core puts the kept make on his hotbar and says so; the arena shows it on the spot for a moment first
 @expect chat /is on your hotbar/ within 120s
-@wait 10t
+@wait 3t
 @assert execute if entity @e[type=minecraft:item,tag=moddyarena_handover]
-@shot creature-on-the-spot
+# a burst of frames through the moment (it shows 1.5 seconds, then flies to him): the film of the hand-over
+@shot film-01
+@wait 3t
+@shot film-02
+@wait 3t
+@shot film-03
+@wait 3t
+@shot film-04
+@wait 3t
+@shot film-05
+@wait 3t
+@shot film-06
+@wait 3t
+@shot film-07
+@wait 3t
+@shot film-08
+@wait 3t
+@shot film-09
+@wait 3t
+@shot film-10
+@wait 3t
+@shot film-11
+@wait 3t
+@shot film-12
+@wait 3t
+@shot film-13
+@wait 3t
+@shot film-14
+@wait 3t
 @expect actionbar /is ready! Slot 3\. Use it in the arena\./ within 5s
 @wait 5t
 @shot creature-flew-to-him
