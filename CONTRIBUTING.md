@@ -6,7 +6,7 @@ Nothing written by someone else is copied, ported, translated or closely paraphr
 licence is on the allow-list:
 
 - **Code and text:** MIT, BSD-2-Clause, BSD-3-Clause, Apache-2.0, MPL-2.0, ISC, Zlib, the Unlicense, CC0 / public
-  domain, and Sun's fdlibm notice (SunPro).
+  domain.
 - **Art and presets only** (textures, models, sounds, structures, world presets): CC BY 4.0.
 
 Anything else stops the work: GPL, LGPL, AGPL, EPL, CC BY-SA / NC / ND, a font licence, "all rights reserved", no

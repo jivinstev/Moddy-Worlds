@@ -73,7 +73,6 @@ class Wording(unittest.TestCase):
 
     def test_spdx(self):
         self.assertEqual(rules("// " + SPDX + "MIT OR Apache-2.0"), [])
-        self.assertEqual(rules("// " + SPDX + "SunPro"), [])
         self.assertEqual(rules("// " + SPDX + "Apache-2.0 WITH LLVM-exception"), [])
         self.assertEqual(rules("// " + SPDX + "LG" + "PL-2.1-only"), ["spdx"])
 

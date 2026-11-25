@@ -11,10 +11,9 @@
     "Zlib": ["zlib license", "the zlib license"],
     "Unlicense": ["the unlicense"],
     "CC0-1.0": ["cc0", "cc0 1.0", "cc0 1.0 universal", "public domain"],
-    "CC-BY-4.0": ["cc by 4.0", "creative commons attribution 4.0", "creative commons attribution 4.0 international"],
-    "SunPro": ["sunpro fdlibm notice", "fdlibm notice", "sun microsystems fdlibm notice"]
+    "CC-BY-4.0": ["cc by 4.0", "creative commons attribution 4.0", "creative commons attribution 4.0 international"]
   },
-  "_allow": "CC-BY-4.0 covers art and presets only (textures, models, sounds, structures, world presets), never code. SunPro is Sun's fdlibm notice ('Permission to use, copy, modify, and distribute this software is freely granted, provided that this notice is preserved'), a permissive notice.",
+  "_allow": "CC-BY-4.0 covers art and presets only (textures, models, sounds, structures, world presets), never code.",
 
   "wording": [
     {"id": "gnu-gpl", "pattern": "\\bGNU\\s+(?:Affero\\s+|Lesser\\s+|Library\\s+)?General\\s+Public\\b", "why": "GNU GPL, LGPL or AGPL licence text: copyleft, not on the allow-list"},
