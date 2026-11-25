@@ -117,7 +117,10 @@ public final class WishBankBook {
         return new Pickup(Paid.CHARGED, price, WishBank.status(p, a, now));
     }
 
-    /** At submit, a wish that is let through on an empty bank (a child in distress is never refused). */
+    /**
+     * A wish let through on an empty bank, never charged. Core 1.0.10 no longer asks for one; a WAIVED entry in a
+     * saved ledger still reads.
+     */
     public synchronized void waive(WishBank.Params p, UUID player, UUID wish, long now) {
         if (!store.usable()) {
             return;

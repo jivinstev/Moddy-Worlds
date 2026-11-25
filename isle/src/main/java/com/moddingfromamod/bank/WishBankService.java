@@ -126,7 +126,8 @@ public final class WishBankService {
 
     /**
      * At submit: refuse kindly when there is nothing to pay with, and say when the next wish
-     * arrives. Server thread. False on a world with no bank, and for a child in distress.
+     * arrives. Server thread. False on a world with no bank. ({@code distress} is the core hook's
+     * old flag: core 1.0.10 always passes false, and it is ignored.)
      */
     public static boolean refusesAtSubmit(ServerPlayer player, boolean distress) {
         return refusesAtSubmit(player, distress, null);
@@ -154,26 +155,13 @@ public final class WishBankService {
             return false;
         }
         long now = System.currentTimeMillis();
-        if (b.affordable(p, player.getUUID(), now, !recipe) || distress) {
+        if (b.affordable(p, player.getUUID(), now, !recipe)) {
             return false;
         }
         tell(player, WishBankWords.empty(b.status(p, player.getUUID(), now), place()));
         LOGGER.info("wish bank: {} has nothing to pay with — refused at submit, nothing spent",
                 player.getScoreboardName());
         return true;
-    }
-
-    /** At submit, a wish that went through on an empty bank (distress): never charged. */
-    public static void waiveIfEmpty(ServerPlayer player, UUID wishId) {
-        WishBank.Params p = params();
-        WishBankBook b = book();
-        if (p == null || b == null || player == null || wishId == null) {
-            return;
-        }
-        long now = System.currentTimeMillis();
-        if (!b.affordable(p, player.getUUID(), now)) {
-            b.waive(p, player.getUUID(), wishId, now);
-        }
     }
 
     // ── pickup ────────────────────────────────────────────────────────────────────────────────
