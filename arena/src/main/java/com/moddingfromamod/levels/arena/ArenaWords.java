@@ -285,6 +285,22 @@ public final class ArenaWords {
         return " - Battle: use your hotbar";
     }
 
+    // ── wished creatures in a battle ────────────────────────────────────────────────────────────────────────────────
+
+    /** Chat, once, to the player a wished creature helps, when it takes its role in a battle. */
+    public static String roleTaken(ArenaRoles.Role role, String name) {
+        return switch (role) {
+            case FIGHTER -> "Your " + name + " is a Fighter! It will fight the monsters with you.";
+            case HEALER -> "Your " + name + " is a Healer! It will keep you healthy.";
+            case TANK -> "Your " + name + " is a Tank! It will make the monsters chase it.";
+        };
+    }
+
+    /** Chat, when a battle starts: the creatures wished into the arena help. */
+    public static String creaturesHelp() {
+        return "Creatures you wished into the arena help you: each one is a Fighter, a Healer or a Tank.";
+    }
+
     // ── the battle arena control panel ──────────────────────────────────────────────────────────────────────────────
 
     public static final String PANEL_TITLE = "BATTLE ARENA CONTROL PANEL";
@@ -510,7 +526,9 @@ public final class ArenaWords {
                 sizeAtEnd(true, 7), sizeAtEnd(false, 10), difficultyAtEnd(true, ArenaDifficulty.EXTREME),
                 difficultyAtEnd(true, ArenaDifficulty.HARD), difficultyAtEnd(false, ArenaDifficulty.EXTREME),
                 wavesFixed(10), wavesFixed(0), wavesAtEnd(false, 5, 0, false), wavesAtEnd(true, 5, 0, false),
-                wavesAtEnd(true, 5, 10, true), CHAMPIONS_TITLE, championsNone());
+                wavesAtEnd(true, 5, 10, true), CHAMPIONS_TITLE, championsNone(), creaturesHelp(),
+                roleTaken(ArenaRoles.Role.FIGHTER, "Buddy the Cat"), roleTaken(ArenaRoles.Role.HEALER, "Buddy the Cat"),
+                roleTaken(ArenaRoles.Role.TANK, "Buddy the Cat"));
     }
 
     /** Every line the panel and its selectors can say, for a test that reads them all. */

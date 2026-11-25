@@ -6,6 +6,7 @@ import com.moddingfromamod.wish.WishCharge;
 import com.moddingfromamod.wish.WishStatus;
 import com.moddingfromamod.world.WorldRulesService;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -32,6 +33,7 @@ import org.slf4j.LoggerFactory;
  *       its count back.</li>
  *   <li>{@link #wishesCommand}, {@link #panelTitle}, {@link #composeTitle}: what {@code /moddy wishes}, the watch and
  *       the wish box say about the arena's wishes.</li>
+ *   <li>{@link #guideValues}: the rules numbers the Arena Guide book's pages name ({@link ArenaGuide}).</li>
  * </ul>
  *
  * <p>Every decision is the policy's; this only looks at the server (its tick, the battle's phase) and speaks.
@@ -235,6 +237,12 @@ final class ArenaCharge implements WishCharge {
     }
 
     // ── words on menus and /moddy wishes ────────────────────────────────────────────────────────────────────────────
+
+    /** The Arena Guide's numbers, from the rules in force when the core gives the book. */
+    @Override
+    public Map<String, String> guideValues() {
+        return ArenaGuide.values(ArenaWavesRule.wavesOf(WorldRulesService.current()), wishes.get());
+    }
 
     @Override
     public List<String> wishesCommand(UUID player) {

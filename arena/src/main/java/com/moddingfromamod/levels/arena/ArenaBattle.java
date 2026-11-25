@@ -104,6 +104,8 @@ final class ArenaBattle {
     private ArenaChampions.Key battleKey;
     /** The difficulty of the battle that is on (its mobs' health), fixed when it starts. */
     private ArenaDifficulty battleDifficulty = ArenaDifficulty.DEFAULT;
+    /** The wished creatures' battle roles, during a wave ({@link ArenaRoles}). */
+    private final ArenaRoleKeeper roles;
     private long ticks;
 
     ArenaBattle(MinecraftServer server, ArenaPlace place, ArenaState state, ArenaCharge wishes) {
@@ -113,6 +115,8 @@ final class ArenaBattle {
         this.wishes = wishes;
         this.board = new ArenaBoard(server, place, state);
         this.champions = new ArenaChampionsBoard(server, place, state);
+        this.roles = new ArenaRoleKeeper(server, place, List.of(TAG, ArenaBoard.TAG, ArenaChampionsBoard.TAG,
+                ArenaRoleKeeper.SIGN_TAG));
         if (state.battleOn()) {
             match.endedByRestart();
             LOG.info("Moddy Arena: battle: a battle was on when the server stopped; it is over, and the arena will be"
@@ -125,6 +129,10 @@ final class ArenaBattle {
     }
 
     void stop() {
+        ServerLevel level = level();
+        if (level != null) {
+            roles.releaseAll(level);
+        }
         bar.removeAllPlayers();
         for (ServerBossEvent b : wishBars.values()) {
             b.removeAllPlayers();
@@ -168,11 +176,13 @@ final class ArenaBattle {
         told.clear();
         waveMobs.clear();
         ready.clear();
+        roles.battleStarted(ArenaCreaturesRule.creaturesOf(com.moddingfromamod.world.WorldRulesService.current()));
         LOG.info("Moddy Arena: battle: COUNTDOWN, started by {}: {} waves, the first in {} s (monsters {}, difficulty"
                 + " {}; the first wave {} mobs; boss waves {}; {} lives)", by, ArenaWords.wavesValue(waves.count()),
                 waves.countdownSeconds(), settings.size(), settings.difficulty().word(), waves.size(1),
                 waves.bossWaves(20), waves.lives());
         sayToPlace(ArenaWords.started(waves.count(), waves.countdownSeconds(), waves.lives()));
+        sayToPlace(ArenaWords.creaturesHelp());
         updateBar();
         return null;
     }
@@ -210,6 +220,7 @@ final class ArenaBattle {
             fightersIn = Math.max(1, fightersIn);
         }
         int mobsLeft = match.phase() == ArenaMatch.Phase.WAVE ? mobsLeft(level) : 0;
+        roles.tick(level, match.phase() == ArenaMatch.Phase.WAVE && mobsLeft > 0, fighters.keySet(), waveMobs);
         watchBoss(level);
         if (match.inBreak() && !ready.isEmpty() && ArenaMatch.allReady(fighters.keySet(), ready) && match.ready()) {
             LOG.info("Moddy Arena: battle: every fighter still in is ready; the break ends in {} s",

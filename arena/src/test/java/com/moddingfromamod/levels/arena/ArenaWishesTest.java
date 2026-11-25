@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test;
 class ArenaWishesTest {
 
     private static final List<WorldRuleType> TYPES =
-            List.of(new ArenaRule(), new ArenaWavesRule(null), new ArenaWishesRule());
+            List.of(new ArenaRule(), new ArenaWavesRule(null), new ArenaWishesRule(), new ArenaCreaturesRule());
 
     private static String file(String params) {
         return "{\"store\":\"world-rules\",\"v\":1,\"world\":\"arena\",\"rules\":["
