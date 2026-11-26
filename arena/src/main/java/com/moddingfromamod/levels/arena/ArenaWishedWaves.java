@@ -70,9 +70,14 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
                     new Bodies(10, List.of("t_rex", "raptor", "yeti"))),
             10, true);
 
-    /** The A/B seam for a test or a dev run: {@code -Dmoddyarena.wishedWaves=false} turns it off whatever the rule says. */
+    /**
+     * The A/B seam for a test or a dev run: {@code -Dmoddyarena.wishedWaves=false}, or
+     * {@code -Dmoddingfromamod.arena.wishedWaves=false} (what a playtest's {@code play.props} line
+     * {@code arena.wishedWaves=false} sets), turns it off whatever the rule says.
+     */
     public boolean active() {
-        return on && !"false".equalsIgnoreCase(System.getProperty("moddyarena.wishedWaves", "true"));
+        return on && !"false".equalsIgnoreCase(System.getProperty("moddyarena.wishedWaves", "true"))
+                && !"false".equalsIgnoreCase(System.getProperty("moddingfromamod.arena.wishedWaves", "true"));
     }
 
     // ── the plan ───────────────────────────────────────────────────────────────────────────────────────────────────
