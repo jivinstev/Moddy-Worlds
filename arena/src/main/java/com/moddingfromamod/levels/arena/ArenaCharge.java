@@ -58,7 +58,7 @@ final class ArenaCharge implements WishCharge {
     /** The arena's charge in a running world: its tunables are the world's {@code arena_wishes} rule. */
     static ArenaCharge of(MinecraftServer server) {
         return new ArenaCharge(server, new ArenaWishPolicy(),
-                () -> ArenaWishesRule.wishesOf(WorldRulesService.current()));
+                () -> ArenaWishesRule.wishesOf(ArenaModule.rules()));
     }
 
     /** The arena's battle, whose wish ladder {@code /moddy wishes} reports. */
@@ -243,8 +243,8 @@ final class ArenaCharge implements WishCharge {
     /** The Arena Guide's numbers, from the rules in force when the core gives the book. */
     @Override
     public Map<String, String> guideValues() {
-        return ArenaGuide.values(ArenaWavesRule.wavesOf(WorldRulesService.current()), wishes.get(),
-                ArenaLadderRule.ladderOf(WorldRulesService.current()));
+        return ArenaGuide.values(ArenaWavesRule.wavesOf(ArenaModule.rules()), wishes.get(),
+                ArenaLadderRule.ladderOf(ArenaModule.rules()));
     }
 
     @Override
