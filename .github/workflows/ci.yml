@@ -123,6 +123,13 @@ jobs:
         env:
           WORLD: ${{ matrix.world }}
         run: ./gradlew --no-daemon -p "$WORLD" build
+      # The built jar, so a pull request's build can be downloaded and tried before it merges (7 days; a login is needed).
+      - name: The jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: jar-${{ matrix.world }}
+          path: ${{ matrix.world }}/build/libs/*.jar
+          retention-days: 7
       - name: Test reports
         if: failure()
         uses: actions/upload-artifact@v4
