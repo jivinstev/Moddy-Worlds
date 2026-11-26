@@ -245,9 +245,13 @@ execute as @e[tag=wishmob,tag=!prepgolem] run kill @s
 @expect chat /Dragon is ready/ within 60s
 @wait 2s
 execute store result score #sc4 arenatest run attribute @e[tag=wishmob,tag=!prepgolem,limit=1,sort=nearest] minecraft:scale get 100
-# fitted to the step now (size at most x2). It is not bigger than in wave 1: the core keeps a Builder make's recipe as
-# it was made, already fitted to the first step in prep, so a later step has nothing more to give it (a core gap)
-@assert execute if score #sc4 arenatest matches ..200
+# it is made, and bigger than the one fired in wave 1 (#sc1): its size grew with the step (core 1.0.11 fits a
+# creature's size where it stands, at every spawn)
+@assert execute if score #sc4 arenatest > #sc1 arenatest
+# and within the step's limit (x2). The minecraft:scale attribute read here is the rig's CARRIER mob, fitted under the
+# drawn body by the core's hit-proxy plan, not the drawn size: it reads up to about 1.2 times the drawn size (a golem
+# drawn at 0.88 had a carrier of 1.344), so the bound is the limit times 1.2
+@assert execute if score #sc4 arenatest matches ..240
 @shot dragon-after-wave-4
 @key key.hotbar.9
 
