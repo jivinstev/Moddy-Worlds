@@ -28,6 +28,8 @@ import net.minecraft.world.level.saveddata.SavedDataType;
  * difficulty, waves AND size, are kept by difficulty and waves, each player's best at each ({@link
  * ArenaChampions#migrate}). A record without them reads them as the defaults (5 waves, no champions), and everything
  * else in it is kept. A saved difficulty this jar does not know reads as the default too, and the log says so.
+ * Version 5 added who has been told the prep room's hand-over ({@code handOverTold}, {@link ArenaHandOver}): a record
+ * without it reads as nobody told yet.
  */
 public final class ArenaState extends SavedData {
 
@@ -56,9 +58,9 @@ public final class ArenaState extends SavedData {
 
     /**
      * This record's version: 2 added the panel's settings, 3 the number of waves and the champions, 4 dropped the
-     * monsters size (from the settings and the champions' keys).
+     * monsters size (from the settings and the champions' keys), 5 added who has been told the hand-over.
      */
-    static final int VERSION = 4;
+    static final int VERSION = 5;
 
     static final Codec<ArenaState> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.INT.optionalFieldOf("v", 1).forGetter(s -> VERSION),
@@ -71,7 +73,9 @@ public final class ArenaState extends SavedData {
             Codec.STRING.optionalFieldOf("difficulty").forGetter(s -> Optional.of(s.settings.difficulty().id())),
             Codec.INT.optionalFieldOf("waveCount").forGetter(s -> Optional.of(s.settings.waves())),
             ENTRY.listOf().optionalFieldOf("champions", List.of()).forGetter(s -> s.champions),
-            Codec.LONG.optionalFieldOf("runs", 0L).forGetter(s -> s.runs))
+            Codec.LONG.optionalFieldOf("runs", 0L).forGetter(s -> s.runs),
+            UUIDUtil.STRING_CODEC.listOf().optionalFieldOf("handOverTold", List.of())
+                    .forGetter(s -> new ArrayList<>(s.handOverTold)))
             .apply(i, ArenaState::new));
 
     static final SavedDataType<ArenaState> TYPE =
@@ -80,6 +84,8 @@ public final class ArenaState extends SavedData {
     private Built built;
     private final Set<UUID> arrived = new LinkedHashSet<>();
     private final Set<String> upgrades = new LinkedHashSet<>();
+    /** Who has read the hand-over's longer line (the difference between a wish and an item). */
+    private final Set<UUID> handOverTold = new LinkedHashSet<>();
     private boolean battleOn;
     private ArenaSettings settings = ArenaSettings.DEFAULT;
     /** The version this record was read as (1 for one saved before the panel), for the log. */
@@ -95,7 +101,7 @@ public final class ArenaState extends SavedData {
 
     private ArenaState(int v, Optional<Built> built, List<UUID> arrived, List<String> upgrades, boolean battleOn,
                        Optional<String> difficulty, Optional<Integer> waveCount,
-                       List<ArenaChampions.Entry> champions, long runs) {
+                       List<ArenaChampions.Entry> champions, long runs, List<UUID> handOverTold) {
         this.readVersion = v;
         this.built = built.orElse(null);
         this.arrived.addAll(arrived);
@@ -104,6 +110,7 @@ public final class ArenaState extends SavedData {
         this.settings = ArenaSettings.of(difficulty.orElse(null), waveCount.orElse(null));
         this.champions = List.copyOf(v < 4 ? ArenaChampions.migrate(champions) : champions);
         this.runs = runs;
+        this.handOverTold.addAll(handOverTold);
         if (difficulty.isPresent() && ArenaDifficulty.byId(difficulty.get()) == null) {
             unknownDifficulty = difficulty.get();
         }
@@ -205,6 +212,15 @@ public final class ArenaState extends SavedData {
     /** Records his first arrival; true when it was his first. */
     boolean arrive(UUID player) {
         boolean first = arrived.add(player);
+        if (first) {
+            setDirty();
+        }
+        return first;
+    }
+
+    /** Records that he was told the hand-over's longer line; true the first time (say it then, and only then). */
+    boolean tellHandOver(UUID player) {
+        boolean first = handOverTold.add(player);
         if (first) {
             setDirty();
         }

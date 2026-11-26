@@ -14,7 +14,7 @@
 
 @step arrive
 @expect chat Welcome to Moddy Arena within 90s
-@expect chat press Add to hotbar within 10s
+@expect chat comes to you on the gold spot within 10s
 @wait 2s
 difficulty hard
 difficulty normal
@@ -27,10 +27,10 @@ moddy wishes
 @expect chat Magician wishes left before the next battle: 3 of 3 within 5s
 @expect chat Builder and Apprentice wishes are free within 5s
 
-@step a make from the prep room lands in the arena ahead of him
-# the core's Builder puts a make 12 blocks ahead of him: from the middle of the prep room, where he arrives, facing
-# the arena, that is through the gate on the arena's floor
-@aim look 180 12
+@step a make started in the arena lands in the arena ahead of him
+# a make started in the prep room is handed over (23-prep-hand-over); one started in the arena lands where he aims.
+# He stands just inside the gate (SHORTCUT: a teleport, there and back; walking in is a later step's), facing the arena
+teleport @s 0.5 64 14.5 180 12
 @wait 2s
 moddy apprentice a stone well
 @expect screen Container within 10s
@@ -38,9 +38,11 @@ moddy apprentice a stone well
 @click slot 0
 @expect chat /is ready/ within 90s
 @wait 3s
-# the arena ahead of the gate is no longer empty air (compared with the empty sky at y 200): the well stands in it
-@assert execute unless blocks -4 64 3 4 67 15 -4 200 3 all
-@shot made-from-the-prep-room
+# the arena ahead of him is no longer empty air (compared with the empty sky at y 200): the well stands in it
+@assert execute unless blocks -4 64 -4 4 67 13 -4 200 -4 all
+@shot made-in-the-arena
+teleport @s 0.5 64 21.5 180 0
+@wait 1s
 
 @step an Apprentice sword in the prep room
 moddy apprentice a fire sword
@@ -206,6 +208,9 @@ moddy apprentice a cozy house
 @assert execute if items entity @s hotbar.3 minecraft:paper
 moddy wishes
 @expect chat Magician wishes left before the next battle: 3 of 3 within 5s
+# where the fight ended depends on where the last monster stood (he walks up to each), so the house is wished from
+# a known spot: the arena's centre, facing north (SHORTCUT: a teleport), so its slide never depends on the fight
+teleport @s 0.5 64 0.5 180 12
 @aim look 180 12
 @wait 2s
 moddy apprentice a cozy house

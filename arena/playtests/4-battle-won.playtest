@@ -26,17 +26,20 @@ moddy apprentice a fire sword
 @wait 2s
 @assert execute if items entity @s hotbar.2 *
 
-@step a stone well in the arena, made from the prep room
-# from the middle of the prep room, facing the arena, a make lands through the gate on the arena's floor
-@aim look 180 12
+@step a stone well in the arena, made standing in the arena
+# a make started in the prep room is handed over (23-prep-hand-over); one started in the arena lands there. He stands
+# just inside the gate (SHORTCUT: a teleport, there and back; walking in is 2-wish-in-the-arena's), facing the arena
+teleport @s 0.5 64 14.5 180 12
 @wait 1s
 moddy apprentice a stone well
 @expect screen Container within 10s
 @click slot 0
 @expect chat /is ready/ within 90s
 @wait 3s
-@assert execute unless blocks -4 64 3 4 67 15 -4 200 3 all
+@assert execute unless blocks -4 64 -4 4 67 13 -4 200 -4 all
 @shot well-in-the-arena
+teleport @s 0.5 64 21.5 180 0
+@wait 1s
 
 @step he presses the start button
 # a couple of steps toward the gate, then the start button on the control panel

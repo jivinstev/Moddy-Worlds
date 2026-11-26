@@ -1,6 +1,7 @@
 package com.moddingfromamod.levels.arena;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.moddingfromamod.levels.arena.ArenaLadder.Count;
@@ -49,8 +50,9 @@ class ArenaPinNoticeTest {
     void aDragonTooBigAndTooStrongIsSmallerAndWeakerAtFirst() {
         Notice n = ArenaPinNotice.of(L, 0, facts("creature", Map.of(MakeFacts.SCALE_TIMES, 4.0,
                 MakeFacts.HEALTH_HALF_HEARTS, 200.0, MakeFacts.COUNT_MADE, 1.0), Set.of("fights")));
-        assertEquals(new Notice(Type.FITTED, 0, List.of(Held.SMALLER, Held.WEAKER)), n);
-        assertEquals("Your Dragon will be smaller and weaker at first. It grows as you clear waves.", say("Dragon", n));
+        assertEquals(new Notice(Type.FITTED, 0, List.of(Held.SMALLER, Held.WEAKER), ArenaPinNotice.Later.ALL), n);
+        assertEquals("Your Dragon will be smaller and weaker at first. It grows as you clear waves.", say("Dragon", n),
+                "its size and strength both come back as steps open (core 1.0.11 fits size on the living creature)");
     }
 
     @Test
@@ -114,10 +116,10 @@ class ArenaPinNoticeTest {
 
     @Test
     void manyHoldsReadAsOneList() {
-        Notice n = new Notice(Type.FITTED, 0, List.of(Held.WEAKER, Held.FEWER, Held.GENTLER));
-        assertEquals("Your Wolf Pack will be weaker, fewer and gentler at first. It gets stronger as you clear waves.",
-                say("Wolf Pack", n));
-        assertEquals("This wish will be weaker, fewer and gentler at first. It gets stronger as you clear waves.",
+        Notice n = new Notice(Type.FITTED, 0, List.of(Held.WEAKER, Held.FEWER, Held.GENTLER), ArenaPinNotice.Later.SOME);
+        assertEquals("Your Wolf Pack will be weaker, fewer and gentler in this arena. It gets stronger as you clear"
+                + " waves.", say("Wolf Pack", n));
+        assertEquals("This wish will be weaker, fewer and gentler in this arena. It gets stronger as you clear waves.",
                 say("", n), "a wish with no name");
     }
 
@@ -131,5 +133,45 @@ class ArenaPinNoticeTest {
         assertEquals("", ArenaPinNotice.nameOf("\u2728 Wish: A meteor that makes a crater!"),
                 "a ready-made's label is a sentence, not a name: the line says This wish");
         assertEquals("", ArenaPinNotice.nameOf("Wish: A very long name for a thing"));
+    }
+
+    @Test
+    void onlyWhatComesBackIsPromised() {
+        Notice sword = ArenaPinNotice.of(L, 0, facts("item", Map.of(MakeFacts.ATTACK_DAMAGE_HALF_HEARTS, 40.0),
+                Set.of("fights")));
+        assertEquals(Type.FITTED, sword.type());
+        assertEquals(ArenaPinNotice.Later.NONE, sword.later(), "nothing re-fits an item as steps open");
+        assertEquals("Your Fire Sword will be weaker in this arena.", say("Fire Sword", sword));
+        Notice small = ArenaPinNotice.of(L, 0, facts("creature", Map.of(MakeFacts.SCALE_TIMES, 4.0), Set.of()));
+        assertEquals("Your Dragon will be smaller at first. It grows as you clear waves.", say("Dragon", small),
+                "a creature held only in size grows back as steps open");
+        Notice strongItem = ArenaPinNotice.of(L, 0, facts("item", Map.of(MakeFacts.BUILDER_STRENGTH_STEP, 3.0), Set.of()));
+        assertEquals(Type.NONE, strongItem.type(), "the default ladder never limits the strength pick");
+        Notice ride = ArenaPinNotice.of(L, 0, facts("ride", Map.of(MakeFacts.HEALTH_HALF_HEARTS, 100.0), Set.of()));
+        assertEquals(ArenaPinNotice.Later.ALL, ride.later(), "a ride's strength comes back like a creature's");
+        for (Notice n : List.of(sword)) {
+            assertFalse(say("X", n).contains("stronger") || say("X", n).contains("grows") || say("X", n).contains("at first"),
+                    say("X", n));
+        }
+    }
+
+    @Test
+    void aSuperStrongCreatureIsNeverLockedOnlyHeldByItsHealthAndHits() {
+        assertFalse(L.limits(0).containsKey(MakeFacts.BUILDER_STRENGTH_STEP), "no step limits the strength pick");
+        for (ArenaLadder.Step st : L.steps()) {
+            assertFalse(L.limits(st.after()).containsKey(MakeFacts.BUILDER_STRENGTH_STEP), "after " + st.after());
+        }
+        MakeFacts superStrong = facts("creature", Map.of(MakeFacts.BUILDER_STRENGTH_STEP, 3.0,
+                MakeFacts.HEALTH_HALF_HEARTS, 120.0, MakeFacts.ATTACK_DAMAGE_HALF_HEARTS, 14.0), Set.of("fights"));
+        assertEquals(0, L.locksUntil("creature", Set.of("fights"), true), "not locked");
+        ArenaMakes m = new ArenaMakes(() -> L, () -> 0, () -> true);
+        assertEquals(com.moddingfromamod.world.MakeView.ALLOWED, m.view(superStrong,
+                com.moddingfromamod.wish.WishAsk.of(java.util.UUID.randomUUID(), com.moddingfromamod.wish.WishSource.BUILDER,
+                        com.moddingfromamod.wish.WishAsk.Magic.BUILDER)), "made in wave 1, never refused for being strong");
+        Notice n = ArenaPinNotice.of(L, 0, superStrong);
+        assertEquals(new Notice(Type.FITTED, 0, List.of(Held.WEAKER), ArenaPinNotice.Later.ALL), n,
+                "held by its health and hits, fitted live, and they come back");
+        assertEquals("Your Super Dragon will be weaker at first. It gets stronger as you clear waves.",
+                say("Super Dragon", n));
     }
 }

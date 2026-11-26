@@ -52,6 +52,8 @@ public final class ArenaModule implements WorldModule {
     private volatile ArenaCharge charge;
     /** What may be made here, and how strong: the unlock ladder ({@link ArenaMakes}). */
     private volatile ArenaMakes makes;
+    /** The prep room's hand-over: where a make is finished, and showing what was handed over ({@link ArenaHandOver}). */
+    private volatile ArenaHandOverShow handOver;
     /** Players who arrived for the first time, and the tick until which the core's guide book is looked for. */
     private final Map<UUID, Long> guideDue = new HashMap<>();
     /** The wished creatures whose hurt to a player was stopped, so the log says it once for each. */
@@ -155,6 +157,7 @@ public final class ArenaModule implements WorldModule {
             state.markUpgraded(ArenaPlace.UPGRADE_CHAMPIONS);
             state.markUpgraded(ArenaPlace.UPGRADE_BASE);
             state.markUpgraded(ArenaPlace.UPGRADE_LADDER_BOARD);
+            state.markUpgraded(ArenaPlace.UPGRADE_HAND_OVER_SPOT);
             LOG.info("Moddy Arena: built the place ({}): {} blocks in {} ms", place.describe(), set,
                     (System.nanoTime() - t0) / 1_000_000);
         } else {
@@ -194,7 +197,9 @@ public final class ArenaModule implements WorldModule {
         charge = c;
         c.battle(battle);
         ArenaBattle b0 = battle;
-        makes = new ArenaMakes(ArenaModule::ladder, b0::reached, b0::ladderOn);
+        ArenaHandOverShow h = new ArenaHandOverShow(server, place, state);
+        handOver = h;
+        makes = new ArenaMakes(ArenaModule::ladder, b0::reached, b0::ladderOn, h::where, h::handedOver, h::notKept);
         ArenaLadder ladder = ArenaLadderRule.ladderOf(rulesAtStart());
         LOG.info("Moddy Arena: wish ladder: {} steps, counted in {}, locked {} {}; every battle starts at the first",
                 ladder.steps().size(), ladder.progress().id(), ladder.locked().kinds(), ladder.locked().tags());
@@ -255,6 +260,16 @@ public final class ArenaModule implements WorldModule {
                     LOG.info("Moddy Arena: the place was missing its wish ladder board; added it on the prep room's"
                             + " west wall beside the panel ({} blocks)", set);
                 }
+                case ArenaPlace.UPGRADE_HAND_OVER_SPOT -> {
+                    int set = ArenaBuilder.addHandOverSpot(level, place);
+                    if (set < 0) {
+                        LOG.warn("Moddy Arena: the place has no hand-over spot, and something stands where it goes"
+                                + " (the prep room's floor by its east wall); a finished make shows there all the same.");
+                        continue;
+                    }
+                    LOG.info("Moddy Arena: the place was missing its hand-over spot; set it in the prep room's floor by"
+                            + " its east wall ({} block)", set);
+                }
                 case ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS -> {
                     level.getGameRules().getRule(GameRules.RULE_DOMOBSPAWNING).set(false, server);
                     LOG.info("Moddy Arena: natural mob spawning switched off in this world (game rule doMobSpawning"
@@ -286,6 +301,11 @@ public final class ArenaModule implements WorldModule {
         if (live == this) {
             live = null;
         }
+        ArenaHandOverShow h = handOver;
+        if (h != null) {
+            h.stop();
+        }
+        handOver = null;
         battle = null;
         charge = null;
         makes = null;
@@ -305,6 +325,10 @@ public final class ArenaModule implements WorldModule {
             if (c != null) {
                 c.phase(ArenaWishPolicy.phaseOf(b.match().phase()));
             }
+        }
+        ArenaHandOverShow h = handOver;
+        if (h != null) {
+            h.tick();
         }
     }
 

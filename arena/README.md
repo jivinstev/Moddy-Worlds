@@ -14,8 +14,9 @@
 4. Keep the game's own difficulty above **Peaceful**: on Peaceful monsters vanish as soon as they come, so the button
    says "Battles need the game's difficulty above Peaceful: on Peaceful, monsters vanish as soon as they come." and no
    battle starts. (The arena's own Easy, Normal, Hard and Extreme are picked on its control panel.)
-5. In the prep room, make wishes with the Builder or the Apprentice and put them on your hotbar (My wishes, a wish's
-   page, **Add to hotbar**). On the control panel pick the **difficulty** (it sets how many monsters come) and the
+5. In the prep room, make wishes with the Builder or the Apprentice: what you make comes to you on the gold
+   **hand-over spot** (a sword as a real sword, a creature, a building or an event as a wish on your hotbar). A make
+   you start while standing in the arena lands there instead. On the control panel pick the **difficulty** (it sets how many monsters come) and the
    **waves**, then press **START BATTLE**. When a wave comes the gate shuts and you are taken into the arena; fight with
    your hotbar wishes, rest in the breaks, and try to get on the Champions board.
 
@@ -41,7 +42,8 @@ place once, around x 0, z 0, standing at y 64:
   a few seconds later reads three lines (`worlds/arena.json`'s `intro`, which the core says once per player per world):
   > Welcome to Moddy Arena! You are in the prep room. The arena is past the gate.
   >
-  > Get ready in the prep room: make things, then put them on your hotbar. Open one in My wishes and press Add to hotbar.
+  > Get ready in the prep room: what you make there comes to you on the gold spot. A sword is yours to hold; a creature,
+  > a building or an event goes on your hotbar as a wish.
   >
   > The battle arena control panel is on the wall: pick the difficulty and the waves, then press START BATTLE. When a
   > wave comes the gate shuts and you are taken into the arena. Only your hotbar wishes work in a battle, and you have
@@ -54,6 +56,8 @@ place once, around x 0, z 0, standing at y 64:
   prep room (below). The arena is seen through the gate.
 - **The Champions board**: the prep room's back wall (behind a player who arrives) is a black board facing into the
   room (below).
+- **The hand-over spot**: a gold block in the prep room's floor, in the middle of its east side (on the right of a
+  player who arrives), where what he makes in the prep room comes to him ("The hand-over in the prep room", below).
 
 The world spawn is the arrival spot, facing the arena, so a respawn lands there too. Game mode is never changed.
 
@@ -447,7 +451,10 @@ ladder starts again. Nothing is hidden: every wished creature has a battle role.
 - **A wish he puts on his hotbar** that the step the battle is on would lock or hold back (a battle starts at the first,
   and prep is the first) tells him so once, as it lands ("On your hotbar, slot 5" is the core's line, this one follows
   it): "Your Meteor is locked in a battle until wave 5 is cleared.", "Your Rock Golem will be weaker at first. It gets
-  stronger as you clear waves.", "Your Dragon will be smaller at first. It grows as you clear waves." (a number the core
+  stronger as you clear waves.", "Your Dragon will be smaller and weaker in this arena. It gets stronger as you clear
+  waves.", "Your Fire Sword will be weaker in this arena." (it promises only what comes back as steps open: a
+  creature's health and hits, which the core refits on the living creature, and how many a fire makes; nothing re-fits
+  an item, or a creature's size, today) (a number the core
   cannot lower: "Your Castle is too much for now. It opens when wave 6 is cleared."; a wish whose label is a sentence
   rather than a name, as a ready-made's is, is "This wish"). The arena reads his hotbar wishes
   twice a second through the core's public `WishHotbar.recipeOf` and asks what each makes with
@@ -458,18 +465,19 @@ ladder starts again. Nothing is hidden: every wished creature has a battle role.
 - The Arena Guide's pages "Stronger wishes" and "The wish ladder" (their numbers are placeholders, below).
 
 **The default ladder** (`ArenaLadder.DEFAULT`, the rules file's `arena_ladder`), counted in waves cleared, first values
-guesses to be tuned by playing:
+guesses to be tuned by playing. The Builder's strength pick is never limited: a wish is never refused for being
+strong; what it makes is held by health, hits, reach and how long powers last, and comes back as steps open.
 
-| after waves cleared | health | hits | size | Builder size | strength | at once | items | power reach | powers last | opens |
-|---|---|---|---|---|---|---|---|---|---|---|
-| 0 (a battle's start, and prep) | 20 hearts | 2.5 hearts | x1.5 | 2 | 1 | 2 | 16 | 4 | 10 s | |
-| 2 | 30 | 3 | x1.75 | 2 | 2 | 2 | 24 | 5 | 15 s | |
-| 4 | 40 | 3.5 | x2 | 3 | 2 | 3 | 32 | 6 | 20 s | |
-| 5 (the first boss) | 60 | 4.5 | x2.5 | 3 | 3 | 4 | 48 | 8 | 30 s | events |
-| 8 | 80 | 6 | x3 | any | any | 5 | 64 | 10 | 40 s | |
-| 10 (the second boss) | 125 | 8 | x4 | any | any | 6 | any | 12 | 50 s | world rules |
-| 15 (the third boss) | 200 | 12 | x5 | any | any | 8 | any | 16 | 60 s | |
-| 20 (the fourth boss) | no limits | | | | | | | | | |
+| after waves cleared | health | hits | size | Builder size | at once | items | power reach | powers last | opens |
+|---|---|---|---|---|---|---|---|---|---|
+| 0 (a battle's start, and prep) | 20 hearts | 2.5 hearts | x1.5 | 2 | 2 | 16 | 4 | 10 s | |
+| 2 | 30 | 3 | x1.75 | 2 | 2 | 24 | 5 | 15 s | |
+| 4 | 40 | 3.5 | x2 | 3 | 3 | 32 | 6 | 20 s | |
+| 5 (the first boss) | 60 | 4.5 | x2.5 | 3 | 4 | 48 | 8 | 30 s | events |
+| 8 | 80 | 6 | x3 | any | 5 | 64 | 10 | 40 s | |
+| 10 (the second boss) | 125 | 8 | x4 | any | 6 | any | 12 | 50 s | world rules |
+| 15 (the third boss) | 200 | 12 | x5 | any | 8 | any | 16 | 60 s | |
+| 20 (the fourth boss) | no limits | | | | | | | | |
 
 Why: it starts modest (a zombie has 10 hearts; a stone sword hits for 2.5), and it rises twice before wave 5, so even
 the default five-wave battle, whose only boss is its last wave, meets that boss with stronger wishes than it started
@@ -537,6 +545,45 @@ item is made or fired**. What a player needs to know is in the guide's "Stronger
 Rebalancing items as the steps rise needs the core: a documented marker on a wish-made item stack (whose wish, at what
 fit), and a way for a world to have one re-fitted or re-made; until then, the arena cannot even tell which of his
 items a wish made.
+
+## The hand-over in the prep room
+
+The owner's rule: **a thing you hold is a real item; a thing that happens or appears is a wish on your hotbar.**
+(`ArenaHandOver`, pure, unit-tested; shown by `ArenaHandOverShow`; through the core's `WorldMakes.landing` hook.)
+
+- **A make finished in the prep room** (the Builder, the Apprentice or the Magician) does not appear beside him. An
+  **item** (a sword, a wand, a machine or a magic block the core makes as an item) is handed over as the **real item**,
+  in his inventory; supplies are given to him as they always were. A **creature, ride, building or event** is kept and handed over as a **hotbar wish**, in the first
+  empty slot, drawn however the core draws a hotbar wish (the arena never chooses the picture); fired in the arena, it
+  appears where he aims, like any hotbar wish.
+- **The hand-over spot shows it**: the finished make shows for a moment (1.5 seconds) over the gold block, then flies to
+  him with the game's own pick-up motion and sound. What shows is a copy nobody can pick up (the core has already put the
+  real thing where it went), so nothing is ever given twice. One action-bar line names it and where it went: "Your
+  Dragon is ready! Slot 3. Use it in the arena.", "Your Fire Sword is ready! It is in your inventory.", or, with the
+  hotbar full, "Your Dragon is ready! Your hotbar is full, so it is in your Wish Bag." (no picture shows then). The core
+  says its own line in chat too ("Dragon is on your hotbar. Aim and use it to make it appear.").
+- **The first time** a make is handed over to him in a world, a longer chat line says the difference: "In the prep
+  room, what you make comes to you. A thing you hold, like a sword, is a real item: it goes in your inventory. A thing
+  that appears or happens, like a creature, a building or an event, is a wish on your hotbar: aim and use it in the
+  arena to make it appear. Each use costs one of the wave's hotbar wishes." Once per player per world (the saved
+  record remembers it).
+- **Where he stands decides**, never where he looks: "things you make in the prep room go to your loadout". A make
+  started while he stands in the prep room (its floor, walls included) is handed over; one started while he stands in
+  the arena lands where he aims, as it always did (so he can still wish straight into the fight where the arena's rules
+  allow a make at all). **Outside the place** nothing changes.
+- **A fire never becomes a wish again**: a hotbar fire or "Make another one" always lands.
+- **What could not be kept is said honestly**, in one short line: a picture ("Your picture went up where you aimed: a
+  picture cannot be kept as a wish."), a change to something he has ("Your change was made where your thing stands."),
+  a kind no recipe makes again ("That one happened right away: it cannot be kept as a wish."), or a Magician wish that
+  taught nothing ("The Magician had nothing to put on your hotbar this time, so nothing was made.").
+- **The rules it keeps**: keeping charges nothing (Builder and Apprentice makes are free in prep anyway; a Magician
+  wish is counted against the prep's Magician wishes when it is asked, as before, and a kept one is still one wish);
+  each fire of a kept wish in a battle is one of the wave's hotbar wishes and rests as any fire does; the pin notice
+  (locked or held back at first) is said by the hotbar watch as for any wish put on the hotbar, and the hand-over's line
+  never says it again; what a player holds is his and is never taken (`ArenaTidy`). The core's own **Add to hotbar** is
+  unchanged: a player who adds an item wish to his hotbar by hand still gets the item wish.
+- **It needs the core's hand-over hook** (`WorldMakes.landing`, `handedOver`, `notKept`), on the core's main branch
+  after 1.0.10: this arena builds only against a core that has it.
 
 ## Wishes: the prep phase and a battle
 
@@ -912,12 +959,14 @@ All of it in `com.moddingfromamod.levels.arena`:
 | `ArenaCreaturesRule` | `arena_creatures` as a `WorldRuleType`, and reading it back from a world's rules |
 | `ArenaLadder` | **pure**: the wish ladder as data (its steps, their limits in the core's facts, what is locked and when it opens), its checks, where a battle is on it, what a step raises and opens |
 | `ArenaLadderRule` | `arena_ladder` as a `WorldRuleType`, and reading it back from a world's rules (kept until the rules change) |
-| `ArenaMakes` | the core's `WorldMakes` for arena worlds: the battle's step as limits for every make, and the locked kinds in a battle |
+| `ArenaMakes` | the core's `WorldMakes` for arena worlds: the battle's step as limits for every make, the locked kinds in a battle, and where a finished make goes (`landing`, `handedOver`, `notKept`) |
+| `ArenaHandOver` | **pure**: the prep room's hand-over: where a make is finished (the prep room, the arena, outside), the answer for its kind, where it went, why it was not kept |
+| `ArenaHandOverShow` | carries the hand-over out: reads where he aims, shows the make on the hand-over spot, flies it to him, says the line (and the first-time line once) |
 | `ArenaPinNotice` | **pure**: whether a wish put on the hotbar would be locked or held back at the battle's step, and when that changes, from its facts and the ladder |
 | `ArenaLadderBoard` | carries the WISH LADDER board out: one text display beside the control panel, kept like the panel's words |
 | `ArenaRoleKeeper` | carries the roles out in a wave: each creature's sign and one line, the Fighter's strikes, the Healer's heals, the Tank's held monsters and Resistance, and stopping all of it |
 | `ArenaGuide` | **pure**: the Arena Guide's rules numbers (its placeholders), and where the first copy goes in the bag |
-| `ArenaState` | the world's saved record (versioned): the built sizes, who has arrived, the upgrades it has had, whether a battle is on, the panel's settings, the champions |
+| `ArenaState` | the world's saved record (versioned): the built sizes, who has arrived, the upgrades it has had, whether a battle is on, the panel's settings, the champions, who has been told the hand-over |
 
 **A place built before the control panel existed** gains it on its next start, once (the upgrade `control-panel`,
 recorded in `data/moddyarena_place.dat` beside `start-control` and `no-natural-spawns`): over the window's glass (and
@@ -933,9 +982,12 @@ before the base** (0.1.5 and earlier, in the sky) gains it on its next start, on
 bedrock and the stone under the whole place and 2 blocks round it, and grass round the floors only where nothing
 stands. **A panel built with the MONSTERS selector** (0.1.5 and earlier) loses its two unused buttons on its next start
 and is laid out with two selectors, by the same path that mends a panel (its MONSTERS words are removed with the
-other panel words it no longer has).
+other panel words it no longer has). **A place built before the hand-over spot** gains it on its next start, once (the
+upgrade `hand-over-spot`): the gold block in the prep room's floor, only where the floor is still its oak planks;
+otherwise the log says so and a finished make shows over that spot all the same.
 
-The saved record carries `v` 4 since 0.1.6: the panel's difficulty and `waveCount` (0 for Endless), and `champions`,
+The saved record carries `v` 5 since the hand-over: `handOverTold`, the players who have read its first-time line (a
+record without it reads as nobody told). `v` 4 (0.1.6): the panel's difficulty and `waveCount` (0 for Endless), and `champions`,
 each entry a player's id, name, the settings key (difficulty and waves), the wave, cleared, won, ticks and a sequence
 number. `v` 3 (the WAVES selector and the champions) and `v` 2 (the panel) also had the panel's monsters
 (`waveSize`), and each champion's key had its monsters (`size`): reading such a record drops them, nothing else is
@@ -968,13 +1020,8 @@ everything else.
 
 What the public core does not let a world do yet (so the arena does not do it either):
 
-- **The hand-over: a make in the prep room going to the loadout instead of appearing.** The plan (#22): a make
-  finished in the prep room (Builder, Apprentice or Magician) whose result is an item gives the real item, and a
-  creature, event or building becomes a wish on his hotbar instead of appearing beside him, shown for a moment at a
-  hand-over spot in the prep room. Core 1.0.9 gives a world no say in whether or where a finished make appears: a
-  make's placing tools run as soon as its plan is known, and a world's hooks (its charge, its bases and reach rule)
-  can only let it start or refuse it. Doing it in the arena alone would mean tearing down a thing after it appeared (an
-  event cannot be taken back at all), so it waits for a small core hook: a world module answering, before a make's
-  first placing tool runs, whether it lands in the world or is kept and handed over as a hotbar wish, and being told
-  when one is handed over (its picture, its name, the slot or the wish chest) so the world can show it. Today a make in
-  the prep room appears beside him, and he puts it on his hotbar from its page in My wishes.
+- **Telling a hand-over's real item for sure**: the core tells a world that it handed over the real item, but not
+  which stack it is, so the hand-over spot shows the wish-made item in his hand (or the last one in his inventory).
+- **Where a make is aimed**: `landing` carries no aim point (the core asks before it locks a make's aim), so the arena
+  decides by where he stands, not where the make would go: a player in the prep room who aims into the arena still gets
+  it handed over.

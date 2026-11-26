@@ -37,17 +37,53 @@ final class ArenaPinNotice {
     /** How it is held back, in the words' order: smaller, weaker, fewer, gentler. */
     enum Held { SMALLER, WEAKER, FEWER, GENTLER }
 
-    /** The answer: what, after how far (waves or bosses, as the ladder counts) for a lock, and how it is held. */
-    record Notice(Type type, int after, List<Held> held) {
-        static final Notice NONE = new Notice(Type.NONE, 0, List.of());
+    /**
+     * What of a fitted wish comes back as the battle goes on, so the line promises only that. The core refits a living
+     * creature's health, hits and size when a step rises (size since core 1.0.11), and fits how many a fire makes at
+     * each fire; nothing re-fits a held or hotbar item as steps open (the core keeps it as it was fitted).
+     */
+    enum Later {
+        /** everything held back comes back as steps open */
+        ALL,
+        /** some of it comes back (a creature's strength), the rest stays as it is */
+        SOME,
+        /** none of it comes back in this arena */
+        NONE
+    }
+
+    /** What a step's rise gives back to a creature: its strength and size (refitted live) and how many (per fire). */
+    static final Set<Held> CREATURE_GROWS = Set.of(Held.WEAKER, Held.SMALLER, Held.FEWER);
+
+    /**
+     * The answer: what, after how far (waves or bosses, as the ladder counts) for a lock, how it is held, and what of
+     * that comes back later.
+     */
+    record Notice(Type type, int after, List<Held> held, Later later) {
+        static final Notice NONE = new Notice(Type.NONE, 0, List.of(), Later.NONE);
 
         Notice {
             held = held == null ? List.of() : List.copyOf(held);
+            later = later == null ? Later.NONE : later;
+        }
+
+        Notice(Type type, int after, List<Held> held) {
+            this(type, after, held, Later.NONE);
         }
     }
 
+    /** What of {@code held} comes back for a make of {@code kind} ({@link Later}). */
+    static Later later(String kind, List<Held> held) {
+        boolean creature = "creature".equals(kind) || "ride".equals(kind);
+        if (!creature || held.isEmpty()) {
+            return Later.NONE;
+        }
+        long back = held.stream().filter(CREATURE_GROWS::contains).count();
+        return back == held.size() ? Later.ALL : back > 0 ? Later.SOME : Later.NONE;
+    }
+
     /** The numbers no knob of a make lowers: over the limit, the core locks the make rather than fit it. */
-    static final Set<String> NOT_FITTED = Set.of(MakeFacts.MOVEMENT_SPEED_ATTRIBUTE, MakeFacts.EXTENT_BLOCKS);
+    static final Set<String> NOT_FITTED = Set.of(MakeFacts.MOVEMENT_SPEED_ATTRIBUTE, MakeFacts.EXTENT_BLOCKS,
+            MakeFacts.BUILDER_STRENGTH_STEP);
 
     /** How each fitted number holds a make back. */
     static Held heldBy(String number) {
@@ -97,7 +133,7 @@ final class ArenaPinNotice {
             return Notice.NONE;
         }
         held.sort(null);
-        return new Notice(Type.FITTED, 0, held);
+        return new Notice(Type.FITTED, 0, held, later(facts.kind(), held));
     }
 
     /** The first step after {@code reached} whose limit on {@code number} allows {@code value}: its after, or 0 if none. */

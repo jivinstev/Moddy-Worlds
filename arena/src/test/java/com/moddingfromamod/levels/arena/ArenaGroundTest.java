@@ -46,7 +46,7 @@ class ArenaGroundTest {
                 assertEquals(Kind.BASE_FILL, m.get(List.of(x, 62, z)));
                 Kind top = m.get(List.of(x, 63, z));
                 assertTrue(top == Kind.GROUND || top == Kind.ARENA_FLOOR || top == Kind.PREP_FLOOR
-                        || top == Kind.PREP_LIGHT, "the floors' level is a floor or ground: " + top);
+                        || top == Kind.PREP_LIGHT || top == Kind.HAND_OVER_SPOT, "the floors' level is a floor or ground: " + top);
             }
         }
         assertEquals(Kind.ARENA_FLOOR, m.get(List.of(0, 63, 0)), "the arena's floor covers the ground");
@@ -107,7 +107,10 @@ class ArenaGroundTest {
         for (int x = f.x0(); x <= f.x1(); x++) {
             for (int z = f.z0(); z <= f.z1(); z++) {
                 Kind k = m.get(List.of(x, f.y0(), z));
-                assertEquals(P.isPrepLight(x, z) ? Kind.PREP_LIGHT : Kind.PREP_FLOOR, k, x + "," + z);
+                int[] h = P.handOverSpot();
+                Kind want = P.isPrepLight(x, z) ? Kind.PREP_LIGHT
+                        : x == h[0] && z == h[2] ? Kind.HAND_OVER_SPOT : Kind.PREP_FLOOR;
+                assertEquals(want, k, x + "," + z);
             }
         }
     }
@@ -117,6 +120,7 @@ class ArenaGroundTest {
         assertTrue(ArenaPlace.UPGRADES.contains(ArenaPlace.UPGRADE_BASE));
         assertTrue(ArenaPlace.pendingUpgrades(java.util.Set.of(ArenaPlace.UPGRADE_START_CONTROL,
                 ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS, ArenaPlace.UPGRADE_CONTROL_PANEL, ArenaPlace.UPGRADE_CHAMPIONS))
-                .equals(List.of(ArenaPlace.UPGRADE_BASE, ArenaPlace.UPGRADE_LADDER_BOARD)));
+                .equals(List.of(ArenaPlace.UPGRADE_BASE, ArenaPlace.UPGRADE_LADDER_BOARD,
+                        ArenaPlace.UPGRADE_HAND_OVER_SPOT)));
     }
 }
