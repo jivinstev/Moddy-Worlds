@@ -88,6 +88,11 @@ teleport @s 0.5 64 21.5 180 0
 @wait 5t
 @end-repeat
 @assert execute if entity @e[type=minecraft:husk,tag=moddyarena_wave]
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 @repeat each @e[tag=moddyarena_wave] max 60 until execute unless entity {it}
 @aim entity {it}
 @key key.forward hold 6t
@@ -105,6 +110,11 @@ teleport @s 0.5 64 21.5 180 0
 @end-repeat
 @assert execute if entity @e[type=minecraft:pillager,tag=moddyarena_wave]
 @shot wave-3
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 @repeat each @e[tag=moddyarena_wave] max 60 until execute unless entity {it}
 @aim entity {it}
 @key key.forward hold 6t
@@ -125,6 +135,11 @@ teleport @s 0.5 64 21.5 180 0
 @wait 5t
 @end-repeat
 @assert execute if entity @e[type=minecraft:vindicator,tag=moddyarena_wave]
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 @repeat each @e[tag=moddyarena_wave] max 60 until execute unless entity {it}
 @aim entity {it}
 @key key.forward hold 6t
@@ -143,6 +158,11 @@ teleport @s 0.5 64 21.5 180 0
 @assert execute if entity @e[type=minecraft:ravager,tag=moddyarena_wave,name="Rumble the Ravager"]
 @expect bossbar BOSS: Rumble the Ravager within 3s
 @shot wave-5
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 @repeat each @e[tag=moddyarena_wave] max 150 until execute unless entity {it}
 @aim entity {it}
 @key key.forward hold 6t
