@@ -21,6 +21,9 @@
 @expect chat control panel within 10s
 difficulty hard
 difficulty normal
+# this playtest counts each difficulty's plain waves (how many husks, which kinds): wished waves off for it
+moddy arena config main wishedWaves off
+@expect chat wishedWaves for main is now off within 5s
 gamemode survival
 effect give @s minecraft:resistance 1200 4 true
 effect give @s minecraft:saturation 1200 0 true
