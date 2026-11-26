@@ -103,6 +103,11 @@ summon minecraft:arrow 6 64 6
 summon minecraft:cat 6 64 10 {PersistenceRequired:1b}
 @wait 1s
 @assert execute unless block 0 63 7 minecraft:smooth_sandstone
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 1 cleared! Break time: the gate is open, and the next wave comes in 15 seconds. within 10s
 @expect chat The arena is mended for the next wave. within 5s
@@ -138,6 +143,11 @@ teleport @s 0.5 64 19.5 180 0
 @assert execute if block 0 64 16 minecraft:iron_bars
 
 @step waves 2 to 4, each followed by its break
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 2 cleared! within 10s
 teleport @s 0.5 64 19.5 180 0
@@ -147,6 +157,11 @@ teleport @s 0.5 64 19.5 180 0
 @key key.use
 @expect title Wave 3 of 10 within 8s
 @wait 1s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 3 cleared! within 10s
 teleport @s 0.5 64 19.5 180 0
@@ -156,6 +171,11 @@ teleport @s 0.5 64 19.5 180 0
 @key key.use
 @expect title Wave 4 of 10 within 8s
 @wait 1s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 4 cleared! within 10s
 teleport @s 0.5 64 19.5 180 0
@@ -167,6 +187,11 @@ teleport @s 0.5 64 19.5 180 0
 @wait 2s
 
 @step after the boss wave, the longer break
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 5 cleared! Break time: the gate is open, and the next wave comes in 45 seconds. within 10s
 @expect bossbar /Wave 6 of 10 in 4[0-5] seconds/ within 3s

@@ -72,6 +72,11 @@ teleport @s 0.5 64 20.5 180 6
 @shot shut-gate-from-the-prep-room
 
 @step in the break the gate is open, and he walks back into the prep room
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 1 cleared! Break time: the gate is open within 10s
 @wait 1s

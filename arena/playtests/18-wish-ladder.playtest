@@ -187,6 +187,11 @@ teleport @s 0.5 64 22.5 180 10
 @wait 5t
 @shot meteor-locked-in-battle
 @key key.hotbar.9
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 1 cleared within 10s
 
@@ -199,6 +204,11 @@ scoreboard players operation #r0 arenatest = #h1 arenatest
 scoreboard players operation #r0 arenatest *= #k1000 arenatest
 scoreboard players operation #r0 arenatest /= #m0 arenatest
 @assert execute if score #r0 arenatest matches 1..999
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 2 cleared within 10s
 @expect title Stronger wishes! within 3s
@@ -233,9 +243,19 @@ teleport @s 0.5 64 19.0 90 0
 teleport @s 0.5 64 22.5 180 10
 @expect title Wave 3 of 10 within 25s
 @wait 1s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect title Wave 4 of 10 within 25s
 @wait 1s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 4 cleared within 10s
 @expect title Stronger wishes! within 3s
@@ -258,6 +278,11 @@ execute store result score #sc4 arenatest run attribute @e[tag=wishmob,tag=!prep
 @step clearing the boss wave opens events, and the hotbar meteor fires
 @expect title BOSS WAVE within 30s
 @wait 2s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 5 cleared within 10s
 @expect chat Events are open now! within 3s
@@ -272,18 +297,43 @@ kill @e[tag=moddyarena_wave]
 @step waves 6 to 10, and the battle is won
 @expect title Wave 6 of 10 within 60s
 @wait 1s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect title Wave 7 of 10 within 25s
 @wait 1s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect title Wave 8 of 10 within 25s
 @wait 1s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect title Wave 9 of 10 within 25s
 @wait 1s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect title BOSS WAVE within 30s
 @wait 1s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect title You won within 10s
 @expect chat The arena is tidy again within 20s

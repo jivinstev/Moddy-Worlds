@@ -218,21 +218,41 @@ teleport @s 0.5 64 21.5 180 0
 @shot during-the-battle
 
 @step Hard's waves: 6 husks, then husks and pillagers, then vindicators where the husks were
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 1 cleared within 10s
 @expect title Wave 2 of 5 within 20s
 @wait 1s
 execute store result score #n arenatest if entity @e[type=minecraft:husk,tag=moddyarena_wave]
 @assert execute if score #n arenatest matches 6
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect title Wave 3 of 5 within 20s
 @wait 1s
 @assert execute if entity @e[type=minecraft:pillager,tag=moddyarena_wave]
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect title Wave 4 of 5 within 20s
 @wait 1s
 @assert execute if entity @e[type=minecraft:vindicator,tag=moddyarena_wave]
 @assert execute unless entity @e[type=minecraft:husk,tag=moddyarena_wave]
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 4 cleared within 10s
 
@@ -241,6 +261,11 @@ kill @e[tag=moddyarena_wave]
 @wait 1s
 @assert execute if entity @e[type=minecraft:ravager,tag=moddyarena_wave,name="Rumble the Ravager"]
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_state,nbt={text:{text:"BOSS wave 5 of 5!"}}]
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat You won the battle within 10s
 @expect chat The arena is tidy again within 15s

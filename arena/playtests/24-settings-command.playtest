@@ -47,6 +47,11 @@ moddy arena config main breatherSeconds
 
 @step the break between waves is this arena's
 @wait 1s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat /Wave 1 cleared!.*next wave comes in 3 seconds/ within 10s
 @expect title Wave 2 of 5 within 8s

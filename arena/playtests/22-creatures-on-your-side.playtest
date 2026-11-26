@@ -62,5 +62,10 @@ scoreboard players get #h1 arenatest
 @expect chat /Snowy is a Fighter/ within 5s
 @expect chat /Softie is a (Healer|Tank)/ within 5s
 @assert execute unless score #h1 arenatest >= #h0 arenatest
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 1 cleared within 10s

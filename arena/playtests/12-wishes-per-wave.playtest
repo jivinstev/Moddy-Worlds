@@ -118,6 +118,11 @@ moddy apprentice a fire sword
 @shot out-of-wishes
 
 @step the wave is cleared, and the count starts again
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 1 cleared within 10s
 @expect chat Your 5 hotbar wishes for the next wave are ready. within 5s
