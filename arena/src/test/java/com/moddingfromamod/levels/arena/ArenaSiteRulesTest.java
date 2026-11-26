@@ -53,4 +53,33 @@ class ArenaSiteRulesTest {
         assertNull(ArenaSiteRules.at(sites, "minecraft:overworld", 150, 0));
         assertNull(ArenaSiteRules.at(sites, "minecraft:the_end", 0, 0));
     }
+
+    /** The ground an arena takes is its whole place, prep room and base included, not only the arena's reset box. */
+    @Test
+    void theClaimIsTheWholePlaceWithItsBase() {
+        ArenaPlace p = ArenaPlace.DEFAULT.at(500, -300);
+        ArenaSiteRules.Site c = ArenaSiteRules.claim("north", p);
+        ArenaPlace.Box f = p.footprint();
+        ArenaPlace.Box b = p.baseBox();
+        org.junit.jupiter.api.Assertions.assertTrue(c.x0() <= f.x0() && c.x1() >= f.x1() && c.z0() <= f.z0()
+                && c.z1() >= f.z1(), "the footprint, prep room included, is inside the claim");
+        org.junit.jupiter.api.Assertions.assertEquals(b.x0(), c.x0());
+        org.junit.jupiter.api.Assertions.assertEquals(b.z1(), c.z1());
+        int[] a = p.arrival();
+        org.junit.jupiter.api.Assertions.assertTrue(a[0] >= c.x0() && a[0] <= c.x1() && a[2] >= c.z0() && a[2] <= c.z1(),
+                "the prep room's arrival spot is claimed");
+        // a second place whose prep room would reach into the first one's is refused
+        ArenaPlace q = ArenaPlace.DEFAULT.at(500, -300 + (f.z1() - f.z0()));
+        org.junit.jupiter.api.Assertions.assertNotNull(ArenaSiteRules.problem(ArenaSiteRules.claim("south", q),
+                java.util.List.of(c)));
+    }
+
+    @Test
+    void aPlaceMustFitBetweenTheWorldsBottomAndTop() {
+        org.junit.jupiter.api.Assertions.assertNull(ArenaSiteRules.heightProblem(61, 68, -64, 319));
+        org.junit.jupiter.api.Assertions.assertTrue(ArenaSiteRules.heightProblem(-66, -59, -64, 319).contains("too low"));
+        org.junit.jupiter.api.Assertions.assertTrue(ArenaSiteRules.heightProblem(313, 320, -64, 319).contains("too high"));
+        org.junit.jupiter.api.Assertions.assertTrue(ArenaSiteRules.inTheWay("a chest", 1, 64, -3)
+                .contains("a chest at 1 64 -3"));
+    }
 }

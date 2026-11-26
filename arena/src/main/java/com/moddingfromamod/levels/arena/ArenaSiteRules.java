@@ -66,4 +66,36 @@ public final class ArenaSiteRules {
         }
         return null;
     }
+
+    /**
+     * The ground a place at {@code place} takes: in x and z its base ({@link ArenaPlace#baseBox}, the footprint, prep room
+     * included, and the base's margin round it), the widest thing it builds; in y from its base's bedrock up to the
+     * world's top, because a battle's end clears the arena to the sky.
+     */
+    public static Site claim(String name, ArenaPlace place) {
+        ArenaPlace.Box b = place.baseBox();
+        return new Site(name, "minecraft:overworld", b.x0(), b.z0(), b.x1(), b.z1());
+    }
+
+    /**
+     * Why a place whose base reaches down to {@code bottom} and whose walls up to {@code top} cannot stand in a world
+     * built from {@code minY} to {@code maxY} (inclusive), or null.
+     */
+    public static String heightProblem(int bottom, int top, int minY, int maxY) {
+        if (bottom < minY) {
+            return "That is too low: the arena's base would go under the bottom of the world (y " + minY
+                    + "). Stand higher and try again.";
+        }
+        if (top > maxY) {
+            return "That is too high: the arena's walls would go over the top of the world (y " + maxY
+                    + "). Stand lower and try again.";
+        }
+        return null;
+    }
+
+    /** The words for something that stands where an arena would be built: what it is and where. */
+    public static String inTheWay(String what, int x, int y, int z) {
+        return "That would build over " + what + " at " + x + " " + y + " " + z
+                + ". Nothing is replaced: build the arena somewhere clear.";
+    }
 }

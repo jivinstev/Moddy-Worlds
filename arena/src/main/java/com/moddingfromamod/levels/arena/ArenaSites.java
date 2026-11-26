@@ -70,9 +70,9 @@ public final class ArenaSites extends SavedData {
      */
     record Live(String name, ArenaPlace place, ArenaBattle battle, boolean module, ArenaCharge charge,
                 ArenaMakes makes, ArenaBases bases, ArenaHandOverShow handOver) {
-        ArenaSiteRules.Site footprint(int maxY) {
-            ArenaPlace.Box b = place.resetBox(maxY);
-            return new ArenaSiteRules.Site(name, "minecraft:overworld", b.x0(), b.z0(), b.x1(), b.z1());
+        /** The ground it takes, prep room and base included ({@link ArenaSiteRules#claim}). */
+        ArenaSiteRules.Site claim() {
+            return ArenaSiteRules.claim(name, place);
         }
     }
 
@@ -299,12 +299,11 @@ public final class ArenaSites extends SavedData {
         int[] a0 = sized.arrival();
         ArenaPlace place = sized.at(p.getBlockX() - (a0[0] - sized.centreX()), p.getBlockZ() - (a0[2] - sized.centreZ()))
                 .withFloorY(p.getBlockY());
-        int maxY = p.level().getMaxY();
-        ArenaSiteRules.Site wanted = new ArenaSiteRules.Site(name, "minecraft:overworld",
-                place.resetBox(maxY).x0(), place.resetBox(maxY).z0(), place.resetBox(maxY).x1(), place.resetBox(maxY).z1());
+        // the whole place, prep room and base included (Moddy-Worlds#62): never only the arena's reset box
+        ArenaSiteRules.Site wanted = ArenaSiteRules.claim(name, place);
         List<ArenaSiteRules.Site> existing = new ArrayList<>();
         for (Live l : LIVE.values()) {
-            existing.add(l.footprint(maxY));
+            existing.add(l.claim());
         }
         String why = ArenaSiteRules.problem(wanted, existing);
         if (why != null) {
@@ -312,6 +311,11 @@ public final class ArenaSites extends SavedData {
         }
         // never over someone's base (an Isle world's island, any module's bases), nor another world feature's region
         why = clearOfBases(src.getServer(), wanted);
+        if (why != null) {
+            return fail(src, why);
+        }
+        // never over a player's things, another player, out of the world, or on ground the game has not loaded
+        why = groundProblem((ServerLevel) p.level(), place, wanted, p);
         if (why != null) {
             return fail(src, why);
         }
@@ -346,15 +350,61 @@ public final class ArenaSites extends SavedData {
     }
 
     /**
+     * Why the ground {@code site} takes may not be built on, or null: the place must fit between the world's bottom and
+     * top and inside its border, every chunk under it must be loaded (nothing is built on ground the game has not
+     * loaded), no block entity may stand anywhere in it from the base's bedrock to the sky (a chest, a bed, a sign, a
+     * furnace, a spawner: a player's things, or a structure's), and no other player may be in it. Server thread.
+     */
+    static String groundProblem(ServerLevel level, ArenaPlace place, ArenaSiteRules.Site site, ServerPlayer builder) {
+        String why = ArenaSiteRules.heightProblem(place.bedrockY(), place.footprint().y1(), level.getMinY(),
+                level.getMaxY());
+        if (why != null) {
+            return why;
+        }
+        var border = level.getWorldBorder();
+        if (!border.isWithinBounds(site.x0(), site.z0()) || !border.isWithinBounds(site.x1() + 1, site.z1() + 1)) {
+            return "That would go past the world border. Move further in and try again.";
+        }
+        for (int cx = site.x0() >> 4; cx <= site.x1() >> 4; cx++) {
+            for (int cz = site.z0() >> 4; cz <= site.z1() >> 4; cz++) {
+                if (!level.hasChunk(cx, cz)) {
+                    return "Part of that ground is not loaded (round " + (cx * 16 + 8) + " " + (cz * 16 + 8)
+                            + "). Go closer to the middle of where the arena goes, or let it load, and try again.";
+                }
+            }
+        }
+        for (int cx = site.x0() >> 4; cx <= site.x1() >> 4; cx++) {
+            for (int cz = site.z0() >> 4; cz <= site.z1() >> 4; cz++) {
+                for (var e : level.getChunk(cx, cz).getBlockEntities().entrySet()) {
+                    net.minecraft.core.BlockPos at = e.getKey();
+                    if (at.getX() >= site.x0() && at.getX() <= site.x1() && at.getZ() >= site.z0()
+                            && at.getZ() <= site.z1() && at.getY() >= place.bedrockY()) {
+                        String what = level.getBlockState(at).getBlock().getName().getString();
+                        return ArenaSiteRules.inTheWay("a " + what.toLowerCase(java.util.Locale.ROOT), at.getX(),
+                                at.getY(), at.getZ());
+                    }
+                }
+            }
+        }
+        for (ServerPlayer other : level.players()) {
+            if (other != builder && other.getX() >= site.x0() && other.getX() < site.x1() + 1
+                    && other.getZ() >= site.z0() && other.getZ() < site.z1() + 1) {
+                return ArenaSiteRules.inTheWay(other.getScoreboardName(), other.getBlockX(), other.getBlockY(),
+                        other.getBlockZ());
+            }
+        }
+        return null;
+    }
+
+    /**
      * Why the footprint may not go here because of the world's own bases (its module's: an Isle world's islands) or
-     * another plug-in's region, or null. Sampled every 4 blocks across it, edges included.
+     * another plug-in's region, or null. Every block of it is asked.
      */
     static String clearOfBases(MinecraftServer s, ArenaSiteRules.Site site) {
         com.moddingfromamod.world.Bases bases = com.moddingfromamod.world.WorldModuleHost.liveBases();
         if (bases != null) {
-            for (int x = site.x0(); x <= site.x1() + 3; x += 4) {
-                for (int z = site.z0(); z <= site.z1() + 3; z += 4) {
-                    int cx = Math.min(x, site.x1()), cz = Math.min(z, site.z1());
+            for (int cx = site.x0(); cx <= site.x1(); cx++) {
+                for (int cz = site.z0(); cz <= site.z1(); cz++) {
                     java.util.UUID owner = bases.ownerAt("minecraft:overworld", cx + 0.5, cz + 0.5);
                     if (owner != null) {
                         ServerPlayer who = s.getPlayerList().getPlayer(owner);
@@ -456,7 +506,11 @@ public final class ArenaSites extends SavedData {
         return 1;
     }
 
-    /** {@code /moddy arena start [name]}: the named arena, else the one he stands in, else the only one. */
+    /**
+     * {@code /moddy arena start [name]}: the named arena, else the one he stands in, else the only one. A player who is
+     * not an operator starts only the arena he stands in: a battle takes whoever is in the place, so nobody may start
+     * one on others from afar.
+     */
     static int start(CommandSourceStack src, String rawName) {
         Live l;
         if (rawName != null) {
@@ -479,6 +533,10 @@ public final class ArenaSites extends SavedData {
                 return fail(src, LIVE.isEmpty() ? ArenaWords.notAnArena()
                         : "Stand in an arena's prep room, or name one: /moddy arena start <name>.");
             }
+        }
+        // a battle takes whoever stands in the place: only someone there (or an operator) may start one
+        if (!operator(src) && battleAt(src.getEntity()) != l.battle()) {
+            return fail(src, "Stand in the arena " + l.name() + " (its prep room or the arena) to start a battle there.");
         }
         return l.battle().startFromCommand(src);
     }
