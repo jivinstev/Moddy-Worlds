@@ -160,6 +160,11 @@ moddy apprentice a cozy house
 @key key.hotbar.3
 @aim look 180 0
 @key key.forward hold 30t
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 @repeat each @e[tag=moddyarena_wave] max 60 until execute unless entity {it}
 @aim entity {it}
 @key key.forward hold 6t
