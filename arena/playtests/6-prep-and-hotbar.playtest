@@ -125,6 +125,9 @@ moddy wishes
 @expect title Wave 1 of 5 within 15s
 @aim look 180 30
 @wait 1s
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
 @assert execute if entity @e[tag=moddyarena_wave]
 @assert execute if items entity @s hotbar.3 minecraft:paper
 @key key.hotbar.4

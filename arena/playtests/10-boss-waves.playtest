@@ -14,6 +14,9 @@
 @wait 2s
 difficulty hard
 difficulty normal
+# this playtest proves the plain wave table (its kinds, the generator, the bosses): wished waves off for it
+moddy arena config main wishedWaves off
+@expect chat wishedWaves for main is now off within 5s
 gamemode survival
 effect give @s minecraft:resistance 900 4 true
 effect give @s minecraft:saturation 900 0 true
@@ -77,11 +80,14 @@ kill @e[tag=moddyarena_wave]
 @expect title BOSS WAVE within 20s
 @expect chat Wave 5 is a boss wave: Rumble the Ravager is here! within 3s
 @wait 1s
+@repeat 60 until execute if entity @e[type=minecraft:ravager,tag=moddyarena_wave,name="Rumble the Ravager"]
+@wait 5t
+@end-repeat
 @assert execute if entity @e[type=minecraft:ravager,tag=moddyarena_wave,name="Rumble the Ravager"]
 execute store result score #hp arenatest run attribute @e[type=minecraft:ravager,tag=moddyarena_wave,name="Rumble the Ravager",limit=1] minecraft:max_health get
 @assert execute if score #hp arenatest matches 150
 # the escort: a third of wave 5 (a husk, a pillager, a witch and a vindicator)
-execute store result score #n arenatest if entity @e[tag=moddyarena_wave,type=!minecraft:ravager]
+execute store result score #n arenatest if entity @e[tag=moddyarena_wave,type=!minecraft:ravager,tag=!moddyarena_champion]
 @assert execute if score #n arenatest matches 4
 @expect bossbar BOSS: Rumble the Ravager (wave 5 of 10) within 3s
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_state,nbt={text:{text:"BOSS wave 5 of 10!"}}]
@@ -120,6 +126,9 @@ execute store result score #n arenatest if entity @e[tag=moddyarena_wave]
 kill @e[tag=moddyarena_wave]
 @expect title Wave 7 of 10 within 20s
 @wait 1s
+@repeat 60 until execute if entity @e[type=minecraft:piglin_brute,tag=moddyarena_wave]
+@wait 5t
+@end-repeat
 @assert execute if entity @e[type=minecraft:piglin_brute,tag=moddyarena_wave]
 # wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
 @repeat 60 until execute if entity @e[tag=moddyarena_wave]
@@ -148,6 +157,9 @@ kill @e[tag=moddyarena_wave]
 @step wave 10 is the second boss, Captain Chop, and beating it wins
 @expect title BOSS WAVE within 20s
 @wait 1s
+@repeat 60 until execute if entity @e[type=minecraft:vindicator,tag=moddyarena_wave,name="Captain Chop"]
+@wait 5t
+@end-repeat
 @assert execute if entity @e[type=minecraft:vindicator,tag=moddyarena_wave,name="Captain Chop"]
 execute store result score #hp arenatest run attribute @e[type=minecraft:vindicator,tag=moddyarena_wave,name="Captain Chop",limit=1] minecraft:max_health get
 @assert execute if score #hp arenatest matches 200

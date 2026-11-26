@@ -32,6 +32,9 @@ give @s minecraft:iron_sword
 @key key.forward hold 20t
 @wait 1s
 @assert execute if entity @s[z=-15,dz=30]
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
 @assert execute if entity @e[tag=moddyarena_wave]
 @shot in-the-arena
 
@@ -42,6 +45,9 @@ give @s minecraft:iron_sword
 @wait 1s
 # he respawns at the arena's home, the prep room, and the wave is still on
 @assert execute if entity @s[x=-4,y=63,z=17,dx=8,dy=3,dz=8]
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
 @assert execute if entity @e[tag=moddyarena_wave]
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_state,nbt={text:{text:"Battle on: wave 1 of 5"}}]
 @aim look 180 5
@@ -50,12 +56,18 @@ give @s minecraft:iron_sword
 @expect actionbar Back in the arena within 6s
 @wait 5t
 @assert execute if entity @s[x=-1,y=63,z=14,dx=3,dy=3,dz=2]
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
 @assert execute if entity @e[tag=moddyarena_wave]
 
 @step knocked out again: 1 life left, still on
 kill @s
 @expect chat Knocked out! 1 life left within 10s
 @wait 2s
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
 @assert execute if entity @e[tag=moddyarena_wave]
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_state,nbt={text:{text:"Battle on: wave 1 of 5"}}]
 
