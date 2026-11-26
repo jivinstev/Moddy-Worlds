@@ -73,6 +73,11 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
         return new ArenaPlace(arenaSize, prepSize, wallHeight, floorY, ox, oz);
     }
 
+    /** This place with people standing at {@code y} (a site built where he stands, Moddy-Worlds#58). */
+    public ArenaPlace withFloorY(int y) {
+        return new ArenaPlace(arenaSize, prepSize, wallHeight, y, ox, oz);
+    }
+
     /** True when the two have the same sizes and floor, wherever each stands. */
     public boolean sameShape(ArenaPlace o) {
         return o != null && arenaSize == o.arenaSize && prepSize == o.prepSize && wallHeight == o.wallHeight
