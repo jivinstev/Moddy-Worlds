@@ -1,0 +1,52 @@
+# A fighter knocked out in a battle in an arena built by command comes back in that arena's prep room
+# (Moddy-Worlds#60), keeps his place in the battle, and is taken back into the arena after the count. Once the battle
+# is over, a respawn is the normal one again (the world spawn, far away), because the arena never changes his spawn.
+# The arena is built 300 blocks from the world spawn, so the two can't be confused.
+# play-timeout: 600
+@intent in an arena built by command a fighter knocked out mid-battle comes back in its prep room and stays in the battle; after the battle a respawn is the world spawn again
+@world flat seed=12
+@continue-on-fail
+
+@step build the arena far from the world spawn
+@wait 3s
+difficulty hard
+difficulty normal
+gamemode survival
+effect give @s minecraft:resistance 600 4 true
+teleport @s ~300 ~ ~
+@wait 2s
+moddy arena create pit confirm
+@expect chat /Built the arena pit/ within 60s
+@wait 2s
+summon minecraft:marker ~ ~ ~ {Tags:["prep_mark"]}
+moddy arena config pit countdownSeconds 3
+@expect chat /countdownSeconds for pit is now 3 seconds/ within 10s
+
+@step knocked out in wave 1, back in the prep room with lives left
+moddy arena start pit
+@expect title Wave 1 of 5 within 20s
+kill @s
+@expect chat Knocked out! 2 lives left within 10s
+@wait 2s
+effect give @s minecraft:resistance 600 4 true
+@assert execute at @e[tag=prep_mark,limit=1] if entity @s[distance=..6]
+@expect actionbar Back in the arena within 10s
+@wait 5t
+@assert execute at @e[tag=prep_mark,limit=1] if entity @s[distance=..60]
+@assert execute if entity @e[tag=moddyarena_wave]
+
+@step out of lives the battle is lost, and he is in the prep room
+kill @s
+@expect chat Knocked out! 1 life left within 10s
+@wait 2s
+kill @s
+@expect chat no lives left within 10s
+@wait 2s
+@assert execute at @e[tag=prep_mark,limit=1] if entity @s[distance=..6]
+@expect chat The arena is tidy again within 30s
+
+@step after the battle a respawn is the world spawn again
+@wait 2s
+kill @s
+@wait 3s
+@assert execute at @e[tag=prep_mark,limit=1] unless entity @s[distance=..100]

@@ -58,10 +58,10 @@ moddy apprentice a giant dragon
 @expect chat Made a bit smaller for this world within 30s
 @expect chat /Dragon is ready/ within 90s
 @wait 2s
-execute store result score #sc0 arenatest run attribute @e[tag=wishmob,limit=1,sort=nearest] minecraft:scale get 100
+execute store result score #sc0 arenatest run attribute @e[tag=wishmob,tag=!moddy_world_wished,limit=1,sort=nearest] minecraft:scale get 100
 @assert execute if score #sc0 arenatest matches ..150
 @shot dragon-fitted
-tag @e[tag=wishmob] add premade
+tag @e[tag=wishmob,tag=!moddy_world_wished] add premade
 
 @step a rock golem is made in prep, its health held to the first step, and left hurt in the prep room
 moddy apprentice a rock golem
@@ -72,7 +72,7 @@ moddy apprentice a rock golem
 @wait 2s
 # it stays in the prep room through the battle, held still (SHORTCUT: NoAI, so it never walks into the arena and is
 # cleared at the battle's end), hurt: it is never made again
-tag @e[tag=wishmob,tag=!premade,limit=1,sort=nearest] add prepgolem
+tag @e[tag=wishmob,tag=!moddy_world_wished,tag=!premade,limit=1,sort=nearest] add prepgolem
 data merge entity @e[tag=prepgolem,limit=1] {NoAI:1b}
 teleport @e[tag=prepgolem,limit=1] 3.0 64 24.0
 scoreboard players set #k1000 arenatest 1000
@@ -158,13 +158,13 @@ teleport @s 0.5 64 21.5 180 0
 @expect title Wave 1 of 10 within 15s
 
 @step wave 1: the hotbar dragon comes out small, and the meteor is locked with the arena's words
-execute as @e[tag=wishmob,tag=!prepgolem] run kill @s
+execute as @e[tag=wishmob,tag=!moddy_world_wished,tag=!prepgolem] run kill @s
 @aim look 180 10
 @key key.hotbar.4
 @key key.use
 @expect chat /Dragon is ready/ within 60s
 @wait 2s
-execute store result score #sc1 arenatest run attribute @e[tag=wishmob,tag=!prepgolem,limit=1,sort=nearest] minecraft:scale get 100
+execute store result score #sc1 arenatest run attribute @e[tag=wishmob,tag=!moddy_world_wished,tag=!prepgolem,limit=1,sort=nearest] minecraft:scale get 100
 @assert execute if score #sc1 arenatest matches ..150
 # battle roles' signs, read from about 5 and about 20 blocks: three wished stand-ins side by side (held still), so
 # their signs must stay clear of one another (the chat faded first)
@@ -187,6 +187,11 @@ teleport @s 0.5 64 22.5 180 10
 @wait 5t
 @shot meteor-locked-in-battle
 @key key.hotbar.9
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 1 cleared within 10s
 
@@ -199,6 +204,11 @@ scoreboard players operation #r0 arenatest = #h1 arenatest
 scoreboard players operation #r0 arenatest *= #k1000 arenatest
 scoreboard players operation #r0 arenatest /= #m0 arenatest
 @assert execute if score #r0 arenatest matches 1..999
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 2 cleared within 10s
 @expect title Stronger wishes! within 3s
@@ -233,18 +243,28 @@ teleport @s 0.5 64 19.0 90 0
 teleport @s 0.5 64 22.5 180 10
 @expect title Wave 3 of 10 within 25s
 @wait 1s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect title Wave 4 of 10 within 25s
 @wait 1s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 4 cleared within 10s
 @expect title Stronger wishes! within 3s
-execute as @e[tag=wishmob,tag=!prepgolem] run kill @s
+execute as @e[tag=wishmob,tag=!moddy_world_wished,tag=!prepgolem] run kill @s
 @key key.hotbar.4
 @key key.use
 @expect chat /Dragon is ready/ within 60s
 @wait 2s
-execute store result score #sc4 arenatest run attribute @e[tag=wishmob,tag=!prepgolem,limit=1,sort=nearest] minecraft:scale get 100
+execute store result score #sc4 arenatest run attribute @e[tag=wishmob,tag=!moddy_world_wished,tag=!prepgolem,limit=1,sort=nearest] minecraft:scale get 100
 # it is made, and bigger than the one fired in wave 1 (#sc1): its size grew with the step (core 1.0.11 fits a
 # creature's size where it stands, at every spawn)
 @assert execute if score #sc4 arenatest > #sc1 arenatest
@@ -258,6 +278,11 @@ execute store result score #sc4 arenatest run attribute @e[tag=wishmob,tag=!prep
 @step clearing the boss wave opens events, and the hotbar meteor fires
 @expect title BOSS WAVE within 30s
 @wait 2s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 5 cleared within 10s
 @expect chat Events are open now! within 3s
@@ -272,18 +297,43 @@ kill @e[tag=moddyarena_wave]
 @step waves 6 to 10, and the battle is won
 @expect title Wave 6 of 10 within 60s
 @wait 1s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect title Wave 7 of 10 within 25s
 @wait 1s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect title Wave 8 of 10 within 25s
 @wait 1s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect title Wave 9 of 10 within 25s
 @wait 1s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect title BOSS WAVE within 30s
 @wait 1s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect title You won within 10s
 @expect chat The arena is tidy again within 20s
@@ -291,7 +341,7 @@ kill @e[tag=moddyarena_wave]
 
 @step after the battle: back at the first step, nothing wished is left in the arena, and the prep room's rock golem is held back again
 @wait 1s
-@assert execute unless entity @e[tag=wishmob,x=-15,y=63,z=-15,dx=30,dy=10,dz=30]
+@assert execute unless entity @e[tag=wishmob,tag=!moddy_world_wished,x=-15,y=63,z=-15,dx=30,dy=10,dz=30]
 execute store result score #m9 arenatest run attribute @e[tag=prepgolem,limit=1] minecraft:max_health get 100
 @assert execute if score #m9 arenatest = #m0 arenatest
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_ladder_where,nbt={text:{text:"Before a battle: step 1"}}]
@@ -319,7 +369,7 @@ teleport @s 0.5 64 21.5 180 0
 @key key.use
 @expect chat /Dragon is ready/ within 60s
 @wait 2s
-execute store result score #sc2 arenatest run attribute @e[tag=wishmob,tag=!prepgolem,limit=1,sort=nearest] minecraft:scale get 100
+execute store result score #sc2 arenatest run attribute @e[tag=wishmob,tag=!moddy_world_wished,tag=!prepgolem,limit=1,sort=nearest] minecraft:scale get 100
 @assert execute if score #sc2 arenatest matches ..150
 @key key.hotbar.5
 @key key.use

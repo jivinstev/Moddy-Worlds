@@ -67,7 +67,7 @@ moddy apprentice a rock golem
 @click slot 0
 @expect chat /Golem is ready/ within 90s
 @wait 2s
-kill @e[tag=wishmob]
+kill @e[tag=wishmob,tag=!moddy_world_wished]
 teleport @s 0.5 64 22.5 180 12
 @key key.hotbar.1
 @key key.use
@@ -119,9 +119,19 @@ teleport @s 0.5 64 21.5 180 0
 moddy arena start
 @expect title Wave 1 of 10 within 15s
 @wait 1s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect title Wave 2 of 10 within 25s
 @wait 1s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 2 cleared within 10s
 @expect chat Your wishes can be stronger now: health up to 30 hearts, hits up to 3 hearts within 3s

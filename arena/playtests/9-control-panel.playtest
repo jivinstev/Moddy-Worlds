@@ -21,6 +21,9 @@
 @expect chat control panel within 10s
 difficulty hard
 difficulty normal
+# this playtest counts each difficulty's plain waves (how many husks, which kinds): wished waves off for it
+moddy arena config main wishedWaves off
+@expect chat wishedWaves for main is now off within 5s
 gamemode survival
 effect give @s minecraft:resistance 1200 4 true
 effect give @s minecraft:saturation 1200 0 true
@@ -159,7 +162,7 @@ teleport @s 0.5 64 21.5 180 0
 @wait 1s
 execute store result score #easy arenatest if entity @e[type=minecraft:husk,tag=moddyarena_wave]
 @assert execute if score #easy arenatest matches 2
-@assert execute unless entity @e[tag=moddyarena_wave,type=!minecraft:husk]
+@assert execute unless entity @e[tag=moddyarena_wave,type=!minecraft:husk,tag=!moddyarena_champion]
 execute store result score #hp arenatest run attribute @e[type=minecraft:husk,tag=moddyarena_wave,limit=1] minecraft:max_health get
 @assert execute if score #hp arenatest matches 12
 kill @s
@@ -197,7 +200,7 @@ teleport @s 0.5 64 21.5 180 0
 execute store result score #n arenatest if entity @e[type=minecraft:husk,tag=moddyarena_wave]
 @assert execute if score #n arenatest matches 4
 @assert execute if score #n arenatest > #easy arenatest
-@assert execute unless entity @e[tag=moddyarena_wave,type=!minecraft:husk]
+@assert execute unless entity @e[tag=moddyarena_wave,type=!minecraft:husk,tag=!moddyarena_champion]
 execute store result score #hp arenatest run attribute @e[type=minecraft:husk,tag=moddyarena_wave,limit=1] minecraft:max_health get
 @assert execute if score #hp arenatest matches 25
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_state,nbt={text:{text:"Battle on: wave 1 of 5"}}]
@@ -218,29 +221,63 @@ teleport @s 0.5 64 21.5 180 0
 @shot during-the-battle
 
 @step Hard's waves: 6 husks, then husks and pillagers, then vindicators where the husks were
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 1 cleared within 10s
 @expect title Wave 2 of 5 within 20s
 @wait 1s
 execute store result score #n arenatest if entity @e[type=minecraft:husk,tag=moddyarena_wave]
 @assert execute if score #n arenatest matches 6
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect title Wave 3 of 5 within 20s
 @wait 1s
+@repeat 60 until execute if entity @e[type=minecraft:pillager,tag=moddyarena_wave]
+@wait 5t
+@end-repeat
 @assert execute if entity @e[type=minecraft:pillager,tag=moddyarena_wave]
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect title Wave 4 of 5 within 20s
 @wait 1s
+@repeat 60 until execute if entity @e[type=minecraft:vindicator,tag=moddyarena_wave]
+@wait 5t
+@end-repeat
 @assert execute if entity @e[type=minecraft:vindicator,tag=moddyarena_wave]
 @assert execute unless entity @e[type=minecraft:husk,tag=moddyarena_wave]
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 4 cleared within 10s
 
 @step the last wave is a boss wave: Rumble the Ravager and an escort, and the battle is won
 @expect title BOSS WAVE within 20s
 @wait 1s
+@repeat 60 until execute if entity @e[type=minecraft:ravager,tag=moddyarena_wave,name="Rumble the Ravager"]
+@wait 5t
+@end-repeat
 @assert execute if entity @e[type=minecraft:ravager,tag=moddyarena_wave,name="Rumble the Ravager"]
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_state,nbt={text:{text:"BOSS wave 5 of 5!"}}]
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat You won the battle within 10s
 @expect chat The arena is tidy again within 15s
