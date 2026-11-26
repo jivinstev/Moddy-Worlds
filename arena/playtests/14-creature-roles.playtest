@@ -77,6 +77,10 @@ teleport @s 0.5 64 21.5 180 0
 @expect title Wave 1 of 5 within 15s
 # SHORTCUT: the wave's monsters cannot be beaten or hurt anyone in this test, so the wave lasts while each role is
 # watched (left alone, the Fighters beat wave 1 before the Tank was looked at)
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 effect give @e[tag=moddyarena_wave] minecraft:resistance 600 4 true
 effect give @e[tag=moddyarena_wave] minecraft:weakness 600 255 true
 @expect chat Your Rex is a Fighter! It will fight the monsters with you. within 5s
@@ -105,6 +109,10 @@ teleport @s 0.5 64 17.5 180 10
 # a monster that comes within reach of the camel turns to it: its target is the camel, not him. SHORTCUT: the camel
 # is put 3 blocks from one of the monsters (toward the middle), since they may gather by the shut gate, out of its
 # reach
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 execute at @e[tag=moddyarena_wave,limit=1] facing 0.5 64 0.5 run teleport @e[type=minecraft:camel,tag=standin] ^ ^ ^3
 @repeat 600 until execute as @e[tag=moddyarena_wave] on target if entity @s[type=minecraft:camel]
 @wait 1t
@@ -152,6 +160,10 @@ kill @e[tag=moddyarena_wave]
 @step in the next wave the roles come back, and he is not told again
 @expect title Wave 2 of 5 within 20s
 # SHORTCUT: as in wave 1, and the monsters are held where they appeared, so they leave the healer's test alone
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 effect give @e[tag=moddyarena_wave] minecraft:slowness 600 255 true
 effect give @e[tag=moddyarena_wave] minecraft:resistance 600 4 true
 effect give @e[tag=moddyarena_wave] minecraft:weakness 600 255 true

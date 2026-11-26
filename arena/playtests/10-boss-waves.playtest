@@ -94,6 +94,10 @@ execute store result score #n arenatest if entity @e[tag=moddyarena_wave,type=!m
 # the boss hurt a little, so its bar is seen going down. The picture: from inside the arena, the wave held still
 # (no AI) so it stays in view, and after the chat has faded
 damage @e[type=minecraft:ravager,name="Rumble the Ravager",limit=1] 40 minecraft:player_attack
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 execute as @e[tag=moddyarena_wave] run data merge entity @s {NoAI:1b}
 teleport @e[type=minecraft:ravager,name="Rumble the Ravager",limit=1] 0.5 64 2.5 0 0
 teleport @s 0.5 64 13.5 180 5

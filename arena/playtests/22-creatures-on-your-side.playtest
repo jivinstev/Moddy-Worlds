@@ -44,6 +44,10 @@ moddy arena start
 @expect title Wave 1 of 5 within 15s
 @wait 1s
 # the monsters held still where they stand, one of them marked to watch (SHORTCUT: so the test can see one take blows)
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 execute as @e[tag=moddyarena_wave] run data merge entity @s {NoAI:1b}
 tag @e[tag=moddyarena_wave,limit=1,sort=random] add watched
 execute at @e[tag=watched] run summon minecraft:polar_bear ~1.5 ~ ~ {Tags:["wishmob","bear"],PersistenceRequired:1b,CustomName:"Snowy"}
