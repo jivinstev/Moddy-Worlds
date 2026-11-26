@@ -29,17 +29,23 @@ import net.minecraft.world.level.saveddata.SavedDataType;
  * ArenaChampions#migrate}). A record without them reads them as the defaults (5 waves, no champions), and everything
  * else in it is kept. A saved difficulty this jar does not know reads as the default too, and the log says so.
  * Version 5 added who has been told the prep room's hand-over ({@code handOverTold}, {@link ArenaHandOver}): a record
- * without it reads as nobody told yet.
+ * without it reads as nobody told yet. Version 6 added where the place stands (its built record's {@code ox}, {@code
+ * oz}, Moddy-Worlds#58): a record without them is a place centred on (0, 0), where every place stood before.
  */
 public final class ArenaState extends SavedData {
 
-    /** The built sizes: arenaSize, prepSize, wallHeight, floorY. */
-    private record Built(int arenaSize, int prepSize, int wallHeight, int floorY) {
+    /**
+     * The built sizes: arenaSize, prepSize, wallHeight, floorY, and the arena's centre (ox, oz). A record saved before
+     * a place could stand anywhere has no ox/oz and reads as (0, 0); a place at (0, 0) saves none, as before.
+     */
+    private record Built(int arenaSize, int prepSize, int wallHeight, int floorY, int ox, int oz) {
         static final Codec<Built> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.INT.fieldOf("arenaSize").forGetter(Built::arenaSize),
                 Codec.INT.fieldOf("prepSize").forGetter(Built::prepSize),
                 Codec.INT.fieldOf("wallHeight").forGetter(Built::wallHeight),
-                Codec.INT.fieldOf("floorY").forGetter(Built::floorY)).apply(i, Built::new));
+                Codec.INT.fieldOf("floorY").forGetter(Built::floorY),
+                Codec.INT.optionalFieldOf("ox", 0).forGetter(Built::ox),
+                Codec.INT.optionalFieldOf("oz", 0).forGetter(Built::oz)).apply(i, Built::new));
     }
 
     /** One champion entry, as saved. */
@@ -58,9 +64,10 @@ public final class ArenaState extends SavedData {
 
     /**
      * This record's version: 2 added the panel's settings, 3 the number of waves and the champions, 4 dropped the
-     * monsters size (from the settings and the champions' keys), 5 added who has been told the hand-over.
+     * monsters size (from the settings and the champions' keys), 5 added who has been told the hand-over, 6 where the
+     * place stands (ox, oz).
      */
-    static final int VERSION = 5;
+    static final int VERSION = 6;
 
     static final Codec<ArenaState> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.INT.optionalFieldOf("v", 1).forGetter(s -> VERSION),
@@ -198,14 +205,14 @@ public final class ArenaState extends SavedData {
             return null;
         }
         try {
-            return new ArenaPlace(built.arenaSize, built.prepSize, built.wallHeight, built.floorY);
+            return new ArenaPlace(built.arenaSize, built.prepSize, built.wallHeight, built.floorY, built.ox, built.oz);
         } catch (IllegalArgumentException e) {
             return null;
         }
     }
 
     void markBuilt(ArenaPlace p) {
-        built = new Built(p.arenaSize(), p.prepSize(), p.wallHeight(), p.floorY());
+        built = new Built(p.arenaSize(), p.prepSize(), p.wallHeight(), p.floorY(), p.ox(), p.oz());
         setDirty();
     }
 

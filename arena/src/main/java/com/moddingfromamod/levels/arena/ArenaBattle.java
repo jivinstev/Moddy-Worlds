@@ -978,8 +978,9 @@ final class ArenaBattle {
         for (ServerPlayer p : level.players()) {
             players.add(new double[] {p.getX(), p.getZ()});
         }
-        int[] spot = ArenaSpawns.nearestPlayer(new int[] {0, 0}, players) >= ArenaSpawns.MIN_FROM_PLAYER
-                ? new int[] {0, 0} : ArenaSpawns.pick(place, players, 1, level.random.nextLong()).get(0);
+        int[] centre = {place.centreX(), place.centreZ()};      // the arena's middle, wherever the place stands
+        int[] spot = ArenaSpawns.nearestPlayer(centre, players) >= ArenaSpawns.MIN_FROM_PLAYER
+                ? centre : ArenaSpawns.pick(place, players, 1, level.random.nextLong()).get(0);
         Entity e = spawnOne(level, type, new BlockPos(spot[0], place.floorY(), spot[1]), 1.0);
         if (!(e instanceof LivingEntity living)) {
             return false;
