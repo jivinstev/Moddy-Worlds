@@ -102,6 +102,15 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
         return new Picks(out);
     }
 
+    /** The settings command's key ({@link ArenaConfig}) that turns wished waves on or off for one arena or all. */
+    public static final String CONFIG_KEY = "wishedWaves";
+
+    /** These wished waves, switched on or off. */
+    public ArenaWishedWaves withOn(boolean value) {
+        return new ArenaWishedWaves(value, ramp, championEvery, maxDesignChampions, maxFullPillars, scheme, bodies,
+                championWaitSeconds, bossUncapped);
+    }
+
     /** The rung index for {@code cleared} waves cleared. */
     int rungOf(int cleared) {
         int r = 0;

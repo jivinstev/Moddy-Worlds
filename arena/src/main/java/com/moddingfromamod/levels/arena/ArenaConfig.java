@@ -137,6 +137,9 @@ public record ArenaConfig(Map<String, Integer> global, Map<String, Map<String, I
                     "how long a wave may last before the battle is lost", ArenaWaves::waveSeconds,
                     (w, v) -> new ArenaWaves(w.countdownSeconds(), w.breatherSeconds(), v, w.waves(), w.limits(),
                             w.bossEvery(), w.generator(), w.lives(), w.bossBreatherSeconds())),
+            Key.onOff(ArenaWishedWaves.CONFIG_KEY, true,
+                    "the arena wishes its monsters (pillars, a ramp, champions); off: they are plainly spawned. Unset,"
+                            + " the rules file's arena_wished_waves decides"),
             Key.onOff(ArenaRespawn.KEY, true,
                     "a fighter knocked out in a battle comes back in this arena's prep room, not at his bed or the"
                             + " world spawn"));

@@ -257,6 +257,11 @@ final class ArenaBattle {
         var usable = ArenaWishedWavesRule.of(ArenaModule.rules())
                 .usable(ArenaWishedWaves::builderBody, ArenaWishedWaves::builderScheme);
         wished = usable.waves();
+        // the settings command may turn wished waves on or off for this arena; unset, the rules file decides
+        ArenaConfig.Effective wishedSetting = config.effective(ArenaWishedWaves.CONFIG_KEY, site, wished.on() ? 1 : 0);
+        if (wishedSetting.source() != ArenaConfig.Source.RULES) {
+            wished = wished.withOn(wishedSetting.value() != 0);
+        }
         for (String w : usable.skipped()) {
             LOG.warn("Moddy Arena: wished waves: {}", w);
         }
