@@ -54,6 +54,7 @@ public final class ArenaPlugin implements ModdyPlugin {
         plugins.add(WorldRuleType.class, new ArenaWishesRule());
         plugins.add(WorldRuleType.class, new ArenaCreaturesRule());
         plugins.add(WorldRuleType.class, new ArenaLadderRule());
+        plugins.add(WorldRuleType.class, new ArenaWishedWavesRule());   // Moddy-Worlds#55
         plugins.add(ChildBranch.class, () -> Commands.literal("arena")
                 .then(Commands.literal("start").executes(ctx -> ArenaModule.startCommand(ctx.getSource()))));
     }

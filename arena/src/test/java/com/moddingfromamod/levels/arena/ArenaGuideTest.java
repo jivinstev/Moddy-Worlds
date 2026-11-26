@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
 class ArenaGuideTest {
 
     private static final List<WorldRuleType> TYPES = List.of(new ArenaRule(), new ArenaWavesRule(null),
-            new ArenaWishesRule(), new ArenaCreaturesRule(), new ArenaLadderRule());
+            new ArenaWishesRule(), new ArenaCreaturesRule(), new ArenaLadderRule(), new ArenaWishedWavesRule());
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{([a-z_]+)}");
 
     private static String read(String path) throws IOException {
