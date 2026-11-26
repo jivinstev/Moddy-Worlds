@@ -202,6 +202,11 @@ kill @e[tag=moddyarena_wave]
 # the boss wave took him into the arena, just inside the gate; he goes back to the prep room (by command) and turns
 # from the board, or his click opens the gate or presses READY instead of his watch
 teleport @s 0.5 64 19.5 0 30
+# SHORTCUT: what he picked up in the fight (a wished wave's champion drops what its body drops) leaves his hotbar,
+# so the house goes in the slot this playtest names
+item replace entity @s hotbar.4 with minecraft:air
+item replace entity @s hotbar.5 with minecraft:air
+item replace entity @s hotbar.6 with minecraft:air
 @wait 10t
 @aim look 0 30
 @wait 5t
