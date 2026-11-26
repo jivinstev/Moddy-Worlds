@@ -1281,8 +1281,11 @@ final class ArenaBattle {
         ladderTold = 0;
         ladderOn = on;
         ladderBoard.changed();
-        if (wasUp) {
-            refitWished("the ladder is back at its first step");
+        if (wasUp || on) {
+            // a battle starting refits too: a creature that stood at its own numbers before it (made outside the
+            // arena and brought in) fights wave 1 at the first step, not at full strength until a step opens
+            // (jivinstev/ModdyTheWishWatch#174: three Super Wolves at attack 100 carried waves 1 and 2)
+            refitWished(on ? "a battle starts at the first step" : "the ladder is back at its first step");
         }
     }
 

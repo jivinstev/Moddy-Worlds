@@ -146,7 +146,10 @@ public final class ArenaSites extends SavedData {
                 return null;
             }
             for (Live l : regions) {
-                ArenaPlace.Box b = l.place().resetBox(Integer.MAX_VALUE / 2);
+                // the whole place, the prep room included: the reset box stops at the shared wall, and a region that
+                // stopped there left the prep room outside the arena, where nothing was held to the ladder and no
+                // make was kept as a hotbar wish (a Super Wolf at attack 100 was wished there, 2026-11-26)
+                ArenaPlace.Box b = l.place().footprint();
                 if (x >= b.x0() && x < b.x1() + 1 && z >= b.z0() && z < b.z1() + 1) {
                     return region(l);
                 }
@@ -177,7 +180,7 @@ public final class ArenaSites extends SavedData {
             @Override public com.moddingfromamod.world.Bases bases() { return l.bases(); }
             @Override public com.moddingfromamod.world.WorldRules rules() { return ArenaModule.bundledWorldRules(); }
             @Override public com.moddingfromamod.world.Region area() {
-                ArenaPlace.Box b = l.place().resetBox(Integer.MAX_VALUE / 2);
+                ArenaPlace.Box b = l.place().footprint();   // the prep room included, as at()
                 return new com.moddingfromamod.world.Region(b.x0(), b.x1(), b.z0(), b.z1());
             }
         };
