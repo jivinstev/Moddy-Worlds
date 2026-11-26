@@ -100,6 +100,8 @@ class ArenaWishedWavesTest {
             assertEquals(D.scheme(), c.scheme());
             assertTrue(c.from().startsWith("preset:bodies/"), c.from());
             assertTrue(c.powers().contains("power:hostile") && c.powers().contains("power:glowing"));
+            // Moddy-Worlds#61: "" lowers to friendly; a champion is on the monsters' side
+            assertEquals("wild", c.temper(), "a champion's temperament");
             assertTrue(BuilderAllowlist.FOR_WORLDS.problems(c).isEmpty(),
                     "the world's own list refuses its champion: " + BuilderAllowlist.FOR_WORLDS.problems(c));
             assertFalse(BuilderAllowlist.REVIEWED.problems(c).isEmpty(), "a child's Builder may make a hostile monster");
