@@ -55,6 +55,8 @@ final class ArenaBattle {
 
     /** The tag on every mob a wave brings, so a battle counts only its own. */
     static final String TAG = ArenaMod.MODID + "_wave";
+    /** A wave's champion (wished waves, Moddy-Worlds#55) carries this beside {@link #TAG}: one in four, a rung up. */
+    static final String CHAMPION_TAG = ArenaMod.MODID + "_champion";
 
     /**
      * For a server run with nobody on (a test): {@code -Dmoddingfromamod.arena.allowEmptyBattle=true} lets a battle
@@ -1230,6 +1232,9 @@ final class ArenaBattle {
             int[] s = spots.get(i++);
             Consumer<LivingEntity> arrived = m -> {
                 markWave(m);
+                if (plan.champion()) {
+                    m.addTag(CHAMPION_TAG);
+                }
                 difficultyHealth(m, health);
                 waveMobs.add(m.getUUID());
             };
