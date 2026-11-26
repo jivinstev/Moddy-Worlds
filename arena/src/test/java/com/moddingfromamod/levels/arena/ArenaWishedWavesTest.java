@@ -197,4 +197,15 @@ class ArenaWishedWavesTest {
         assertFalse(parse(Map.of("palettes", List.of("#000000"))).ok(), "palettes is a map");
         assertFalse(parse(Map.of("palette", "Not A Name")).ok());
     }
+
+    /** A wave's monsters drop nothing unless the rules say so (the owner's call); the key round-trips. */
+    @Test
+    void waveMonstersDropNothingByDefault() {
+        assertFalse(D.drops(), "no loot and no experience by default");
+        ArenaWishedWaves on = parse(Map.of("drops", true)).waves();
+        assertTrue(on.drops());
+        assertEquals(on, parse(on.toParams()).waves(), "drops survives the rule's own params");
+        assertFalse(parse(Map.of("drops", "lots")).ok(), "drops is true or false");
+        assertTrue(D.withOn(false).drops() == D.drops(), "turning wished waves off keeps the drops rule");
+    }
 }

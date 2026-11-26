@@ -33,7 +33,7 @@ import com.moddingfromamod.wishbuilder.BuilderSpec;
  */
 public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, int maxDesignChampions,
                                int maxFullPillars, String palette, Map<String, String> palettes, List<Bodies> bodies,
-                               int championWaitSeconds, boolean bossUncapped) {
+                               int championWaitSeconds, boolean bossUncapped, boolean drops) {
 
     public ArenaWishedWaves {
         ramp = List.copyOf(ramp);
@@ -90,7 +90,7 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
                     new Bodies(0, List.of("rock_golem", "ogre", "yeti")),
                     new Bodies(5, List.of("ogre", "yeti", "raptor", "rock_golem")),
                     new Bodies(10, List.of("t_rex", "raptor", "yeti"))),
-            10, true);
+            10, true, false);
 
     /**
      * The A/B seam for a test or a dev run: {@code -Dmoddyarena.wishedWaves=false}, or
@@ -130,7 +130,7 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
     /** These wished waves, switched on or off. */
     public ArenaWishedWaves withOn(boolean value) {
         return new ArenaWishedWaves(value, ramp, championEvery, maxDesignChampions, maxFullPillars, palette, palettes,
-                bodies, championWaitSeconds, bossUncapped);
+                bodies, championWaitSeconds, bossUncapped, drops);
     }
 
     /** The rung index for {@code cleared} waves cleared. */
@@ -226,7 +226,7 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
     // ── the rule's params ──────────────────────────────────────────────────────────────────────────────────────────
 
     public static final List<String> KEYS = List.of("on", "ramp", "championEvery", "maxDesignChampions",
-            "maxFullPillars", "palette", "palettes", "bodies", "championWaitSeconds", "bossUncapped");
+            "maxFullPillars", "palette", "palettes", "bodies", "championWaitSeconds", "bossUncapped", "drops");
 
     /** A size by its Builder word ("normal", "big", "huge", "giant", "colossal", …) or id ("4"…"8"). */
     static String sizeId(String word) {
@@ -274,8 +274,9 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
         ArenaWishedWaves d = DEFAULT;
         Boolean on = bool(p.get("on"), d.on());
         Boolean bossUncapped = bool(p.get("bossUncapped"), d.bossUncapped());
-        if (on == null || bossUncapped == null) {
-            return fail("on and bossUncapped must be true or false");
+        Boolean drops = bool(p.get("drops"), d.drops());
+        if (on == null || bossUncapped == null || drops == null) {
+            return fail("on, bossUncapped and drops must be true or false");
         }
         int[] n = {d.championEvery(), d.maxDesignChampions(), d.maxFullPillars(), d.championWaitSeconds()};
         String[] names = {"championEvery", "maxDesignChampions", "maxFullPillars", "championWaitSeconds"};
@@ -384,8 +385,8 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
                 return fail("the first bodies tier must be after 0");
             }
         }
-        return new Parsed(new ArenaWishedWaves(on, ramp, n[0], n[1], n[2], palette, palettes, bodies, n[3], bossUncapped),
-                null);
+        return new Parsed(new ArenaWishedWaves(on, ramp, n[0], n[1], n[2], palette, palettes, bodies, n[3], bossUncapped,
+                drops), null);
     }
 
     /** These wished waves with only what the installed Builder has, and a warning for each name left out. */
@@ -434,7 +435,7 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
             skipped.add("no champion body is left; every champion is its stand-in");
         }
         return new Usable(new ArenaWishedWaves(on, ramp, championEvery, maxDesignChampions, maxFullPillars, palette, good,
-                kept, championWaitSeconds, bossUncapped), skipped);
+                kept, championWaitSeconds, bossUncapped, drops), skipped);
     }
 
     /** Back to the rule's own params (what the core stores and hands back). */
@@ -469,6 +470,7 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
         out.put("bodies", b);
         out.put("championWaitSeconds", championWaitSeconds);
         out.put("bossUncapped", bossUncapped);
+        out.put("drops", drops);
         return out;
     }
 

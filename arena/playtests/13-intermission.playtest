@@ -110,6 +110,9 @@ summon minecraft:cat 6 64 10 {PersistenceRequired:1b}
 @wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 1 cleared! Break time: the gate is open, and the next wave comes in 15 seconds. within 10s
+# a wave's monsters, the shadow champion among them, drop nothing: no loot and no experience on the floor
+@assert execute unless entity @e[type=minecraft:item,x=-17,y=60,z=-17,dx=34,dy=20,dz=34]
+@assert execute unless entity @e[type=minecraft:experience_orb,x=-17,y=60,z=-17,dx=34,dy=20,dz=34]
 @expect chat The arena is mended for the next wave. within 5s
 @expect bossbar /Wave 2 of 10 in 1[0-5] seconds/ within 3s
 @wait 1s
@@ -202,11 +205,6 @@ kill @e[tag=moddyarena_wave]
 # the boss wave took him into the arena, just inside the gate; he goes back to the prep room (by command) and turns
 # from the board, or his click opens the gate or presses READY instead of his watch
 teleport @s 0.5 64 19.5 0 30
-# SHORTCUT: what he picked up in the fight (a wished wave's champion drops what its body drops) leaves his hotbar,
-# so the house goes in the slot this playtest names
-item replace entity @s hotbar.4 with minecraft:air
-item replace entity @s hotbar.5 with minecraft:air
-item replace entity @s hotbar.6 with minecraft:air
 @wait 10t
 @aim look 0 30
 @wait 5t

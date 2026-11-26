@@ -71,6 +71,10 @@ public final class ArenaModule implements WorldModule {
      */
     static void onDrops(net.neoforged.neoforge.event.entity.living.LivingDropsEvent event) {
         ArenaBattle b = battleFor(event.getEntity());
+        if (b != null && !b.dropsOf(event.getEntity())) {
+            event.setCanceled(true);   // a wave monster leaves nothing on the floor (arena_wished_waves' drops)
+            return;
+        }
         if (b == null || !(event.getEntity() instanceof ServerPlayer)) {
             return;
         }
@@ -140,6 +144,14 @@ public final class ArenaModule implements WorldModule {
         }
         return e instanceof net.minecraft.world.entity.TraceableEntity t && t.getOwner() != null
                 && com.moddingfromamod.world.Wished.isWished(t.getOwner());
+    }
+
+    /** The game's experience event: a wave monster gives none, as it drops nothing ({@link ArenaBattle#dropsOf}). */
+    static void onExperience(net.neoforged.neoforge.event.entity.living.LivingExperienceDropEvent event) {
+        ArenaBattle b = battleFor(event.getEntity());
+        if (b != null && !b.dropsOf(event.getEntity())) {
+            event.setCanceled(true);
+        }
     }
 
     /** The game's event for an item a player throws (Q, or out of his inventory): his own, as {@link #onDrops}. */

@@ -21,6 +21,7 @@ public final class ArenaMod {
         LevelPacks.register(modBus, LEVEL);
         // a player's dropped things are his: kept by the arena's tidying (in an arena world only; ArenaModule)
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ArenaModule::onDrops);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ArenaModule::onExperience);
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ArenaModule::onToss);
         // a wished creature is on the players' side in the arena: it never hurts or targets one there
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ArenaModule::onIncomingDamage);

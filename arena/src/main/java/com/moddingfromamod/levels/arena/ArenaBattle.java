@@ -1077,6 +1077,15 @@ final class ArenaBattle {
     private ArenaWishedWaves wished = ArenaWishedWaves.DEFAULT;
     private ArenaWishedWaves.Picks picks;
 
+    /**
+     * Does this wave monster drop its loot and experience when killed? Only when the battle's rules say so
+     * ({@code arena_wished_waves}' {@code drops}, off by default: the owner's call, 2026-11-26): a wave's monsters,
+     * plain or wished, champions and bosses alike, leave nothing on the floor. Server thread.
+     */
+    boolean dropsOf(Entity e) {
+        return e == null || !e.getTags().contains(TAG) || (wished != null && wished.drops());
+    }
+
     private boolean wishedOn() {
         return wished != null && wished.active();
     }
