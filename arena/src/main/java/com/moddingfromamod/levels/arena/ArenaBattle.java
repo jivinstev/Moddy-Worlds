@@ -1263,6 +1263,15 @@ final class ArenaBattle {
         return ladderOn ? ladder.reached(wavesCleared, bossesBeaten) : 0;
     }
 
+    /**
+     * Does a respawn of this player belong in this place's prep room (Moddy-Worlds#60)? Everyone who fought in this
+     * battle, still in or out of lives, while it is on; nobody once it is over, so the arena never keeps a player's
+     * spawn. Server thread.
+     */
+    boolean respawnsHere(UUID id) {
+        return id != null && match.phase() != ArenaMatch.Phase.IDLE && (fighters.containsKey(id) || told.contains(id));
+    }
+
     /** True from the button to the arena being ready again: the ladder is the battle's. */
     boolean ladderOn() {
         return ladderOn;

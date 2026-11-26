@@ -32,6 +32,8 @@ public final class ArenaMod {
                 (net.neoforged.neoforge.event.tick.ServerTickEvent.Post e) -> ArenaSites.tick());
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
                 (net.neoforged.neoforge.event.server.ServerStoppingEvent e) -> ArenaSites.stopped());
+        // a fighter knocked out in a site's battle comes back in its prep room, only while the battle is on (#60)
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ArenaSites::onRespawn);
         if (FMLEnvironment.dist.isClient()) {
             LevelWorldType.register(LEVEL);
         }

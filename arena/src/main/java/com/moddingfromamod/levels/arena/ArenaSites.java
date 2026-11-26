@@ -191,6 +191,32 @@ public final class ArenaSites extends SavedData {
         LIVE.put(ArenaSiteRules.MAIN, new Live(ArenaSiteRules.MAIN, place, battle, true, null, null, null, null));
     }
 
+    /**
+     * <b>A fighter knocked out in a battle comes back in that arena's prep room</b> (Moddy-Worlds#60), not at the
+     * world's spawn or his bed: one teleport after the respawn, and nothing saved, so neither his bed nor the world's
+     * spawn ever changes and the first respawn after the battle is the normal one. Before this, a fighter in an arena
+     * built by command woke up at the world spawn, outside the place, and the battle counted him as having left: out
+     * for good with lives to spare. The arena world's own place needs none (its world spawn is its prep room). Server
+     * thread.
+     */
+    static void onRespawn(net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerRespawnEvent e) {
+        if (e.isEndConquered() || !(e.getEntity() instanceof ServerPlayer p) || p.isSpectator() || server == null) {
+            return;
+        }
+        for (Live l : List.copyOf(LIVE.values())) {
+            if (l.module() || !l.battle().respawnsHere(p.getUUID())) {
+                continue;
+            }
+            int[] a = l.place().arrival();
+            p.stopRiding();
+            p.teleportTo(server.overworld(), a[0] + 0.5, a[1], a[2] + 0.5, Set.of(), ArenaPlace.ARRIVAL_YAW, 0f, true);
+            p.fallDistance = 0;
+            LOG.info("Moddy Arena: {} respawned in the prep room of {} (its battle is on)", p.getScoreboardName(),
+                    l.name());
+            return;
+        }
+    }
+
     /** The module stopped. */
     static void moduleStopped() {
         LIVE.remove(ArenaSiteRules.MAIN);
