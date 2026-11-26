@@ -243,6 +243,11 @@ final class ArenaBattle {
         picks = wished.pick(new java.util.Random(level().random.nextLong()));
         designs.clear();
         held.clear();
+        designQueue.clear();
+        designing.clear();
+        if (makingKey != null) {
+            designing.add(makingKey);   // still being made: it lands in this battle's designs if this battle wants it
+        }
         if (wished.active()) {
             LOG.info("Moddy Arena: champions: this battle's bodies are {} ({})", picks.perTier(), wished.scheme());
             wantDesigns(0);
@@ -1091,13 +1096,18 @@ final class ArenaBattle {
 
     /** The world's own champion designs: a design spec (its JSON) → the species the Builder made for it. */
     private final Map<String, String> designs = new HashMap<>();
-    /** Designs being made right now (one Builder make each, off the server thread). */
+    /** Designs asked for and not made yet: the queue, and the one being made (keys are design spec JSON). */
     private final java.util.Set<String> designing = new java.util.HashSet<>();
+    private final java.util.ArrayDeque<com.moddingfromamod.wishbuilder.BuilderSpec> designQueue = new java.util.ArrayDeque<>();
+    private String makingKey;
 
     /**
      * Have the Builder make the champion designs this battle will want next (this rung's and the next one's) that are
-     * not made yet: each is a real Builder make, owned by the arena ({@code BuilderMake.forWorld}), made once and then
-     * wished as copies. Until one is made, its champions are the wave's mob one rung up. Server thread.
+     * not made or asked for yet. Each is a real Builder make, owned by the arena ({@code BuilderMake.forWorld}), made
+     * once a battle and then wished as copies. They are made ONE AT A TIME, in order: the core runs one Builder make
+     * per owner at once and answers a second with BUSY, so asking for two together lost the second. Measured
+     * (WorldWishesGameTest#everyChampionBodyIsMadeWellInsideTheCountdown): 77–510 ms a design, the slowest two in a
+     * row 760 ms, against the 5 s countdown. Server thread.
      */
     private void wantDesigns(int cleared) {
         for (com.moddingfromamod.wishbuilder.BuilderSpec spec : wished.designsAhead(cleared, picks)) {
@@ -1105,21 +1115,37 @@ final class ArenaBattle {
             if (designs.containsKey(key) || !designing.add(key)) {
                 continue;
             }
-            LOG.info("Moddy Arena: champions: the Builder makes {} ({}, {})", spec.name(), spec.from(), spec.scheme());
-            com.moddingfromamod.wishbuilder.BuilderMake.forWorld(server, ArenaMod.MODID, "The Arena", spec)
-                    .whenComplete((r, err) -> server.execute(() -> {
-                        designing.remove(key);
-                        boolean ok = err == null && r != null
-                                && (r.outcome() == com.moddingfromamod.wishbuilder.BuilderMake.Outcome.MADE
-                                || r.outcome() == com.moddingfromamod.wishbuilder.BuilderMake.Outcome.PARTIAL);
-                        if (ok) {
-                            designs.put(key, r.madeId());
-                        }
-                        LOG.info("Moddy Arena: champions: {} {}", spec.name(), ok ? "is ready (" + r.madeId() + ")"
-                                : "could not be made: " + (err != null ? err.toString() : r == null ? "no result"
-                                : r.outcome() + " " + r.detail()));
-                    }));
+            designQueue.add(spec);
         }
+        makeNextDesign();
+    }
+
+    /** Start the next queued design if none is being made. Server thread. */
+    private void makeNextDesign() {
+        if (makingKey != null || designQueue.isEmpty()) {
+            return;
+        }
+        com.moddingfromamod.wishbuilder.BuilderSpec spec = designQueue.poll();
+        String key = spec.toJson().toString();
+        makingKey = key;
+        long t0 = System.nanoTime();
+        LOG.info("Moddy Arena: champions: the Builder makes {} ({}, {}); {} more queued", spec.name(), spec.from(),
+                spec.scheme(), designQueue.size());
+        com.moddingfromamod.wishbuilder.BuilderMake.forWorld(server, ArenaMod.MODID, "The Arena", spec)
+                .whenComplete((r, err) -> server.execute(() -> {
+                    makingKey = null;
+                    designing.remove(key);
+                    boolean ok = err == null && r != null
+                            && (r.outcome() == com.moddingfromamod.wishbuilder.BuilderMake.Outcome.MADE
+                            || r.outcome() == com.moddingfromamod.wishbuilder.BuilderMake.Outcome.PARTIAL);
+                    if (ok) {
+                        designs.put(key, r.madeId());
+                    }
+                    LOG.info("Moddy Arena: champions: {} {} in {} ms", spec.name(), ok ? "is ready (" + r.madeId() + ")"
+                            : "could not be made: " + (err != null ? err.toString() : r == null ? "no result"
+                            : r.outcome() + " " + r.detail()), (System.nanoTime() - t0) / 1_000_000);
+                    makeNextDesign();
+                }));
     }
 
     /**
