@@ -241,10 +241,11 @@ public final class ArenaWords {
                 }
                 String what = how.size() == 1 ? how.get(0) : String.join(", ", how.subList(0, how.size() - 1))
                         + " and " + how.get(how.size() - 1);
-                // only what really comes back is promised (ArenaPinNotice.Later): a creature's strength and number
+                // only what really comes back is promised (ArenaPinNotice.Later): a creature's strength, size and number
                 String when = bosses ? "beat bosses." : "clear waves.";
+                String grows = n.held().contains(ArenaPinNotice.Held.SMALLER) ? "It grows" : "It gets stronger";
                 yield switch (n.later()) {
-                    case ALL -> your + " will be " + what + " at first. It gets stronger as you " + when;
+                    case ALL -> your + " will be " + what + " at first. " + grows + " as you " + when;
                     case SOME -> your + " will be " + what + " in this arena. It gets stronger as you " + when;
                     case NONE -> your + " will be " + what + " in this arena.";
                 };
@@ -621,6 +622,9 @@ public final class ArenaWords {
             case "extentBlocks" -> "Buildings up to " + number(most) + " blocks long";
             case "armorPoints" -> "Armour up to " + number(most);
             case "knockbackResistanceFraction" -> "Knockback resistance up to " + Math.round(most * 100) + "%";
+            case "moveDamageHalfHeartsPerSecond" -> "Damage on the move up to " + hearts(most) + " a second";
+            case "effectiveDamageHalfHeartsPerSecond" -> "Damage up to " + hearts(most) + " a second";
+            case "healHalfHeartsPerSecond" -> "Healing up to " + hearts(most) + " a second";
             default -> fact + " up to " + number(most);
         };
     }
@@ -640,6 +644,9 @@ public final class ArenaWords {
             case "extentBlocks" -> "No limit on building size";
             case "armorPoints" -> "No limit on armour";
             case "knockbackResistanceFraction" -> "No limit on knockback resistance";
+            case "moveDamageHalfHeartsPerSecond" -> "No limit on damage on the move";
+            case "effectiveDamageHalfHeartsPerSecond" -> "No limit on damage a second";
+            case "healHalfHeartsPerSecond" -> "No limit on healing";
             default -> "No limit on " + fact;
         };
     }

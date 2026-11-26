@@ -111,11 +111,13 @@ public record ArenaLadder(Count progress, List<Step> steps, Opens locked) {
      * half a monster and 4% health a wave past the rules file's, and each boss has more health than the last: 150, 200,
      * 250, 300), with one between (wave 8). Events open after the first boss, world rules after the second, and from
      * wave 20 nothing is limited. Numbers in the core's units: health and damage in health points (two to a heart),
-     * durations in ticks.
+     * durations in ticks. The Builder's strength pick starts at 2, a Builder creature's own How strong (core 1.0.11): no
+     * replay re-fits it, so a lower first limit would lock every Builder creature on the hotbar; a creature's strength
+     * is held by its health and hits instead, which the core fits on the living creature.
      */
     public static final ArenaLadder DEFAULT = new ArenaLadder(Count.WAVES, List.of(
             new Step(0, limits(MakeFacts.HEALTH_HALF_HEARTS, 40, MakeFacts.ATTACK_DAMAGE_HALF_HEARTS, 5,
-                    MakeFacts.SCALE_TIMES, 1.5, MakeFacts.BUILDER_SIZE_STEP, 2, MakeFacts.BUILDER_STRENGTH_STEP, 1,
+                    MakeFacts.SCALE_TIMES, 1.5, MakeFacts.BUILDER_SIZE_STEP, 2, MakeFacts.BUILDER_STRENGTH_STEP, 2,
                     MakeFacts.COUNT_MADE, 2, MakeFacts.AMOUNT_ITEMS, 16, MakeFacts.RADIUS_BLOCKS, 4,
                     MakeFacts.DURATION_TICKS, 200), Opens.NONE),
             new Step(2, limits(MakeFacts.HEALTH_HALF_HEARTS, 60, MakeFacts.ATTACK_DAMAGE_HALF_HEARTS, 6,

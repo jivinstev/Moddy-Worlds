@@ -39,8 +39,8 @@ final class ArenaPinNotice {
 
     /**
      * What of a fitted wish comes back as the battle goes on, so the line promises only that. The core refits a living
-     * creature's health and hits when a step rises, and fits how many a fire makes at each fire; nothing re-fits a
-     * held or hotbar item, or a creature's size, as steps open (the core keeps them as they were fitted).
+     * creature's health, hits and size when a step rises (size since core 1.0.11), and fits how many a fire makes at
+     * each fire; nothing re-fits a held or hotbar item as steps open (the core keeps it as it was fitted).
      */
     enum Later {
         /** everything held back comes back as steps open */
@@ -51,8 +51,8 @@ final class ArenaPinNotice {
         NONE
     }
 
-    /** The numbers a step's rise gives back to a creature: its strength (refitted live) and how many (fitted per fire). */
-    static final Set<Held> CREATURE_GROWS = Set.of(Held.WEAKER, Held.FEWER);
+    /** What a step's rise gives back to a creature: its strength and size (refitted live) and how many (per fire). */
+    static final Set<Held> CREATURE_GROWS = Set.of(Held.WEAKER, Held.SMALLER, Held.FEWER);
 
     /**
      * The answer: what, after how far (waves or bosses, as the ladder counts) for a lock, how it is held, and what of
@@ -82,7 +82,8 @@ final class ArenaPinNotice {
     }
 
     /** The numbers no knob of a make lowers: over the limit, the core locks the make rather than fit it. */
-    static final Set<String> NOT_FITTED = Set.of(MakeFacts.MOVEMENT_SPEED_ATTRIBUTE, MakeFacts.EXTENT_BLOCKS);
+    static final Set<String> NOT_FITTED = Set.of(MakeFacts.MOVEMENT_SPEED_ATTRIBUTE, MakeFacts.EXTENT_BLOCKS,
+            MakeFacts.BUILDER_STRENGTH_STEP);
 
     /** How each fitted number holds a make back. */
     static Held heldBy(String number) {

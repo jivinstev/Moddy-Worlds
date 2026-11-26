@@ -50,9 +50,9 @@ class ArenaPinNoticeTest {
     void aDragonTooBigAndTooStrongIsSmallerAndWeakerAtFirst() {
         Notice n = ArenaPinNotice.of(L, 0, facts("creature", Map.of(MakeFacts.SCALE_TIMES, 4.0,
                 MakeFacts.HEALTH_HALF_HEARTS, 200.0, MakeFacts.COUNT_MADE, 1.0), Set.of("fights")));
-        assertEquals(new Notice(Type.FITTED, 0, List.of(Held.SMALLER, Held.WEAKER), ArenaPinNotice.Later.SOME), n);
-        assertEquals("Your Dragon will be smaller and weaker in this arena. It gets stronger as you clear waves.",
-                say("Dragon", n), "its strength comes back as steps open; its size is not promised (nothing regrows it)");
+        assertEquals(new Notice(Type.FITTED, 0, List.of(Held.SMALLER, Held.WEAKER), ArenaPinNotice.Later.ALL), n);
+        assertEquals("Your Dragon will be smaller and weaker at first. It grows as you clear waves.", say("Dragon", n),
+                "its size and strength both come back as steps open (core 1.0.11 fits size on the living creature)");
     }
 
     @Test
@@ -143,11 +143,15 @@ class ArenaPinNoticeTest {
         assertEquals(ArenaPinNotice.Later.NONE, sword.later(), "nothing re-fits an item as steps open");
         assertEquals("Your Fire Sword will be weaker in this arena.", say("Fire Sword", sword));
         Notice small = ArenaPinNotice.of(L, 0, facts("creature", Map.of(MakeFacts.SCALE_TIMES, 4.0), Set.of()));
-        assertEquals("Your Dragon will be smaller in this arena.", say("Dragon", small),
-                "a creature held only in size: its size is not regrown, so nothing is promised");
+        assertEquals("Your Dragon will be smaller at first. It grows as you clear waves.", say("Dragon", small),
+                "a creature held only in size grows back as steps open");
+        Notice strong = ArenaPinNotice.of(L, 0, facts("item", Map.of(MakeFacts.BUILDER_STRENGTH_STEP, 3.0), Set.of()));
+        assertEquals(Type.TOO_MUCH, strong.type(), "nothing lowers the strength pick at a fire: too much until a step allows it");
+        assertEquals(Type.NONE, ArenaPinNotice.of(L, 0, facts("creature", Map.of(MakeFacts.BUILDER_STRENGTH_STEP, 2.0),
+                Set.of())).type(), "a Builder creature's own How strong (2) is never held back by the default ladder");
         Notice ride = ArenaPinNotice.of(L, 0, facts("ride", Map.of(MakeFacts.HEALTH_HALF_HEARTS, 100.0), Set.of()));
         assertEquals(ArenaPinNotice.Later.ALL, ride.later(), "a ride's strength comes back like a creature's");
-        for (Notice n : List.of(sword, small)) {
+        for (Notice n : List.of(sword)) {
             assertFalse(say("X", n).contains("stronger") || say("X", n).contains("grows") || say("X", n).contains("at first"),
                     say("X", n));
         }

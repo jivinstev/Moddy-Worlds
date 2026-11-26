@@ -469,7 +469,7 @@ guesses to be tuned by playing:
 
 | after waves cleared | health | hits | size | Builder size | strength | at once | items | power reach | powers last | opens |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 0 (a battle's start, and prep) | 20 hearts | 2.5 hearts | x1.5 | 2 | 1 | 2 | 16 | 4 | 10 s | |
+| 0 (a battle's start, and prep) | 20 hearts | 2.5 hearts | x1.5 | 2 | 2 | 2 | 16 | 4 | 10 s | |
 | 2 | 30 | 3 | x1.75 | 2 | 2 | 2 | 24 | 5 | 15 s | |
 | 4 | 40 | 3.5 | x2 | 3 | 2 | 3 | 32 | 6 | 20 s | |
 | 5 (the first boss) | 60 | 4.5 | x2.5 | 3 | 3 | 4 | 48 | 8 | 30 s | events |
