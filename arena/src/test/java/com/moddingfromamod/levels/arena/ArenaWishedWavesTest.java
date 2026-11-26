@@ -6,7 +6,16 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 
 import com.moddingfromamod.wishbuilder.BuilderAllowlist;
 import com.moddingfromamod.wishbuilder.BuilderSpec;
@@ -14,12 +23,11 @@ import org.junit.jupiter.api.Test;
 
 class ArenaWishedWavesTest {
 
-    /** The Builder's own multipliers ({@code BuilderCreatureStrength}), to check the ramp never weakens. */
-    private static final java.util.Map<String, double[]> SIZE = java.util.Map.of("", new double[] {1, 1},
-            "4", new double[] {1, 1}, "5", new double[] {1.5, 1.25}, "6", new double[] {2.5, 1.6},
-            "7", new double[] {3.5, 2.0}, "8", new double[] {5.0, 2.5});
-    private static final java.util.Map<String, double[]> STRENGTH = java.util.Map.of("", new double[] {1, 1},
-            "1", new double[] {0.75, 0.5}, "2", new double[] {1, 1}, "3", new double[] {1.5, 1.5});
+    private static final ArenaWishedWaves D = ArenaWishedWaves.DEFAULT;
+
+    private static ArenaWishedWaves.Parsed parse(Map<String, ?> params) {
+        return ArenaWishedWaves.parse(params, ArenaWishedWaves::builderBody, ArenaWishedWaves::builderScheme);
+    }
 
     private static ArenaWaves.Wave wave(int husks, int pillagers) {
         return new ArenaWaves.Wave(List.of(new ArenaWaves.Group("minecraft:husk", husks),
@@ -27,31 +35,69 @@ class ArenaWishedWavesTest {
     }
 
     @Test
+    void theShippedRulesFileIsTheDefaultAndRoundTrips() throws Exception {
+        JsonObject file = JsonParser.parseString(Files.readString(
+                Path.of("src/level/resources/worlds/rules/arena.rules.json"))).getAsJsonObject();
+        JsonObject params = null;
+        for (var e : file.getAsJsonArray("rules")) {
+            if (e.getAsJsonObject().get("type").getAsString().equals(ArenaWishedWavesRule.KEY)) {
+                params = e.getAsJsonObject().getAsJsonObject("params");
+            }
+        }
+        assertNotNull(params, "the shipped rules carry no " + ArenaWishedWavesRule.KEY);
+        JsonObject raw = new JsonObject();
+        raw.add("params", params);
+        ArenaWishedWaves.Parsed fromFile = parse(ArenaWavesRule.plainMap(params));
+        assertTrue(fromFile.ok(), fromFile.problem());
+        assertEquals(D, fromFile.waves(), "the file and DEFAULT disagree");
+        ArenaWishedWaves.Parsed again = parse(D.toParams());
+        assertTrue(again.ok(), again.problem());
+        assertEquals(D, again.waves());
+        assertEquals(D, parse(Map.of()).waves(), "no keys is the default");
+    }
+
+    @Test
     void rungZeroIsThePlainMobAsABuilderRealMob() {
-        BuilderSpec s = ArenaWishedWaves.mob("minecraft:husk", 0);
-        assertEquals(BuilderSpec.Kind.CREATURE, s.kind());
+        BuilderSpec s = D.mob("minecraft:husk", 0);
         assertEquals("mob:minecraft:husk", s.from());
         assertTrue(s.opts().isEmpty(), "rung 0 picks nothing: the plain mob, " + s.opts());
         assertTrue(s.powers().isEmpty() && s.scheme().isEmpty(), "a Builder real mob takes no powers or colours");
     }
 
     @Test
-    void theRampNeverGetsWeaker() {
-        double lastH = 0, lastD = 0;
-        for (ArenaWishedWaves.Rung r : ArenaWishedWaves.RAMP) {
-            double h = SIZE.get(r.mobsize())[0] * STRENGTH.get(r.strength())[0];
-            double d = SIZE.get(r.mobsize())[1] * STRENGTH.get(r.strength())[1];
-            assertTrue(h >= lastH && d >= lastD, "rung " + r.after() + " is weaker than the last");
-            lastH = h;
-            lastD = d;
-        }
+    void aWeakerRungAnUnknownBodyOrSchemeOrKeyIsRefusedInWords() {
+        assertFalse(parse(Map.of("ramp", List.of(Map.of("after", 0, "size", "big", "strength", 3),
+                Map.of("after", 2, "size", "huge", "strength", 2)))).ok(), "Huge at 2 hits weaker than Big at 3");
+        assertFalse(parse(Map.of("ramp", List.of(Map.of("after", 1)))).ok(), "the first rung must be after 0");
+        assertFalse(parse(Map.of("bodies", List.of(Map.of("after", 0, "pick", List.of("unicorn_dragon"))))).ok());
+        assertFalse(parse(Map.of("scheme", "neon")).ok());
+        assertFalse(parse(Map.of("championEvery", 1)).ok());
+        ArenaWishedWaves.Parsed typo = parse(Map.of("champoinEvery", 4));
+        assertFalse(typo.ok());
+        assertTrue(typo.problem().contains("champoinEvery"), typo.problem());
     }
 
     @Test
-    void championsAreShadowBuilderDesignsTheWorldsListAllowsAndNoChildsDoes() {
-        for (int r = 0; r < ArenaWishedWaves.RAMP.size(); r++) {
-            BuilderSpec c = ArenaWishedWaves.champion(r);
-            assertEquals("shadow", c.scheme());
+    void eachBattleDrawsItsOwnChampionsFromTheTiers() {
+        Set<List<String>> seen = new HashSet<>();
+        for (long seed = 0; seed < 40; seed++) {
+            ArenaWishedWaves.Picks p = D.pick(new Random(seed));
+            assertEquals(D.bodies().size(), p.perTier().size());
+            for (int i = 0; i < p.perTier().size(); i++) {
+                assertTrue(D.bodies().get(i).pick().contains(p.perTier().get(i)));
+            }
+            seen.add(p.perTier());
+        }
+        assertTrue(seen.size() > 3, "forty battles drew only " + seen.size() + " different sets of champions");
+        assertEquals(D.pick(new Random(7)), D.pick(new Random(7)), "the same draw for the same seed");
+    }
+
+    @Test
+    void championsAreSchemedBuilderDesignsTheWorldsListAllowsAndNoChildsDoes() {
+        ArenaWishedWaves.Picks picks = D.pick(new Random(1));
+        for (int r = 0; r < D.ramp().size(); r++) {
+            BuilderSpec c = D.champion(r, picks);
+            assertEquals(D.scheme(), c.scheme());
             assertTrue(c.from().startsWith("preset:bodies/"), c.from());
             assertTrue(c.powers().contains("power:hostile") && c.powers().contains("power:glowing"));
             assertTrue(BuilderAllowlist.FOR_WORLDS.problems(c).isEmpty(),
@@ -62,11 +108,12 @@ class ArenaWishedWavesTest {
 
     @Test
     void oneInFourIsAChampionDesignsAndFullPillarsAreCapped() {
-        List<ArenaWishedWaves.Plan> plan = ArenaWishedWaves.plan(wave(20, 20), 5);
+        ArenaWishedWaves.Picks picks = D.pick(new Random(2));
+        List<ArenaWishedWaves.Plan> plan = D.plan(wave(20, 20), 5, picks);
         assertEquals(40, plan.size());
         assertEquals(10, plan.stream().filter(ArenaWishedWaves.Plan::champion).count());
-        assertEquals(ArenaWishedWaves.MAX_DESIGN_CHAMPIONS, plan.stream().filter(p -> p.design() != null).count());
-        assertEquals(ArenaWishedWaves.MAX_FULL_PILLARS, plan.stream().filter(p -> !p.slim()).count());
+        assertEquals(D.maxDesignChampions(), plan.stream().filter(p -> p.design() != null).count());
+        assertEquals(D.maxFullPillars(), plan.stream().filter(p -> !p.slim()).count());
         for (ArenaWishedWaves.Plan p : plan) {
             assertNotNull(p.mob(), "every monster has a real-mob spec to stand in");
             if (!p.champion()) {
@@ -74,19 +121,20 @@ class ArenaWishedWavesTest {
                 assertNull(p.design());
             }
         }
-        List<ArenaWishedWaves.Plan> small = ArenaWishedWaves.plan(wave(1, 0), 0);
+        List<ArenaWishedWaves.Plan> small = D.plan(wave(1, 0), 0, picks);
         assertTrue(small.get(0).champion() && !small.get(0).slim() && small.get(0).design() != null,
                 "a wave of one still has its champion");
     }
 
     @Test
-    void theSwitchIsOnUnlessTurnedOff() {
+    void offInTheRuleOrBySwitchIsOff() {
+        assertFalse(parse(Map.of("on", false)).waves().active());
         String was = System.getProperty("moddyarena.wishedWaves");
         try {
             System.clearProperty("moddyarena.wishedWaves");
-            assertTrue(ArenaWishedWaves.on());
+            assertTrue(D.active());
             System.setProperty("moddyarena.wishedWaves", "false");
-            assertFalse(ArenaWishedWaves.on());
+            assertFalse(D.active());
         } finally {
             if (was == null) {
                 System.clearProperty("moddyarena.wishedWaves");
