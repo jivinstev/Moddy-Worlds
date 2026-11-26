@@ -25,6 +25,8 @@ public final class ArenaMod {
         // a wished creature is on the players' side in the arena: it never hurts or targets one there
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ArenaModule::onIncomingDamage);
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ArenaModule::onChangeTarget);
+        // a fighter knocked out in a battle comes back in the prep room, only while the battle is on (Moddy-Worlds#60)
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ArenaModule::onRespawnPosition);
         if (FMLEnvironment.dist.isClient()) {
             LevelWorldType.register(LEVEL);
         }

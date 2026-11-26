@@ -42,6 +42,12 @@ public final class ArenaModule implements WorldModule {
 
     private static final Logger LOG = LoggerFactory.getLogger("moddingfromamod/arena");
 
+    /**
+     * The arena world's own arena, as the settings command names it ({@code /moddy arena config main …}): the name an
+     * arena built by command takes is its own (Moddy-Worlds#58), and this is the one the world was made with.
+     */
+    static final String ARENA_NAME = "main";
+
     /** The running arena module, for {@code /moddy arena start}; null in any other world. */
     private static volatile ArenaModule live;
 
@@ -360,6 +366,67 @@ public final class ArenaModule implements WorldModule {
     public String keepTicking() {
         ArenaBattle b = battle;
         return b == null ? null : b.keepTicking();
+    }
+
+    /**
+     * The game's respawn-position event (Moddy-Worlds#60), asked before a player is respawned: a fighter knocked out in
+     * the battle that is on, whose respawn is outside the place (his bed, say), comes back in the prep room instead.
+     * Only this one respawn is moved: his own respawn point is kept as it is (the event copies it over as for any
+     * respawn), the world spawn never changes, and the first respawn after the battle is the normal one
+     * ({@link ArenaRespawn}). Moving the respawn itself, not teleporting after it, leaves no moment outside the place
+     * for the battle to count as having left it. Server thread.
+     */
+    static void onRespawnPosition(net.neoforged.neoforge.event.entity.player.PlayerRespawnPositionEvent event) {
+        ArenaModule m = live;
+        ArenaBattle b = m == null ? null : m.battle;
+        if (b == null || !(event.getEntity() instanceof ServerPlayer p)) {
+            return;
+        }
+        var to = event.getTeleportTransition();
+        int[] a = b.respawnAt(p, event.isFromEndFight(), to.newLevel(), to.position().x, to.position().y,
+                to.position().z);
+        if (a == null) {
+            return;
+        }
+        event.setTeleportTransition(new net.minecraft.world.level.portal.TeleportTransition(b.placeLevel(),
+                new net.minecraft.world.phys.Vec3(a[0] + 0.5, a[1], a[2] + 0.5), net.minecraft.world.phys.Vec3.ZERO,
+                ArenaPlace.ARRIVAL_YAW, 0f, net.minecraft.world.level.portal.TeleportTransition.DO_NOTHING));
+        LOG.info("Moddy Arena: {} comes back in the prep room (knocked out in a battle; his respawn point is kept)",
+                p.getScoreboardName());
+    }
+
+    /**
+     * {@code /moddy arena config [<scope> [<key> [<value>|reset]]]} (Moddy-Worlds#59): the arena's settings, for all
+     * arenas ({@code global}) or one by its name. Anyone may read them; only an operator may change them, and never
+     * under a battle they would touch ({@link ArenaConfig#guard}).
+     */
+    static int configCommand(net.minecraft.commands.CommandSourceStack source, String scope, java.util.List<String> args) {
+        ArenaModule m = live;
+        ArenaBattle b = m == null ? null : m.battle;
+        if (b == null) {
+            source.sendFailure(net.minecraft.network.chat.Component.literal(ArenaWords.notAnArena()));
+            return 0;
+        }
+        String sc = scope == null ? ArenaConfig.GLOBAL : scope.strip().toLowerCase(java.util.Locale.ROOT);
+        if (!ArenaConfig.GLOBAL.equals(sc) && !ARENA_NAME.equals(sc)) {
+            source.sendFailure(net.minecraft.network.chat.Component.literal("There is no arena called " + scope
+                    + ". Use 'global' for all arenas, or the name of one: " + ARENA_NAME + "."));
+            return 0;
+        }
+        ArenaConfigStore store = ArenaConfigStore.of(source.getServer());
+        java.util.Set<String> battlesOn = b.match().busy() ? java.util.Set.of(ARENA_NAME) : java.util.Set.of();
+        ArenaConfig.Outcome o = store.config().run(sc, args,
+                ArenaWavesRule.wavesOf(WorldRulesService.current()), battlesOn, source.hasPermission(2));
+        if (o.refused()) {
+            source.sendFailure(net.minecraft.network.chat.Component.literal(o.words()));
+            return 0;
+        }
+        if (o.changed()) {
+            store.set(o.config());
+            LOG.info("Moddy Arena: config: {} set {} ({})", source.getTextName(), args, sc);
+        }
+        source.sendSuccess(() -> net.minecraft.network.chat.Component.literal(o.words()), o.changed());
+        return 1;
     }
 
     /** {@code /moddy arena start}: starts a battle in an arena world; says why not anywhere else. */

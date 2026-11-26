@@ -1,0 +1,57 @@
+# Moddy Arena: a fighter knocked out in a battle comes back in the prep room even when his own respawn point is far
+# away (as a bed would be: here a point set by command, 300 blocks off), keeps his place in the battle and is taken
+# back in (before, he woke at his point and the battle counted him as having left: out for good with lives left).
+# The arena only moves that one respawn and saves nothing: his point is still his afterwards (Moddy-Worlds#60).
+# play-timeout: 600
+@intent a fighter whose respawn point is far from the arena comes back in the prep room when knocked out in a battle and stays in it, and his own respawn point is never changed
+@world flat seed=1
+@continue-on-fail
+
+@step arrive, with his respawn point far away
+@expect chat Welcome to Moddy Arena within 90s
+@wait 2s
+difficulty hard
+difficulty normal
+gamemode survival
+effect give @s minecraft:resistance 600 4 true
+# his respawn point: a stone pad high above the ground 300 blocks off (as a bed would be)
+forceload add 0 320 2 322
+@wait 2s
+fill 0 120 320 2 120 322 minecraft:stone
+spawnpoint @s 1 121 321
+@wait 1s
+
+@step knocked out in wave 1, back in the prep room with lives left, and taken back in
+moddy arena start
+@expect title Wave 1 of 5 within 20s
+@wait 1s
+kill @s
+@expect chat Knocked out! 2 lives left within 10s
+@wait 1s
+effect give @s minecraft:resistance 600 4 true
+@assert execute if entity @s[x=-4,y=63,z=17,dx=8,dy=3,dz=8]
+@expect actionbar Back into the arena in 1 within 10s
+@wait 2s
+@assert execute if entity @e[tag=moddyarena_wave]
+@assert execute unless entity @s[x=-50,y=-64,z=100,dx=100,dy=400,dz=400]
+@shot back-in-after-a-knock-out
+
+@step out of lives the battle is lost, and he watches from the prep room
+kill @s
+@expect chat Knocked out! 1 life left within 10s
+@wait 2s
+kill @s
+@expect chat no lives left within 10s
+@wait 1s
+@assert execute if entity @s[x=-4,y=63,z=17,dx=8,dy=3,dz=8]
+@expect chat The arena is tidy again within 30s
+
+@step after the battle his own respawn point is still his
+# the arena saved nothing: the point he set is kept, untouched by three knock-outs. (Where he wakes after the battle
+# is the core's rule for a world with bases: in the arena world every player's base is the place, so a respawn away
+# from it is sent home. In an arena built in another world it is his own point again.)
+@assert execute if data entity @s respawn{pos:[I;1,121,321]}
+@wait 2s
+kill @s
+@wait 3s
+@assert execute if data entity @s respawn{pos:[I;1,121,321]}

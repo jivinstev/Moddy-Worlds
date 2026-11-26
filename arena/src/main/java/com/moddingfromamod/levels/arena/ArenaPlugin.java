@@ -54,8 +54,35 @@ public final class ArenaPlugin implements ModdyPlugin {
         plugins.add(WorldRuleType.class, new ArenaWishesRule());
         plugins.add(WorldRuleType.class, new ArenaCreaturesRule());
         plugins.add(WorldRuleType.class, new ArenaLadderRule());
-        plugins.add(ChildBranch.class, () -> Commands.literal("arena")
-                .then(Commands.literal("start").executes(ctx -> ArenaModule.startCommand(ctx.getSource()))));
+        plugins.add(ChildBranch.class, ArenaPlugin::arenaBranch);
+    }
+
+    /**
+     * {@code /moddy arena}: {@code start}, and {@code config [<scope> [<key> [<value>|reset]]]} (Moddy-Worlds#59), where
+     * a scope is {@code global} (every arena) or an arena's name. Anyone may read the settings; the command itself
+     * refuses a change from anyone but an operator.
+     */
+    static com.mojang.brigadier.builder.LiteralArgumentBuilder<net.minecraft.commands.CommandSourceStack> arenaBranch() {
+        var word = com.mojang.brigadier.arguments.StringArgumentType.word();
+        return Commands.literal("arena")
+                .then(Commands.literal("start").executes(ctx -> ArenaModule.startCommand(ctx.getSource())))
+                .then(Commands.literal("config")
+                        .executes(ctx -> ArenaModule.configCommand(ctx.getSource(), null, java.util.List.of()))
+                        .then(Commands.argument("scope", word)
+                                .executes(ctx -> ArenaModule.configCommand(ctx.getSource(), arg(ctx, "scope"),
+                                        java.util.List.of()))
+                                .then(Commands.argument("key", word)
+                                        .executes(ctx -> ArenaModule.configCommand(ctx.getSource(), arg(ctx, "scope"),
+                                                java.util.List.of(arg(ctx, "key"))))
+                                        .then(Commands.argument("value", word)
+                                                .executes(ctx -> ArenaModule.configCommand(ctx.getSource(),
+                                                        arg(ctx, "scope"),
+                                                        java.util.List.of(arg(ctx, "key"), arg(ctx, "value"))))))));
+    }
+
+    private static String arg(com.mojang.brigadier.context.CommandContext<net.minecraft.commands.CommandSourceStack> ctx,
+                              String name) {
+        return com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, name);
     }
 
     /** True when the id names a living entity this game knows (one with attributes: every living entity has them). */

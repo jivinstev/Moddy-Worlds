@@ -136,6 +136,8 @@ final class ArenaBattle {
     private volatile int bossesBeaten;
     /** True from the button to the arena being ready again: the ladder is the battle's. */
     private volatile boolean ladderOn;
+    /** This battle's {@link ArenaRespawn#KEY} setting, read when it began. */
+    private boolean respawnInPrep = true;
     /** Where the ladder was when its step was last told (at the start of a break). */
     private int ladderTold;
     private long ticks;
@@ -162,6 +164,24 @@ final class ArenaBattle {
     }
 
     /** Whether an entity is in the place (the arena or its prep room) in the arena's world. */
+    /**
+     * Where a player the game is about to respawn at {@code to} in {@code toLevel} should come back instead
+     * (Moddy-Worlds#60): this place's prep room when he fought in the battle that is on and {@code to} is outside the
+     * place, else null (where the game would put him). Server thread.
+     */
+    int[] respawnAt(ServerPlayer p, boolean fromTheEnd, ServerLevel toLevel, double x, double y, double z) {
+        UUID id = p.getUUID();
+        boolean fought = fighters.containsKey(id) || told.contains(id);
+        boolean inPlace = toLevel == level() && place.keeps(x, y, z);
+        return ArenaRespawn.toPrepRoom(fromTheEnd, p.isSpectator(), match.phase() != ArenaMatch.Phase.IDLE, fought,
+                respawnInPrep, inPlace) ? place.arrival() : null;
+    }
+
+    /** The world the place stands in. */
+    ServerLevel placeLevel() {
+        return level();
+    }
+
     boolean inPlace(Entity e) {
         return e != null && e.level() == level() && place.keeps(e.getX(), e.getY(), e.getZ());
     }
@@ -201,7 +221,10 @@ final class ArenaBattle {
             return ArenaWords.nobody();
         }
         ArenaSettings settings = state.settings().within(base.limits());
-        ArenaRun waves = settings.run(base);
+        // the settings command's layers on the rules' timings (Moddy-Worlds#59), read now, once, for this battle
+        ArenaConfig config = server == null ? ArenaConfig.EMPTY : ArenaConfigStore.of(server).config();
+        ArenaRun waves = settings.run(config.apply(base, ArenaModule.ARENA_NAME));
+        respawnInPrep = config.value(ArenaConfig.key(ArenaRespawn.KEY), ArenaModule.ARENA_NAME, base) != 0;
         battleDifficulty = settings.difficulty();
         battleKey = ArenaChampions.Key.of(settings);
         match.start(waves);
