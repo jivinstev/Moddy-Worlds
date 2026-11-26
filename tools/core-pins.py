@@ -35,6 +35,19 @@ header saying so. Each world, and each branch, keeps its own pin.
                 core.lock is exactly what --write would write, and the pinned version satisfies the world's hand-kept
                 core_version_range (gradle.properties, a Maven range like [1.0.9,) ), and the workflow runs on the
                 branch .github/port-ci-branch names. Exit 1 otherwise, naming each.
+
+VERSION BRANCHES (neoforge-1.21.10 and up, carried up from neoforge-1.21.8 by MMVU's weekly round). The worlds' common
+minecraft_version <mc> picks .port/<mc>/branch.properties, MMVU's record of the branch:
+  * its `branch=` names the branch the workflows run on (else .github/port-ci-branch does, as on neoforge-1.21.8 and
+    main, where nothing here changes);
+  * when it holds the core's `port_jar.com.moddingfromamod\\:moddingfromamod=<asset URL> <sha256>` (and
+    `substitute.com.moddingfromamod\\:moddingfromamod=com.moddingfromamod:moddingfromamod:<version>`), written by MMVU's
+    `layer-deps.py resolve --port-release`, THAT is the pin: --write and --check take core.lock from it, not from the
+    workflows, and --check also holds each workflow's --dep-jar to it (else: run MMVU's fork-branches.py ci --target
+    <mc> --run). The version may be spelled <ver> or <ver>-mc<mc>; both are the core <ver> of tag
+    moddingfromamod-<ver>-mc<mc>.
+  * on such a branch (`branch=` or the `port_jar.` key) --set and --regenerate refuse, naming MMVU's re-pin instead:
+    the round re-pins every version branch itself, and this repository's `after_repin` (--write) follows it.
 """
 import argparse
 import hashlib
@@ -54,10 +67,79 @@ GROUP, ARTIFACT = "com.moddingfromamod", "moddingfromamod"
 GA = f"{GROUP}:{ARTIFACT}"
 KEYS = ("core_repo", "core_tag", "core_asset", "core_sha256")
 BRANCH_FILE = ".github/port-ci-branch"     # the one place naming the branch every world's Port CI runs on
+CORE_REPO = "jivinstev/ModdyTheWishWatch"
+PORT_JAR, SUBSTITUTE = f"port_jar.{GA}", f"substitute.{GA}"   # MMVU's version-branch pin of the core (layer-deps.py)
+PIN_URL = re.compile(r"https://github\.com/(?P<repo>[^/\s]+/[^/\s]+)/releases/download/(?P<tag>[^/\s]+)/(?P<asset>[^/\s]+)")
+
+
+def common_mc(root=ROOT):
+    """The worlds' one minecraft_version (each world's gradle.properties), or None when they have none or disagree."""
+    mcs = {read_props(pathlib.Path(root) / w / "gradle.properties").get("minecraft_version", "")
+           for w in worlds(root) if (pathlib.Path(root) / w / "gradle.properties").is_file()}
+    return mcs.pop() if len(mcs) == 1 and "" not in mcs else None
+
+
+def branch_props_file(root=ROOT):
+    mc = common_mc(root)
+    return pathlib.Path(root) / ".port" / mc / "branch.properties" if mc else None
+
+
+def branch_props(root=ROOT):
+    """MMVU's .port/<mc>/branch.properties for the worlds' Minecraft version ({} when there is none), keys unescaped
+    (`a\\:b` is `a:b`, as a properties file reads it)."""
+    f = branch_props_file(root)
+    if not f or not f.is_file():
+        return {}
+    return {k.replace("\\:", ":").replace("\\=", "="): v for k, v in read_props(f).items()}
+
+
+def is_version_branch(root=ROOT):
+    """A version branch: its branch.properties names its branch (`branch=`) or pins the core (`port_jar.`)."""
+    p = branch_props(root)
+    return "branch" in p or PORT_JAR in p
+
+
+def branch_pin(root=ROOT):
+    """The core pin branch.properties holds ({repo, tag, asset, sha256, group, artifact, version}), None when it holds
+    none, or a ValueError saying what is wrong with it."""
+    p = branch_props(root)
+    if PORT_JAR not in p:
+        return None
+    rel = branch_props_file(root).relative_to(root).as_posix()
+    parts = p[PORT_JAR].split()
+    m = PIN_URL.fullmatch(parts[0]) if parts else None
+    if len(parts) != 2 or not m or not re.fullmatch(r"[0-9a-f]{64}", parts[1]):
+        raise ValueError(f"{rel}: {PORT_JAR} is not `<release asset URL> <sha256>`: {p[PORT_JAR]!r}")
+    sub = p.get(SUBSTITUTE, "")
+    if not sub.startswith(GA + ":") or not sub[len(GA) + 1:]:
+        raise ValueError(f"{rel}: {SUBSTITUTE} must be {GA}:<version> beside {PORT_JAR}, got {sub!r}")
+    return {"repo": m["repo"], "tag": m["tag"], "asset": m["asset"], "sha256": parts[1], "group": GROUP,
+            "artifact": ARTIFACT, "version": sub[len(GA) + 1:]}
+
+
+def repin_commands(root=ROOT):
+    mc = common_mc(root) or "<mc>"
+    return (f"this is the version branch for Minecraft {mc} (.port/{mc}/branch.properties): its core is re-pinned by "
+            f"MMVU, not here: python3 tools/layer-deps.py resolve --repo <this checkout> --target {mc} --port-release "
+            f"{CORE_REPO}@<core tag>, then python3 tools/fork-branches.py ci --repo <the fork> --target {mc} --run, then "
+            f"python3 tools/core-pins.py --write (the fork's after_repin)")
+
+
+def plain_version(version, mc):
+    """The core version, whichever way it is spelled: <ver> or <ver>-mc<mc> are both <ver>."""
+    suf = f"-mc{mc}"
+    return version[:-len(suf)] if mc and version.endswith(suf) and len(version) > len(suf) else version
 
 
 def release_branch(root=ROOT):
-    """The branch every world's Port CI workflow runs on and releases from (.github/port-ci-branch, one line)."""
+    """The branch every world's Port CI workflow runs on and releases from: a version branch's `branch=` in its
+    .port/<mc>/branch.properties, else .github/port-ci-branch (one line)."""
+    vb = branch_props(root).get("branch")
+    if vb:
+        if not re.fullmatch(r"[\w.\-/]+", vb):
+            raise SystemExit(f"core-pins: {branch_props_file(root).relative_to(root).as_posix()} branch= must be one "
+                             f"branch name, got {vb!r}")
+        return vb
     f = pathlib.Path(root) / BRANCH_FILE
     b = f.read_text(encoding="utf-8").strip() if f.is_file() else ""
     if not re.fullmatch(r"[\w.\-/]+", b):
@@ -126,15 +208,20 @@ def version_of_tag(tag, mc):
     return tag[len(pre):-len(suf)] if tag.startswith(pre) and tag.endswith(suf) and len(tag) > len(pre) + len(suf) else None
 
 
-def header(world):
+def header(world, props_file=None):
+    if props_file:
+        return (f"# GENERATED by tools/core-pins.py --write from {props_file} (MMVU's version-branch pin of {GA}, "
+                f"{PORT_JAR}). Do not edit.\n"
+                f"# MMVU's weekly round re-pins it (layer-deps.py resolve --port-release, fork-branches.py ci --run),"
+                f" then runs tools/core-pins.py --write\n")
     return (f"# GENERATED by tools/core-pins.py --write from .github/workflows/port-ci-{world}.yml (Port CI's --dep-jar pin"
             f" of {GA}). Do not edit.\n"
             f"# Change the pin with: python3 tools/core-pins.py --set {world} <core tag>   (then commit the workflow and"
             f" this file)\n")
 
 
-def lock_text(world, pin):
-    return header(world) + "".join(f"{k}={pin[k[5:]]}\n" for k in KEYS)
+def lock_text(world, pin, props_file=None):
+    return header(world, props_file) + "".join(f"{k}={pin[k[5:]]}\n" for k in KEYS)
 
 
 # ── Maven version ranges (core_version_range, as neoforge.mods.toml reads it) ──────────────────────────────────────────
@@ -181,28 +268,46 @@ def world_problems(world, root=ROOT):
         return None, [f"{world}: no {wf.relative_to(root).as_posix()} (generate it with MMVU's tools/port-ci.py --mod-dir "
                       f"{world} ... --dep-jar ..., or tools/core-pins.py --set {world} <core tag>)"]
     text = wf.read_text(encoding="utf-8")
-    try:
-        pin = core_pin(text)
-    except ValueError as e:
-        return None, [f"{world}: {wf.relative_to(root).as_posix()} {e}"]
     props = read_props(d / "gradle.properties")
+    mc = props.get("minecraft_version", "")
+    try:
+        bpin = branch_pin(root)
+    except ValueError as e:
+        return None, [f"{world}: {e}"]
     bad = []
+    try:
+        wpin = core_pin(text)
+    except ValueError as e:
+        if bpin is None:
+            return None, [f"{world}: {wf.relative_to(root).as_posix()} {e}"]
+        wpin = None
+        bad.append(f"{world}: {wf.relative_to(root).as_posix()} {e}: run MMVU's fork-branches.py ci --target {mc} --run")
+    pin, src = (bpin, branch_props_file(root).relative_to(root).as_posix()) if bpin else (wpin, None)
+    if bpin and wpin and ((wpin["repo"], wpin["tag"], wpin["asset"], wpin["sha256"], plain_version(wpin["version"], mc))
+                          != (bpin["repo"], bpin["tag"], bpin["asset"], bpin["sha256"], plain_version(bpin["version"], mc))):
+        bad.append(f"{world}: {wf.name}'s --dep-jar pins {wpin['tag']}/{wpin['asset']} {wpin['sha256']} "
+                   f"({GA}:{wpin['version']}), not {src}'s {bpin['tag']}/{bpin['asset']} {bpin['sha256']} "
+                   f"({GA}:{bpin['version']}): run MMVU's fork-branches.py ci --target {mc} --run")
     want_branch = release_branch(root)
     if workflow_branch(text) != want_branch:
-        bad.append(f"{world}: {wf.name} runs on {workflow_branch(text)!r}, but {BRANCH_FILE} names {want_branch!r}: "
-                   f"run tools/core-pins.py --regenerate {world}")
-    mc = props.get("minecraft_version", "")
-    if version_of_tag(pin["tag"], mc) != pin["version"]:
+        if is_version_branch(root):
+            bad.append(f"{world}: {wf.name} runs on {workflow_branch(text)!r}, but {branch_props_file(root).relative_to(root).as_posix()} "
+                       f"names {want_branch!r}: run MMVU's fork-branches.py ci --target {mc} --run")
+        else:
+            bad.append(f"{world}: {wf.name} runs on {workflow_branch(text)!r}, but {BRANCH_FILE} names {want_branch!r}: "
+                       f"run tools/core-pins.py --regenerate {world}")
+    if version_of_tag(pin["tag"], mc) != plain_version(pin["version"], mc):
         bad.append(f"{world}: the workflow pins {GA}:{pin['version']} from release {pin['tag']}, which is not the core "
                    f"{pin['version']} for Minecraft {mc} (shared/level.gradle reads the version from the tag)")
     rng = props.get("core_version_range", "")
-    if not in_range(pin["version"], rng):
+    if not in_range(plain_version(pin["version"], mc), rng):
         bad.append(f"{world}: the pinned core {pin['version']} is outside its core_version_range {rng or '(none)'} "
                    f"({world}/gradle.properties)")
-    want = lock_text(world, pin)
+    want = lock_text(world, pin, src)
     have = (d / "core.lock").read_text(encoding="utf-8") if (d / "core.lock").is_file() else ""
     if have.replace("\r\n", "\n") != want:
-        bad.append(f"{world}: core.lock is not its workflow's pin: run tools/core-pins.py --write")
+        bad.append(f"{world}: core.lock is not {src + chr(39) + 's' if src else 'its workflow' + chr(39) + 's'} pin: run "
+                   f"tools/core-pins.py --write")
     return want, bad
 
 
@@ -217,7 +322,9 @@ def run_check(root=ROOT, out=sys.stdout, err=sys.stderr):
     for b in bad:
         print(f"core-pins: {b}", file=err)
     if not bad:
-        print(f"core-pins: {', '.join(ws)}: core.lock matches each workflow's pin, within core_version_range", file=out)
+        src = (f"{branch_props_file(root).relative_to(root).as_posix()}'s pin, as each workflow's --dep-jar does"
+               if branch_pin(root) else "each workflow's pin")
+        print(f"core-pins: {', '.join(ws)}: core.lock matches {src}, within core_version_range", file=out)
     return 1 if bad else 0
 
 
@@ -236,9 +343,13 @@ def run_write(root=ROOT, only=None, out=sys.stdout, err=sys.stderr):
                 f.write(want)
             print(f"core-pins: wrote {w}/core.lock", file=out)
         for b in bad:
-            if "core.lock is not" not in b and BRANCH_FILE not in b:
-                print(f"core-pins: {b}", file=err)
-                rc = 1
+            if "core.lock is not" in b or BRANCH_FILE in b or "runs on" in b:
+                continue
+            if b.endswith(" --run"):       # a version branch's workflow not yet rendered with the new pin: --check's
+                print(f"core-pins: note: {b}", file=err)      # (MMVU's after_repin may run before fork-branches.py ci)
+                continue
+            print(f"core-pins: {b}", file=err)
+            rc = 1
     return rc
 
 
@@ -329,7 +440,13 @@ def targets_of(target, root):
     return ws
 
 
+def refuse_on_version_branch(what, root=ROOT):
+    if is_version_branch(root):
+        raise SystemExit(f"core-pins: {what} refused: {repin_commands(root)}")
+
+
 def run_regenerate(target, mmvu=None, root=ROOT):
+    refuse_on_version_branch("--regenerate", root)
     tool = mmvu_dir(mmvu) / "tools" / "port-ci.py"
     ws = targets_of(target, root)
     for w in ws:
@@ -345,6 +462,7 @@ def run_regenerate(target, mmvu=None, root=ROOT):
 
 
 def run_set(target, tag, mmvu=None, root=ROOT, get=_get):
+    refuse_on_version_branch("--set", root)
     ws = targets_of(target, root)
     tool = mmvu_dir(mmvu) / "tools" / "port-ci.py"
     resolved = {}
@@ -472,8 +590,111 @@ def self_test():
         assert regenerate_args(rec, "x", "neoforge-1.21.8", keep_kit=False)[-6:] == [
             "--gatec", "launch", "--dep-jar", "x", "--branch", "neoforge-1.21.8"], "no kit: port-ci.py picks the newest"
         quiet.close()
+    self_test_version_branch()
     print("core-pins: self-test passed")
     return 0
+
+
+def self_test_version_branch():
+    """A version branch (neoforge-1.21.10): the pin and the branch come from .port/1.21.10/branch.properties."""
+    mc, sha, sha2 = "1.21.10", "6" * 64, "7" * 64
+    tag, asset = f"moddingfromamod-1.0.9-mc{mc}", f"moddingfromamod-1.0.9+mc{mc}.jar"
+    url = f"https://github.com/{CORE_REPO}/releases/download/{tag}/{asset}"
+
+    def wf(ver="1.0.9", s=sha, branch=f"neoforge-{mc}"):
+        return (f'on:\n  push:\n    branches: ["{branch}"]\njobs:\n  gates:\n    steps:\n'
+                + _step(CORE_REPO, tag, asset, ver, s))
+
+    def props(ver="1.0.9", branch=True, pin=True):
+        return ("# version branch\nminecraft_version=1.21.10\n" + (f"branch=neoforge-{mc}\n" if branch else "")
+                + "parent=neoforge-1.21.8\n# BEGIN layer-deps (tools/layer-deps.py)\n"
+                + (f"substitute.com.moddingfromamod\\:moddingfromamod={GA}:{ver}\n"
+                   f"port_jar.com.moddingfromamod\\:moddingfromamod={url} {sha}\n" if pin else "")
+                + "# END layer-deps\n")
+
+    quiet = open(os.devnull, "w", encoding="utf-8")
+    with tempfile.TemporaryDirectory() as d:
+        root = pathlib.Path(d)
+        (root / WORKFLOWS).mkdir(parents=True)
+        (root / BRANCH_FILE).write_text("neoforge-1.21.8\n", encoding="utf-8")     # main's file, merged up unchanged
+        (root / ".port" / mc).mkdir(parents=True)
+        bp = root / ".port" / mc / "branch.properties"
+        bp.write_text(props(), encoding="utf-8")
+        for w in ("arena", "isle"):
+            (root / w).mkdir()
+            (root / w / "gradle.properties").write_text(f"minecraft_version={mc}\ncore_version_range=[1.0.9,)\n",
+                                                        encoding="utf-8")
+            (root / w / "core.lock").write_text("core_repo=old\n", encoding="utf-8")
+            workflow_of(w, root).write_text(wf(), encoding="utf-8")
+        assert common_mc(root) == mc and is_version_branch(root)
+        # the branch comes from branch=, not .github/port-ci-branch
+        assert release_branch(root) == f"neoforge-{mc}"
+        # the pin comes from branch.properties (keys unescaped)
+        assert branch_pin(root) == {"repo": CORE_REPO, "tag": tag, "asset": asset, "sha256": sha, "group": GROUP,
+                                    "artifact": ARTIFACT, "version": "1.0.9"}, branch_pin(root)
+        assert run_check(root, quiet, quiet) == 1, "a hand-written core.lock disagrees"
+        assert run_write(root, out=quiet, err=quiet) == 0 and run_check(root, quiet, quiet) == 0
+        text = (root / "arena" / "core.lock").read_text(encoding="utf-8")
+        assert f"from .port/{mc}/branch.properties" in text and "--set" not in text, text
+        assert read_props(root / "arena" / "core.lock") == {"core_repo": CORE_REPO, "core_tag": tag,
+                                                            "core_asset": asset, "core_sha256": sha}
+        # both spellings of the version, in branch.properties and in the workflows
+        for bver, wver in (("1.0.9-mc1.21.10", "1.0.9"), ("1.0.9", "1.0.9-mc1.21.10"),
+                           ("1.0.9-mc1.21.10", "1.0.9-mc1.21.10")):
+            bp.write_text(props(bver), encoding="utf-8")
+            for w in ("arena", "isle"):
+                workflow_of(w, root).write_text(wf(wver), encoding="utf-8")
+            assert run_check(root, quiet, quiet) == 0, (bver, wver, world_problems("arena", root)[1])
+        bp.write_text(props(), encoding="utf-8")
+        for w in ("arena", "isle"):
+            workflow_of(w, root).write_text(wf(), encoding="utf-8")
+        # a workflow whose --dep-jar is not the branch's pin: --check names fork-branches.py ci; --write still writes
+        # core.lock from branch.properties (after_repin may run before the workflows are rendered)
+        workflow_of("isle", root).write_text(wf(s=sha2), encoding="utf-8")
+        bad = world_problems("isle", root)[1]
+        assert any(f"fork-branches.py ci --target {mc} --run" in b for b in bad), bad
+        assert run_check(root, quiet, quiet) == 1
+        bp.write_text(props().replace(sha, sha2), encoding="utf-8")       # the re-pin lands in branch.properties
+        assert run_write(root, out=quiet, err=quiet) == 0
+        assert read_props(root / "isle" / "core.lock")["core_sha256"] == sha2
+        assert any("fork-branches.py ci" in b for b in world_problems("arena", root)[1]), "arena's is still the old one"
+        workflow_of("arena", root).write_text(wf(s=sha2), encoding="utf-8")
+        assert run_check(root, quiet, quiet) == 0
+        # a workflow on another branch than branch= names
+        workflow_of("arena", root).write_text(wf(s=sha2, branch="neoforge-1.21.8"), encoding="utf-8")
+        assert any("runs on 'neoforge-1.21.8'" in b and "fork-branches.py ci" in b
+                   for b in world_problems("arena", root)[1]), world_problems("arena", root)[1]
+        workflow_of("arena", root).write_text(wf(s=sha2), encoding="utf-8")
+        # a version outside the range, or not the tag's, is still caught
+        bp.write_text(props("1.0.8").replace(sha, sha2), encoding="utf-8")
+        assert any("not the core 1.0.8" in b for b in world_problems("arena", root)[1])
+        bp.write_text(props().replace(sha, sha2).replace(f"{url} {sha2}", url), encoding="utf-8")
+        assert any("is not `<release asset URL> <sha256>`" in b for b in world_problems("arena", root)[1])
+        # --set and --regenerate refuse, naming MMVU's re-pin
+        for call in (lambda: run_set("all", tag, root=root), lambda: run_regenerate("all", root=root)):
+            try:
+                call()
+                raise AssertionError("a version branch must refuse --set/--regenerate")
+            except SystemExit as e:
+                assert "layer-deps.py resolve" in str(e) and f"fork-branches.py ci --repo <the fork> --target {mc} --run" \
+                    in str(e) and f"--port-release {CORE_REPO}@<core tag>" in str(e), e
+        # branch= alone (no core pin yet): the branch is the version branch's, the pin the workflow's, and it refuses
+        bp.write_text(props(pin=False), encoding="utf-8")
+        assert branch_pin(root) is None and release_branch(root) == f"neoforge-{mc}" and is_version_branch(root)
+        assert run_write(root, out=quiet, err=quiet) == 0 and run_check(root, quiet, quiet) == 0
+        assert "--set arena" in (root / "arena" / "core.lock").read_text(encoding="utf-8")
+        try:
+            run_set("arena", tag, root=root)
+            raise AssertionError("branch= alone is a version branch")
+        except SystemExit as e:
+            assert "layer-deps.py resolve" in str(e)
+        # the port pin alone (no branch=) is a version branch too; the branch then comes from .github/port-ci-branch
+        bp.write_text(props(branch=False), encoding="utf-8")
+        assert is_version_branch(root) and release_branch(root) == "neoforge-1.21.8"
+        # no branch.properties for the worlds' version: the base branch's behaviour, unchanged
+        bp.unlink()
+        assert not is_version_branch(root) and branch_pin(root) is None and release_branch(root) == "neoforge-1.21.8"
+    quiet.close()
 
 
 def main(argv=None):

@@ -189,7 +189,7 @@ class ArenaGuideTest {
         for (String word : List.of("prep room", "gate", "bars", "how many monsters", "DIFFICULTY", "WAVES", "START BATTLE", "READY",
                 "BOSS WAVE", "lives", "break", "mends", "Builder", "Apprentice", "Magician", "My wishes",
                 "Add to hotbar", "rests", "each wave", "Fighter", "Healer", "Tank", "Champions", "WISH LADDER",
-                "hearts", "events open")) {
+                "hearts", "events open", "gold spot", "real item")) {
             assertTrue(all.contains(word), "the guide says nothing about " + word);
         }
     }

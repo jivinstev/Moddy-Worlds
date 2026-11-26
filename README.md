@@ -37,7 +37,7 @@ shared/                  written once, compiled into EVERY world's jar (never a 
   level.gradle           the build every world shares
   src/main/java          the shared level code: Level, LevelPacks, LevelWorldType, LevelClaim
   resources/META-INF     neoforge.mods.toml (templated) and the World Type listener's access transformer
-tools/                   new-world.sh (the scaffold), play.sh, fetch-core.sh, core-pins.py, check-level-jar.py (incl. the stock-client rule),
+tools/                   new-world.sh (the scaffold), play.sh, cloud-setup.sh (a fresh machine, ready to play), fetch-core.sh, core-pins.py, check-level-jar.py (incl. the stock-client rule),
                          changed-worlds.py, the leak, secret and licence scans and the git hooks
 ```
 
@@ -68,6 +68,13 @@ this checkout, or `--jars DIR`) beside the pinned core in a throwaway instance, 
 in a real client (macOS, or headless Linux under Xvfb). `tools/play.sh isle,arena --build` installs several worlds in
 one instance and runs the root `playtests/` instead (worlds side by side: each keeps its own mode). See
 `tools/play.sh --help`.
+
+**On a fresh Linux machine** (a cloud coding session, a new VM): `tools/cloud-setup.sh <world>` first. It installs the
+display packages, makes Gradle's downloads reliable behind a proxy, clones MMVU beside this repository, builds the
+world and makes the test instance, with Minecraft's files fetched in parallel. Measured on a fresh 4-CPU cloud machine: ready to play
+in 5 minutes, against about 55 without it (the installer alone fetches Minecraft's files one at a time). It uses no GitHub Actions
+minutes and no GitHub storage, and each step says what still works when it cannot run (`tools/cloud-setup.sh --help`).
+[CLAUDE.md](CLAUDE.md) says when a separate machine is worth it.
 
 ## Build
 
@@ -182,7 +189,7 @@ The rules a world jar keeps:
    keys).
 4. Give it its Port CI workflow, the same command as the other worlds' with its own folder (MMVU's
    `tools/port-ci.py --repo . --mod-dir <world> --also-path shared --also-path gradle --also-path gradlew --dep-jar
-   <the same core pin as another world's workflow> --branch <.github/port-ci-branch> --gatec … --no-commit`;
+   <the same core pin as another world's workflow> --branch <.github/port-ci-branch> --gatec launch,spawn --no-commit`;
    `port-ci.py args --file .github/workflows/port-ci-arena.yml` prints the arena's), then
    `python3 tools/core-pins.py --write` (its `core.lock` from that workflow) and `--check`. Commit both. Add a row
    to the table above.
@@ -254,21 +261,37 @@ GitHub login (or MMVU's `tools/port-ci.py promote --fork jivinstev/Moddy-Worlds 
 ### What the gates are
 
 MMVU gates a Minecraft 1.21.8 build through its version-branch route, which `.port/1.21.8/branch.properties` turns on
-(its 1.21.1 harness renamed for 1.21.8, as the core repository does). For a NeoGradle (`net.neoforged.gradle.userdev`)
-build like ours MMVU does not inject its own harness, so Gate A runs the world's own unit tests and Gate B boots a
-headless server with the core and the world and runs the one default GameTest; data the server rejects fails it. Each
-runs twice, `full` and `minimal`. There is **no Gate C** (`--gatec none`): MMVU's client verdict comes from its
-injected harness, which a NeoGradle build does not get. **Worlds' real-client coverage stays with its playtests
-(`tools/play.sh`, above) until MMVU #298 lands**; run them before promoting.
+(its 1.21.1 harness renamed for 1.21.8, as the core repository does). From Port CI kit v87 on, MMVU wires its gate
+harness into a NeoGradle (`net.neoforged.gradle.userdev`) build like ours, for the run only (nothing is committed here).
+Each world's workflow then proves, twice (`full` and `minimal`; a world has no optional mods, so the two run the same
+mods):
+
+- **Gate A**: the world's own unit tests plus MMVU's harness tests (mixin-config integrity), the data and payload
+  audits.
+- **Gate B**: a headless server with the core and the world loads every data file (a rejected one fails it) and runs
+  the harness's GameTests.
+- **Gate C** (`--gatec launch,spawn`): a real client under Xvfb and Mesa's software OpenGL with the core and the world
+  reaches the title screen (`launch`), then creates a single-player world and ticks it for 200 ticks without a crash
+  (`spawn`). A world adds no creatures of its own, so `spawn` summons none ("0 entity types"); what it proves is the
+  world loading and ticking in a real client.
+
+None of this plays a world: a level's preset, its waves or its rules are not reached. **Gameplay stays with the
+playtests, run by hand with `tools/play.sh` (above)**, before promoting; they never run in Actions.
 
 A `dep_override` run (Port CI's dependent gate: a candidate core) never releases. The pre-releases made before Port CI
 (by the Release workflow, up to arena and isle 0.1.6) stay valid and installable as they are.
 
 **The Release workflow (`.github/workflows/release.yml`) is kept for now**, from `neoforge-1.21.8` only, for what Port
 CI does not do: `SHA256SUMS` beside the jar, release notes that name the core release and sha256 to install beside it,
-the World Type and `<world>/RELEASE-NOTES.md`, the jar's leak scan with the private forbidden list, and notes that do
-not call a world an "unofficial port" (Port CI's wording until a world has a publish config saying it is this
-repository's own, `.github/port-publish-<world>.json`). Use it only for a version Port CI has not released.
+the World Type and `<world>/RELEASE-NOTES.md`, and the jar's leak scan with the private forbidden list. Use it only for
+a version Port CI has not released.
+
+**Each world has a publish config saying it is this repository's own**, `.github/port-publish-<world>.json` (`"own_mod":
+true`, written by MMVU's `tools/port-publish.py setup --mod <world> --mod-dir <world> --branch neoforge-1.21.8` with no
+`--permission`), and its store page text, `.github/port-publish/description-<world>.md`. Port CI reads it when the
+workflow is rendered, so its pre-release notes say "**<mod id>** for NeoForge ..., built by this repository's own CI",
+never "Unofficial port". `"auto": false`: promoting a release does not upload it to Modrinth or CurseForge; no store
+project exists yet, and the listings stay with the owner.
 
 ## Bumping the core pin
 
@@ -296,6 +319,15 @@ and every pinned core inside its world's range. `--write` rewrites every `core.l
 **The branch the worlds release from is named once**, in `.github/port-ci-branch` (`neoforge-1.21.8`). `--set` and
 `python3 tools/core-pins.py --regenerate <world|all>` (each workflow regenerated with its pin unchanged and the newest
 Port CI kit) pass it to `port-ci.py` as `--branch`, and `--check` fails a workflow on any other branch.
+
+**On a version branch** (`neoforge-1.21.10` and up) the pin is MMVU's, not `--set`'s. `core-pins.py` reads the worlds'
+common `minecraft_version` and its `.port/<mc>/branch.properties`: its `branch=` is the branch the workflows run on (in
+place of `.github/port-ci-branch`), and when it holds `port_jar.com.moddingfromamod\:moddingfromamod=<asset URL>
+<sha256>` (with `substitute.com.moddingfromamod\:moddingfromamod=...:<version>`, written by the round's `layer-deps.py
+resolve --port-release`), `--write` and `--check` take each `core.lock` from it, and `--check` also holds each workflow's
+`--dep-jar` to it (else: run MMVU's `fork-branches.py ci --target <mc> --run`). The version may be `<ver>` or
+`<ver>-mc<mc>`; `shared/level.gradle` looks in mavenLocal under both. There `--set` and `--regenerate` refuse and name
+the re-pin commands; `--write` is the round's `after_repin`. On `main` and `neoforge-1.21.8` nothing changes.
 
 MMVU's `real-install` reads the same step to find the jars a world needs beside it: a line holding `curl` and the
 release URL, with the jar's sha256 on the next line.

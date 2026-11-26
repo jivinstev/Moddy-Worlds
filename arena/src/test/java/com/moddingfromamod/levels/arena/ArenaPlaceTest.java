@@ -243,17 +243,20 @@ class ArenaPlaceTest {
     void upgradesAreGivenOnceInOrder() {
         assertEquals(ArenaPlace.UPGRADES, ArenaPlace.pendingUpgrades(java.util.Set.of()));
         assertEquals(List.of(ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS, ArenaPlace.UPGRADE_CONTROL_PANEL,
-                ArenaPlace.UPGRADE_CHAMPIONS, ArenaPlace.UPGRADE_BASE, ArenaPlace.UPGRADE_LADDER_BOARD),
+                ArenaPlace.UPGRADE_CHAMPIONS, ArenaPlace.UPGRADE_BASE, ArenaPlace.UPGRADE_LADDER_BOARD,
+                ArenaPlace.UPGRADE_HAND_OVER_SPOT),
                 ArenaPlace.pendingUpgrades(java.util.Set.of(ArenaPlace.UPGRADE_START_CONTROL)));
         assertEquals(List.of(ArenaPlace.UPGRADE_CONTROL_PANEL, ArenaPlace.UPGRADE_CHAMPIONS,
-                ArenaPlace.UPGRADE_BASE, ArenaPlace.UPGRADE_LADDER_BOARD),
+                ArenaPlace.UPGRADE_BASE, ArenaPlace.UPGRADE_LADDER_BOARD, ArenaPlace.UPGRADE_HAND_OVER_SPOT),
                 ArenaPlace.pendingUpgrades(java.util.Set.of(ArenaPlace.UPGRADE_START_CONTROL,
                         ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS)), "a world from before the panel gets it once");
-        assertEquals(List.of(ArenaPlace.UPGRADE_CHAMPIONS, ArenaPlace.UPGRADE_BASE, ArenaPlace.UPGRADE_LADDER_BOARD),
+        assertEquals(List.of(ArenaPlace.UPGRADE_CHAMPIONS, ArenaPlace.UPGRADE_BASE, ArenaPlace.UPGRADE_LADDER_BOARD,
+                ArenaPlace.UPGRADE_HAND_OVER_SPOT),
                 ArenaPlace.pendingUpgrades(java.util.Set.of(ArenaPlace.UPGRADE_START_CONTROL,
                         ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS, ArenaPlace.UPGRADE_CONTROL_PANEL)),
                 "a world from before the Champions board gets it once");
-        assertEquals(List.of(ArenaPlace.UPGRADE_LADDER_BOARD), ArenaPlace.pendingUpgrades(java.util.Set.of(
+        assertEquals(List.of(ArenaPlace.UPGRADE_LADDER_BOARD, ArenaPlace.UPGRADE_HAND_OVER_SPOT),
+                ArenaPlace.pendingUpgrades(java.util.Set.of(
                 ArenaPlace.UPGRADE_START_CONTROL, ArenaPlace.UPGRADE_NO_NATURAL_SPAWNS,
                 ArenaPlace.UPGRADE_CONTROL_PANEL, ArenaPlace.UPGRADE_CHAMPIONS, ArenaPlace.UPGRADE_BASE)),
                 "a world from before the wish ladder board gets it once");
@@ -280,7 +283,8 @@ class ArenaPlaceTest {
                 for (int y = box.y0(); y <= box.y1(); y++) {
                     Kind k = r.kindAt(x, y, z);
                     Kind built = m.get(List.of(x, y, z));
-                    if (built == Kind.PREP_FLOOR || built == Kind.PREP_ROOF || built == Kind.PREP_LIGHT) {
+                    if (built == Kind.PREP_FLOOR || built == Kind.PREP_ROOF || built == Kind.PREP_LIGHT
+                            || built == Kind.HAND_OVER_SPOT) {
                         assertEquals(null, k, "the prep room's block at " + x + "," + y + "," + z + " is left");
                     } else if (built != null) {
                         assertEquals(built, k, "put back as built at " + x + "," + y + "," + z);
