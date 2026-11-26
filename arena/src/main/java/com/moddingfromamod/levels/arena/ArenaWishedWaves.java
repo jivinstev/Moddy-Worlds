@@ -140,8 +140,10 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
         if (r >= 4) {
             powers.add("power:leaps");
         }
+        // "wild", not "": an empty temperament is friendly, and a champion must be on the monsters' side
+        // (Moddy-Worlds#61: a friendly Shadow Rock golem, a guardian by its body, killed Rumble the Ravager)
         return new BuilderSpec(BuilderSpec.CURRENT, BuilderSpec.Kind.CREATURE, "preset:bodies/" + body, scheme, 2, powers,
-                "", 1, "", title(scheme) + " " + title(body), Map.of("strength", r >= 3 ? "3" : "2"));
+                "wild", 1, "", title(scheme) + " " + title(body), Map.of("strength", r >= 3 ? "3" : "2"));
     }
 
     /** Every monster of {@code wave}, in spawn order, with {@code cleared} waves cleared and this battle's picks. */
