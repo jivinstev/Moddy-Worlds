@@ -155,7 +155,7 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
             for (int k = 0; k < g.count(); k++, i++) {
                 boolean champion = i % championEvery == 0;
                 BuilderSpec design = null;
-                if (champion && designs < maxDesignChampions) {
+                if (champion && designs < maxDesignChampions && !bodies.isEmpty()) {
                     design = champion(r, picks);
                     designs++;
                 }
@@ -171,6 +171,9 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
 
     /** The designs a battle at {@code cleared} waves cleared will want next: this rung's and the next one's. */
     public List<BuilderSpec> designsAhead(int cleared, Picks picks) {
+        if (bodies.isEmpty()) {
+            return List.of();
+        }
         int r = rungOf(cleared);
         return r + 1 < ramp.size() ? List.of(champion(r, picks), champion(r + 1, picks)) : List.of(champion(r, picks));
     }
@@ -212,8 +215,10 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
     }
 
     /**
-     * Every key optional (a missing one is {@link #DEFAULT}'s). {@code knownBody} and {@code knownScheme} say what the
-     * installed Builder has, so a typo refuses the file rather than making nothing.
+     * Every key optional (a missing one is {@link #DEFAULT}'s). A body or scheme the installed Builder does not have is
+     * KEPT here, never a reason to refuse the file: a core that renames or drops one must not stop a world's rules from
+     * loading. {@link #usable} leaves such a name out, with a warning, when a battle starts. {@code knownBody} and
+     * {@code knownScheme} are kept for that.
      */
     public static Parsed parse(Map<String, ?> params, java.util.function.Predicate<String> knownBody,
                                java.util.function.Predicate<String> knownScheme) {
@@ -245,8 +250,8 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
             n[i] = v;
         }
         String scheme = p.get("scheme") == null ? d.scheme() : String.valueOf(p.get("scheme"));
-        if (!knownScheme.test(scheme)) {
-            return fail("scheme '" + scheme + "' is no Builder colour scheme");
+        if (scheme.isBlank() || !scheme.matches("[a-z0-9_]{1,40}")) {
+            return fail("scheme must be a Builder colour scheme's id (shadow, …), not '" + scheme + "'");
         }
         List<Rung> ramp = d.ramp();
         if (p.get("ramp") != null) {
@@ -312,8 +317,8 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
                 List<String> names2 = new ArrayList<>();
                 for (Object b : pick) {
                     String body = String.valueOf(b);
-                    if (!knownBody.test(body)) {
-                        return fail("'" + body + "' is no Builder body (rock_golem, ogre, yeti, raptor, t_rex, …)");
+                    if (!body.matches("[a-z0-9_]{1,40}")) {
+                        return fail("'" + body + "' is no Builder body's name (rock_golem, ogre, yeti, raptor, t_rex, …)");
                     }
                     names2.add(body);
                 }
@@ -324,6 +329,50 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
             }
         }
         return new Parsed(new ArenaWishedWaves(on, ramp, n[0], n[1], n[2], scheme, bodies, n[3], bossUncapped), null);
+    }
+
+    /** These wished waves with only what the installed Builder has, and a warning for each name left out. */
+    public record Usable(ArenaWishedWaves waves, List<String> skipped) {
+        public Usable {
+            skipped = List.copyOf(skipped);
+        }
+    }
+
+    /**
+     * What a battle can use of these wished waves with the installed Builder: a scheme it does not have falls back to
+     * {@link #DEFAULT}'s (or the Builder's own colours when that is gone too), a body it does not have is left out of
+     * its tier, and a tier left with none is dropped. With no body left, every champion is its stand-in (the wave's mob
+     * one rung up). Never refuses: a core upgrade that renames a body changes the champions, not whether there is a
+     * battle.
+     */
+    public Usable usable(java.util.function.Predicate<String> knownBody, java.util.function.Predicate<String> knownScheme) {
+        List<String> skipped = new ArrayList<>();
+        String s = scheme;
+        if (!knownScheme.test(s)) {
+            String instead = knownScheme.test(DEFAULT.scheme()) ? DEFAULT.scheme() : "";
+            skipped.add("scheme '" + s + "' is not in this Builder; " + (instead.isEmpty() ? "the Builder's own colours"
+                    : "'" + instead + "'") + " instead");
+            s = instead;
+        }
+        List<Bodies> kept = new ArrayList<>();
+        for (Bodies b : bodies) {
+            List<String> pick = new ArrayList<>();
+            for (String body : b.pick()) {
+                if (knownBody.test(body)) {
+                    pick.add(body);
+                } else {
+                    skipped.add("body '" + body + "' (after " + b.after() + ") is not in this Builder; left out");
+                }
+            }
+            if (!pick.isEmpty()) {
+                kept.add(new Bodies(kept.isEmpty() ? 0 : b.after(), pick));
+            }
+        }
+        if (kept.isEmpty() && !bodies.isEmpty()) {
+            skipped.add("no champion body is left; every champion is its stand-in");
+        }
+        return new Usable(new ArenaWishedWaves(on, ramp, championEvery, maxDesignChampions, maxFullPillars, s, kept,
+                championWaitSeconds, bossUncapped), skipped);
     }
 
     /** Back to the rule's own params (what the core stores and hands back). */

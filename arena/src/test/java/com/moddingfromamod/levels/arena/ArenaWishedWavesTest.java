@@ -69,8 +69,8 @@ class ArenaWishedWavesTest {
         assertFalse(parse(Map.of("ramp", List.of(Map.of("after", 0, "size", "big", "strength", 3),
                 Map.of("after", 2, "size", "huge", "strength", 2)))).ok(), "Huge at 2 hits weaker than Big at 3");
         assertFalse(parse(Map.of("ramp", List.of(Map.of("after", 1)))).ok(), "the first rung must be after 0");
-        assertFalse(parse(Map.of("bodies", List.of(Map.of("after", 0, "pick", List.of("unicorn_dragon"))))).ok());
-        assertFalse(parse(Map.of("scheme", "neon")).ok());
+        assertFalse(parse(Map.of("bodies", List.of(Map.of("after", 0, "pick", List.of("Not A Body!"))))).ok(),
+                "a name that cannot be a body's is a typo");
         assertFalse(parse(Map.of("championEvery", 1)).ok());
         ArenaWishedWaves.Parsed typo = parse(Map.of("champoinEvery", 4));
         assertFalse(typo.ok());
@@ -142,5 +142,29 @@ class ArenaWishedWavesTest {
                 System.setProperty("moddyarena.wishedWaves", was);
             }
         }
+    }
+
+    /** A body or scheme the installed Builder lacks never refuses the file: a battle leaves it out, with a warning. */
+    @Test
+    void anUnknownBodyOrSchemeIsSkippedNotRefused() {
+        ArenaWishedWaves.Parsed p = parse(Map.of("scheme", "neon", "bodies", List.of(
+                Map.of("after", 0, "pick", List.of("unicorn_dragon", "ogre")),
+                Map.of("after", 5, "pick", List.of("gone_body")),
+                Map.of("after", 10, "pick", List.of("yeti")))));
+        assertTrue(p.ok(), String.valueOf(p.problem()));
+        ArenaWishedWaves.Usable u = p.waves().usable(b -> List.of("ogre", "yeti").contains(b), s -> s.equals("shadow"));
+        assertEquals("shadow", u.waves().scheme(), "the default scheme instead");
+        assertEquals(List.of(new ArenaWishedWaves.Bodies(0, List.of("ogre")), new ArenaWishedWaves.Bodies(10,
+                List.of("yeti"))), u.waves().bodies());
+        assertEquals(3, u.skipped().size(), u.skipped().toString());
+        ArenaWishedWaves.Usable none = p.waves().usable(b -> false, s -> false);
+        assertTrue(none.waves().bodies().isEmpty());
+        assertEquals("", none.waves().scheme(), "the Builder's own colours");
+        assertTrue(none.waves().designsAhead(0, none.waves().pick(new java.util.Random(1))).isEmpty());
+        ArenaWaves.Wave w = new ArenaWaves.Wave(List.of(new ArenaWaves.Group("minecraft:husk", 8)));
+        for (ArenaWishedWaves.Plan plan : none.waves().plan(w, 6, none.waves().pick(new java.util.Random(1)))) {
+            assertTrue(plan.design() == null, "every champion is its stand-in");
+        }
+        assertEquals(D, D.usable(b -> true, s -> true).waves(), "nothing missing: unchanged");
     }
 }

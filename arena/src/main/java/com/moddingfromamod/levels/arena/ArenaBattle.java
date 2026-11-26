@@ -239,7 +239,12 @@ final class ArenaBattle {
         ladderReset(true);   // every battle starts at the ladder's first step
         // wished waves (Moddy-Worlds#55): this battle's rule and its champions, drawn now that its settings are locked
         // in, and the first designs made by the Builder during the countdown
-        wished = ArenaWishedWavesRule.of(com.moddingfromamod.world.WorldRulesService.current());
+        var usable = ArenaWishedWavesRule.of(com.moddingfromamod.world.WorldRulesService.current())
+                .usable(ArenaWishedWaves::builderBody, ArenaWishedWaves::builderScheme);
+        wished = usable.waves();
+        for (String w : usable.skipped()) {
+            LOG.warn("Moddy Arena: wished waves: {}", w);
+        }
         picks = wished.pick(new java.util.Random(level().random.nextLong()));
         designs.clear();
         held.clear();
@@ -1072,8 +1077,9 @@ final class ArenaBattle {
         long now = server.getTickCount();
         for (var it = held.iterator(); it.hasNext(); ) {
             Held h = it.next();
-            String species = designs.get(h.plan().design().toJson().toString());
-            if (species == null && now < h.deadline()) {
+            String key = h.plan().design().toJson().toString();
+            String species = designs.get(key);
+            if (species == null && now < h.deadline() && !unmade.contains(key)) {
                 continue;
             }
             it.remove();
@@ -1112,7 +1118,7 @@ final class ArenaBattle {
     private void wantDesigns(int cleared) {
         for (com.moddingfromamod.wishbuilder.BuilderSpec spec : wished.designsAhead(cleared, picks)) {
             String key = spec.toJson().toString();
-            if (designs.containsKey(key) || !designing.add(key)) {
+            if (designs.containsKey(key) || unmade.contains(key) || !designing.add(key)) {
                 continue;
             }
             designQueue.add(spec);
@@ -1121,12 +1127,29 @@ final class ArenaBattle {
     }
 
     /** Start the next queued design if none is being made. Server thread. */
+    /**
+     * The designs the Builder would not make this run of the game (refused, failed): not asked again, and their
+     * champions come as their stand-ins at once rather than after a wait.
+     */
+    private final java.util.Set<String> unmade = new java.util.HashSet<>();
+
+    /** The name a champion takes when the Builder's name sweep refuses the one the rules gave it. */
+    static final String SAFE_CHAMPION_NAME = "Champion";
+
     private void makeNextDesign() {
         if (makingKey != null || designQueue.isEmpty()) {
             return;
         }
         com.moddingfromamod.wishbuilder.BuilderSpec spec = designQueue.poll();
-        String key = spec.toJson().toString();
+        makeDesign(spec, spec.toJson().toString(), false);
+    }
+
+    /**
+     * One design made, kept under {@code key} (the spec the battle asked for). A make the core refuses (its name fails
+     * the child-name safety sweep) is asked once more under {@link #SAFE_CHAMPION_NAME}; one that still does not come
+     * is {@link #unmade}: its champions are their stand-ins, and no wave waits for it or breaks on it.
+     */
+    private void makeDesign(com.moddingfromamod.wishbuilder.BuilderSpec spec, String key, boolean renamed) {
         makingKey = key;
         long t0 = System.nanoTime();
         LOG.info("Moddy Arena: champions: the Builder makes {} ({}, {}); {} more queued", spec.name(), spec.from(),
@@ -1137,9 +1160,22 @@ final class ArenaBattle {
                     designing.remove(key);
                     boolean ok = err == null && r != null
                             && (r.outcome() == com.moddingfromamod.wishbuilder.BuilderMake.Outcome.MADE
-                            || r.outcome() == com.moddingfromamod.wishbuilder.BuilderMake.Outcome.PARTIAL);
+                            || r.outcome() == com.moddingfromamod.wishbuilder.BuilderMake.Outcome.PARTIAL)
+                            && r.madeId() != null && !r.madeId().isEmpty();
                     if (ok) {
                         designs.put(key, r.madeId());
+                    } else if (!renamed && r != null
+                            && r.outcome() == com.moddingfromamod.wishbuilder.BuilderMake.Outcome.REFUSED) {
+                        LOG.warn("Moddy Arena: champions: the Builder refused {} ({}); asked again as {}", spec.name(),
+                                r.detail(), SAFE_CHAMPION_NAME);
+                        makingKey = key;
+                        designing.add(key);
+                        makeDesign(new com.moddingfromamod.wishbuilder.BuilderSpec(spec.version(), spec.kind(),
+                                spec.from(), spec.scheme(), spec.size(), spec.powers(), spec.temper(), spec.count(),
+                                spec.at(), SAFE_CHAMPION_NAME, spec.opts()), key, true);
+                        return;
+                    } else if (r == null || r.outcome() != com.moddingfromamod.wishbuilder.BuilderMake.Outcome.BUSY) {
+                        unmade.add(key);
                     }
                     LOG.info("Moddy Arena: champions: {} {} in {} ms", spec.name(), ok ? "is ready (" + r.madeId() + ")"
                             : "could not be made: " + (err != null ? err.toString() : r == null ? "no result"
@@ -1178,7 +1214,8 @@ final class ArenaBattle {
                 waveMobs.add(m.getUUID());
             };
             String species = plan.design() == null ? null : designs.get(plan.design().toJson().toString());
-            if (plan.design() != null && species == null && wished.championWaitSeconds() > 0) {
+            boolean neverComes = plan.design() != null && unmade.contains(plan.design().toJson().toString());
+            if (plan.design() != null && species == null && !neverComes && wished.championWaitSeconds() > 0) {
                 // its design is still being made: it arrives last, as soon as it is (releaseChampions)
                 held.add(new Held(plan, s, limits, arrived, now + wished.championWaitSeconds() * 20L));
                 waiting++;
@@ -1213,8 +1250,9 @@ final class ArenaBattle {
         for (ServerPlayer p : level.players()) {
             players.add(new double[] {p.getX(), p.getZ()});
         }
-        int[] spot = ArenaSpawns.nearestPlayer(new int[] {0, 0}, players) >= ArenaSpawns.MIN_FROM_PLAYER
-                ? new int[] {0, 0} : ArenaSpawns.pick(place, players, 1, level.random.nextLong()).get(0);
+        int[] centre = {place.centreX(), place.centreZ()};      // the arena's middle, wherever the place stands
+        int[] spot = ArenaSpawns.nearestPlayer(centre, players) >= ArenaSpawns.MIN_FROM_PLAYER
+                ? centre : ArenaSpawns.pick(place, players, 1, level.random.nextLong()).get(0);
         try {
             com.moddingfromamod.world.WorldWishes.creature(level, ArenaMod.MODID, wished.mob(b.mob(), 0),
                     spot[0] + 0.5, place.floorY(), spot[1] + 0.5, wished.bossUncapped()
