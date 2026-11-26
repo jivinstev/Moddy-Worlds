@@ -53,7 +53,8 @@ teleport @s ~-400 ~ ~
 @step a Builder creature made in the prep room is a hotbar wish, and does not stand in the room
 moddy builder
 @expect screen Wish Builder within 10s
-@wait 1s
+# the first page's tiles are worked out in the background (🔒 "Getting this page ready…" until then)
+@wait 3s
 @click item "A creature"
 @expect screen Pick a body within 5s
 @wait 1s
@@ -68,6 +69,8 @@ moddy builder
 @wait 10t
 @click slot 22
 @expect screen /tune your/ within 5s
+# a page is drawn again once its tiles are judged; a click on the first drawing is lost (core)
+@wait 10t
 @click button "Make it!"
 @expect chat /is on your hotbar/ within 120s
 @wait 2s
@@ -78,7 +81,8 @@ teleport @s ~400 ~ ~
 @wait 2s
 moddy builder
 @expect screen Wish Builder within 10s
-@wait 1s
+# the first page's tiles are worked out in the background (🔒 "Getting this page ready…" until then)
+@wait 3s
 @click item "A creature"
 @expect screen Pick a body within 5s
 @wait 1s
@@ -93,6 +97,8 @@ moddy builder
 @wait 10t
 @click slot 22
 @expect screen /tune your/ within 5s
+# a page is drawn again once its tiles are judged; a click on the first drawing is lost (core)
+@wait 10t
 @click button "Make it!"
 @expect chat /is in your Wish Bag now/ within 120s
 @wait 1s
