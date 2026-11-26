@@ -73,7 +73,8 @@ public final class ArenaChampionsLayout {
 
     /** The board: the back wall's inside width, floor to roof. */
     public Box board() {
-        return new Box(-h(), place.floorY(), wallZ(), h(), top(), wallZ());
+        int cx = place.centreX();
+        return new Box(cx - h(), place.floorY(), wallZ(), cx + h(), top(), wallZ());
     }
 
     /** The board's blocks. */
@@ -91,7 +92,7 @@ public final class ArenaChampionsLayout {
      * width), as a world x: he faces south (+z), so his left is east (+x).
      */
     double x(double u) {
-        return h() + 1 - u;
+        return place.centreX() + h() + 1 - u;
     }
 
     /** The bottom of champion row {@code r} (1 to {@link ArenaChampions#SHOWN}). */
@@ -161,6 +162,7 @@ public final class ArenaChampionsLayout {
 
     /** The box round every line of words and face on the board, to find them in the world. */
     public Box wordsBox() {
-        return new Box(-h() - 1, place.floorY() - 1, wallZ() - 2, h() + 1, top() + 2, wallZ());
+        int cx = place.centreX();
+        return new Box(cx - h() - 1, place.floorY() - 1, wallZ() - 2, cx + h() + 1, top() + 2, wallZ());
     }
 }
