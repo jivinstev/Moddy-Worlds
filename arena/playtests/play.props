@@ -1,8 +1,3 @@
 # The properties tools/play.sh passes as moddingfromamod.<key> (beside world.id and world.rules), the way a server's
 # launcher switches the arena on in a world not made with its World Type: its module, named by worlds/arena.json.
 world.module=@manifest:module
-# These playtests prove the arena's base mechanics (exact wave tables, counts per difficulty, the gate, lives, boards),
-# so they run with wished waves off (ArenaWishedWaves.active, the A/B seam): wished waves change what a wave holds
-# (1 in 4 a shadow champion) and when it stands (2 s under pillars). Wished waves are proven, on, from start to a won
-# battle, by the repository-root playtests (playtests/2-wished-waves-to-a-win.playtest).
-arena.wishedWaves=false
