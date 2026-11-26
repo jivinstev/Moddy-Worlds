@@ -465,18 +465,19 @@ ladder starts again. Nothing is hidden: every wished creature has a battle role.
 - The Arena Guide's pages "Stronger wishes" and "The wish ladder" (their numbers are placeholders, below).
 
 **The default ladder** (`ArenaLadder.DEFAULT`, the rules file's `arena_ladder`), counted in waves cleared, first values
-guesses to be tuned by playing:
+guesses to be tuned by playing. The Builder's strength pick is never limited: a wish is never refused for being
+strong; what it makes is held by health, hits, reach and how long powers last, and comes back as steps open.
 
-| after waves cleared | health | hits | size | Builder size | strength | at once | items | power reach | powers last | opens |
-|---|---|---|---|---|---|---|---|---|---|---|
-| 0 (a battle's start, and prep) | 20 hearts | 2.5 hearts | x1.5 | 2 | 2 | 2 | 16 | 4 | 10 s | |
-| 2 | 30 | 3 | x1.75 | 2 | 2 | 2 | 24 | 5 | 15 s | |
-| 4 | 40 | 3.5 | x2 | 3 | 2 | 3 | 32 | 6 | 20 s | |
-| 5 (the first boss) | 60 | 4.5 | x2.5 | 3 | 3 | 4 | 48 | 8 | 30 s | events |
-| 8 | 80 | 6 | x3 | any | any | 5 | 64 | 10 | 40 s | |
-| 10 (the second boss) | 125 | 8 | x4 | any | any | 6 | any | 12 | 50 s | world rules |
-| 15 (the third boss) | 200 | 12 | x5 | any | any | 8 | any | 16 | 60 s | |
-| 20 (the fourth boss) | no limits | | | | | | | | | |
+| after waves cleared | health | hits | size | Builder size | at once | items | power reach | powers last | opens |
+|---|---|---|---|---|---|---|---|---|---|
+| 0 (a battle's start, and prep) | 20 hearts | 2.5 hearts | x1.5 | 2 | 2 | 16 | 4 | 10 s | |
+| 2 | 30 | 3 | x1.75 | 2 | 2 | 24 | 5 | 15 s | |
+| 4 | 40 | 3.5 | x2 | 3 | 3 | 32 | 6 | 20 s | |
+| 5 (the first boss) | 60 | 4.5 | x2.5 | 3 | 4 | 48 | 8 | 30 s | events |
+| 8 | 80 | 6 | x3 | any | 5 | 64 | 10 | 40 s | |
+| 10 (the second boss) | 125 | 8 | x4 | any | 6 | any | 12 | 50 s | world rules |
+| 15 (the third boss) | 200 | 12 | x5 | any | 8 | any | 16 | 60 s | |
+| 20 (the fourth boss) | no limits | | | | | | | | |
 
 Why: it starts modest (a zombie has 10 hearts; a stone sword hits for 2.5), and it rises twice before wave 5, so even
 the default five-wave battle, whose only boss is its last wave, meets that boss with stronger wishes than it started
