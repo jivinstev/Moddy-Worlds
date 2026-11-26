@@ -79,9 +79,9 @@ teleport @s 0.5 64 22.5 180 12
 @expect screen /Golem/ within 10s
 @click item "Add to hotbar"
 @expect chat On your hotbar, slot 5 within 10s
-# its strength comes back as steps open (said "at first" when that is all it is held by; "in this arena" when it
-# is also held in size, which nothing regrows)
-@expect chat /Golem will be .*weaker( at first| in this arena)\. It gets stronger as you clear waves/ within 5s
+# what holds it back comes back as steps open: "It grows" when it is held in size too, "It gets stronger" when only
+# in strength
+@expect chat /Golem will be .*weaker( at first| in this arena)\. (It grows|It gets stronger) as you clear waves/ within 5s
 @wait 1s
 @shot told-the-golem-is-held-back
 @key key.keyboard.escape
