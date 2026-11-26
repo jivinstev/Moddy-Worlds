@@ -257,7 +257,7 @@ final class ArenaBattle {
         // wished waves (Moddy-Worlds#55): this battle's rule and its champions, drawn now that its settings are locked
         // in, and the first designs made by the Builder during the countdown
         var usable = ArenaWishedWavesRule.of(ArenaModule.rules())
-                .usable(ArenaWishedWaves::builderBody, ArenaWishedWaves::builderScheme);
+                .usable(ArenaWishedWaves::builderBody);
         wished = usable.waves();
         // the settings command may turn wished waves on or off for this arena; unset, the rules file decides
         ArenaConfig.Effective wishedSetting = config.effective(ArenaWishedWaves.CONFIG_KEY, site, wished.on() ? 1 : 0);
@@ -276,7 +276,7 @@ final class ArenaBattle {
             designing.add(makingKey);   // still being made: it lands in this battle's designs if this battle wants it
         }
         if (wished.active()) {
-            LOG.info("Moddy Arena: champions: this battle's bodies are {} ({})", picks.perTier(), wished.scheme());
+            LOG.info("Moddy Arena: champions: this battle's bodies are {} ({})", picks.perTier(), wished.colours().isEmpty() ? "their own colours" : wished.palette());
             wantDesigns(0);
         }
         unranked.clear();

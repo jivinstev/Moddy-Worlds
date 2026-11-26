@@ -26,8 +26,7 @@ public final class ArenaWishedWavesRule implements WorldRuleType {
 
     @Override
     public Map<String, Object> params(JsonObject raw, String where, List<String> err) {
-        ArenaWishedWaves.Parsed p = ArenaWishedWaves.parse(ArenaWavesRule.plainMap(raw), ArenaWishedWaves::builderBody,
-                ArenaWishedWaves::builderScheme);
+        ArenaWishedWaves.Parsed p = ArenaWishedWaves.parse(ArenaWavesRule.plainMap(raw), ArenaWishedWaves::builderBody);
         if (!p.ok()) {
             err.add(where + ": " + KEY + " " + p.problem());
             return new LinkedHashMap<>();
@@ -41,8 +40,7 @@ public final class ArenaWishedWavesRule implements WorldRuleType {
         if (r == null) {
             return ArenaWishedWaves.DEFAULT;
         }
-        ArenaWishedWaves.Parsed p = ArenaWishedWaves.parse(r.params(), ArenaWishedWaves::builderBody,
-                ArenaWishedWaves::builderScheme);
+        ArenaWishedWaves.Parsed p = ArenaWishedWaves.parse(r.params(), ArenaWishedWaves::builderBody);
         return p.ok() ? p.waves() : ArenaWishedWaves.DEFAULT;
     }
 }

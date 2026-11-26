@@ -21,7 +21,7 @@ import com.moddingfromamod.wishbuilder.BuilderSpec;
  *   <li>the wave's mobs are Builder <b>real mobs</b> ({@code mob:minecraft:husk}) at the {@link #ramp}'s size,
  *       How strong and speed for how far the battle has climbed;</li>
  *   <li>one in {@link #championEvery} is a <b>champion</b>: a Builder <b>design</b>, a canned body in the
- *       {@link #scheme} with a monster's powers, made by the world at the battle's start and wished as copies. Which
+ *       {@link #palette}'s colours with a monster's powers, made by the world at the battle's start and wished as copies. Which
  *       body each tier of {@link #bodies} uses is drawn at random for each battle ({@link #pick}), so no two battles
  *       need look alike. A champion whose design is not made yet arrives last, up to {@link #championWaitSeconds}
  *       after its wave, as the wave's mob one rung up when it never is;</li>
@@ -32,12 +32,34 @@ import com.moddingfromamod.wishbuilder.BuilderSpec;
  * this point of the ladder, and never below the plain mob it stands in for. The wave COUNTS are the arena's.
  */
 public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, int maxDesignChampions,
-                               int maxFullPillars, String scheme, List<Bodies> bodies, int championWaitSeconds,
-                               boolean bossUncapped) {
+                               int maxFullPillars, String palette, Map<String, String> palettes, List<Bodies> bodies,
+                               int championWaitSeconds, boolean bossUncapped) {
 
     public ArenaWishedWaves {
         ramp = List.copyOf(ramp);
         bodies = List.copyOf(bodies);
+        palettes = java.util.Collections.unmodifiableMap(new LinkedHashMap<>(palettes));
+    }
+
+    /**
+     * The champions' colours: {@link #palette} names one of {@link #palettes}, each three {@code #RRGGBB} colours (main,
+     * accent, trim: the body's biggest, second and third colour), handed to the Builder inline (the core's
+     * {@code Schemes.PALETTE_OPT}): a world's colours are its own data, never a scheme in the core. Shadow is shipped.
+     */
+    public static final Map<String, String> SHIPPED_PALETTES = Map.of("shadow", "#16131A,#B3121B,#FF3B3B");
+
+    private static final java.util.regex.Pattern HEX3 =
+            java.util.regex.Pattern.compile("#[0-9A-Fa-f]{6}( *, *#[0-9A-Fa-f]{6}){2}");
+
+    /** Is {@code colours} three {@code #RRGGBB} colours, comma-separated? */
+    static boolean isPalette(String colours) {
+        return colours != null && HEX3.matcher(colours.strip()).matches();
+    }
+
+    /** The colours the champions are made in, or "" for each body's own ({@link #palette} unknown or bad). */
+    public String colours() {
+        String c = palettes.get(palette);
+        return isPalette(c) ? c.replace(" ", "") : "";
     }
 
     /** From {@code after} waves cleared: a real mob's Builder size id ("" its own), How strong ("" its own) and speed. */
@@ -64,7 +86,7 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
             new Rung(8, "6", "3", "3"),
             new Rung(10, "7", "3", "3"),
             new Rung(15, "8", "3", "3")),
-            4, 4, 8, "shadow", List.of(
+            4, 4, 8, "shadow", SHIPPED_PALETTES, List.of(
                     new Bodies(0, List.of("rock_golem", "ogre", "yeti")),
                     new Bodies(5, List.of("ogre", "yeti", "raptor", "rock_golem")),
                     new Bodies(10, List.of("t_rex", "raptor", "yeti"))),
@@ -107,8 +129,8 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
 
     /** These wished waves, switched on or off. */
     public ArenaWishedWaves withOn(boolean value) {
-        return new ArenaWishedWaves(value, ramp, championEvery, maxDesignChampions, maxFullPillars, scheme, bodies,
-                championWaitSeconds, bossUncapped);
+        return new ArenaWishedWaves(value, ramp, championEvery, maxDesignChampions, maxFullPillars, palette, palettes,
+                bodies, championWaitSeconds, bossUncapped);
     }
 
     /** The rung index for {@code cleared} waves cleared. */
@@ -134,7 +156,7 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
     }
 
     /**
-     * The champion's Builder design at rung {@code r} with this battle's {@code picks}: its tier's body in the scheme,
+     * The champion's Builder design at rung {@code r} with this battle's {@code picks}: its tier's body in the palette's colours,
      * hostile and glowing, fireproof from rung 3 and leaping from rung 4, How strong 3 from rung 3.
      */
     BuilderSpec champion(int r, Picks picks) {
@@ -156,8 +178,15 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
         }
         // "wild", not "": an empty temperament is friendly, and a champion must be on the monsters' side
         // (Moddy-Worlds#61: a friendly Shadow Rock golem, a guardian by its body, killed Rumble the Ravager)
-        return new BuilderSpec(BuilderSpec.CURRENT, BuilderSpec.Kind.CREATURE, "preset:bodies/" + body, scheme, 2, powers,
-                "wild", 1, "", title(scheme) + " " + title(body), Map.of("strength", r >= 3 ? "3" : "2"));
+        String colours = colours();
+        Map<String, String> opts = new LinkedHashMap<>();
+        opts.put("strength", r >= 3 ? "3" : "2");
+        if (!colours.isEmpty()) {
+            opts.put(com.moddingfromamod.wishbuilder.Schemes.PALETTE_OPT, colours);
+        }
+        String name = colours.isEmpty() ? title(body) : title(palette) + " " + title(body);
+        return new BuilderSpec(BuilderSpec.CURRENT, BuilderSpec.Kind.CREATURE, "preset:bodies/" + body, "", 2, powers,
+                "wild", 1, "", name, opts);
     }
 
     /** Every monster of {@code wave}, in spawn order, with {@code cleared} waves cleared and this battle's picks. */
@@ -197,7 +226,7 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
     // ── the rule's params ──────────────────────────────────────────────────────────────────────────────────────────
 
     public static final List<String> KEYS = List.of("on", "ramp", "championEvery", "maxDesignChampions",
-            "maxFullPillars", "scheme", "bodies", "championWaitSeconds", "bossUncapped");
+            "maxFullPillars", "palette", "palettes", "bodies", "championWaitSeconds", "bossUncapped");
 
     /** A size by its Builder word ("normal", "big", "huge", "giant", "colossal", …) or id ("4"…"8"). */
     static String sizeId(String word) {
@@ -231,13 +260,11 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
     }
 
     /**
-     * Every key optional (a missing one is {@link #DEFAULT}'s). A body or scheme the installed Builder does not have is
+     * Every key optional (a missing one is {@link #DEFAULT}'s). A body the installed Builder does not have, or a palette that is not three colours, is
      * KEPT here, never a reason to refuse the file: a core that renames or drops one must not stop a world's rules from
-     * loading. {@link #usable} leaves such a name out, with a warning, when a battle starts. {@code knownBody} and
-     * {@code knownScheme} are kept for that.
+     * loading. {@link #usable} leaves such a name out, with a warning, when a battle starts. {@code knownBody} is kept for that.
      */
-    public static Parsed parse(Map<String, ?> params, java.util.function.Predicate<String> knownBody,
-                               java.util.function.Predicate<String> knownScheme) {
+    public static Parsed parse(Map<String, ?> params, java.util.function.Predicate<String> knownBody) {
         Map<String, ?> p = params == null ? Map.of() : params;
         for (String key : p.keySet()) {
             if (!key.startsWith("_") && !KEYS.contains(key)) {
@@ -265,9 +292,22 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
             }
             n[i] = v;
         }
-        String scheme = p.get("scheme") == null ? d.scheme() : String.valueOf(p.get("scheme"));
-        if (scheme.isBlank() || !scheme.matches("[a-z0-9_]{1,40}")) {
-            return fail("scheme must be a Builder colour scheme's id (shadow, …), not '" + scheme + "'");
+        String palette = p.get("palette") == null ? d.palette() : String.valueOf(p.get("palette"));
+        if (!palette.matches("[a-z0-9_]{1,40}")) {
+            return fail("palette must be a palette's name (shadow, …), not '" + palette + "'");
+        }
+        Map<String, String> palettes = new LinkedHashMap<>(d.palettes());
+        if (p.get("palettes") != null) {
+            if (!(p.get("palettes") instanceof Map<?, ?> raw)) {
+                return fail("palettes must be {name: \"#RRGGBB,#RRGGBB,#RRGGBB\", …}, not " + p.get("palettes"));
+            }
+            for (var e : raw.entrySet()) {
+                String name = String.valueOf(e.getKey());
+                if (!name.matches("[a-z0-9_]{1,40}")) {
+                    return fail("a palette's name is lower-case letters, digits and _, not '" + name + "'");
+                }
+                palettes.put(name, String.valueOf(e.getValue()));   // checked by usable(): a bad one is skipped
+            }
         }
         List<Rung> ramp = d.ramp();
         if (p.get("ramp") != null) {
@@ -344,7 +384,8 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
                 return fail("the first bodies tier must be after 0");
             }
         }
-        return new Parsed(new ArenaWishedWaves(on, ramp, n[0], n[1], n[2], scheme, bodies, n[3], bossUncapped), null);
+        return new Parsed(new ArenaWishedWaves(on, ramp, n[0], n[1], n[2], palette, palettes, bodies, n[3], bossUncapped),
+                null);
     }
 
     /** These wished waves with only what the installed Builder has, and a warning for each name left out. */
@@ -355,20 +396,25 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
     }
 
     /**
-     * What a battle can use of these wished waves with the installed Builder: a scheme it does not have falls back to
-     * {@link #DEFAULT}'s (or the Builder's own colours when that is gone too), a body it does not have is left out of
+     * What a battle can use of these wished waves with the installed Builder: a palette that is not three colours is
+     * left out (a champion whose palette is missing keeps its body's own colours), a body it does not have is left out of
      * its tier, and a tier left with none is dropped. With no body left, every champion is its stand-in (the wave's mob
      * one rung up). Never refuses: a core upgrade that renames a body changes the champions, not whether there is a
      * battle.
      */
-    public Usable usable(java.util.function.Predicate<String> knownBody, java.util.function.Predicate<String> knownScheme) {
+    public Usable usable(java.util.function.Predicate<String> knownBody) {
         List<String> skipped = new ArrayList<>();
-        String s = scheme;
-        if (!knownScheme.test(s)) {
-            String instead = knownScheme.test(DEFAULT.scheme()) ? DEFAULT.scheme() : "";
-            skipped.add("scheme '" + s + "' is not in this Builder; " + (instead.isEmpty() ? "the Builder's own colours"
-                    : "'" + instead + "'") + " instead");
-            s = instead;
+        Map<String, String> good = new LinkedHashMap<>();
+        palettes.forEach((name, colours) -> {
+            if (isPalette(colours)) {
+                good.put(name, colours);
+            } else {
+                skipped.add("palette '" + name + "' is not three #RRGGBB colours (" + colours + "); left out");
+            }
+        });
+        if (!good.containsKey(palette)) {
+            skipped.add("palette '" + palette + "' is not one of " + good.keySet() + "; champions keep their bodies'"
+                    + " own colours");
         }
         List<Bodies> kept = new ArrayList<>();
         for (Bodies b : bodies) {
@@ -387,8 +433,8 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
         if (kept.isEmpty() && !bodies.isEmpty()) {
             skipped.add("no champion body is left; every champion is its stand-in");
         }
-        return new Usable(new ArenaWishedWaves(on, ramp, championEvery, maxDesignChampions, maxFullPillars, s, kept,
-                championWaitSeconds, bossUncapped), skipped);
+        return new Usable(new ArenaWishedWaves(on, ramp, championEvery, maxDesignChampions, maxFullPillars, palette, good,
+                kept, championWaitSeconds, bossUncapped), skipped);
     }
 
     /** Back to the rule's own params (what the core stores and hands back). */
@@ -414,7 +460,8 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
         out.put("championEvery", championEvery);
         out.put("maxDesignChampions", maxDesignChampions);
         out.put("maxFullPillars", maxFullPillars);
-        out.put("scheme", scheme);
+        out.put("palette", palette);
+        out.put("palettes", palettes);
         List<Object> b = new ArrayList<>();
         for (Bodies t : bodies) {
             b.add(Map.of("after", t.after(), "pick", t.pick()));
@@ -475,8 +522,4 @@ public record ArenaWishedWaves(boolean on, List<Rung> ramp, int championEvery, i
         return com.moddingfromamod.wishbuilder.Catalogue.presets().contains("bodies/" + name);
     }
 
-    /** Is {@code id} a Builder colour scheme? */
-    public static boolean builderScheme(String id) {
-        return com.moddingfromamod.wishbuilder.Schemes.byId(id) != null;
-    }
 }

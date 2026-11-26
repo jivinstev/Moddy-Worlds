@@ -26,7 +26,7 @@ class ArenaWishedWavesTest {
     private static final ArenaWishedWaves D = ArenaWishedWaves.DEFAULT;
 
     private static ArenaWishedWaves.Parsed parse(Map<String, ?> params) {
-        return ArenaWishedWaves.parse(params, ArenaWishedWaves::builderBody, ArenaWishedWaves::builderScheme);
+        return ArenaWishedWaves.parse(params, ArenaWishedWaves::builderBody);
     }
 
     private static ArenaWaves.Wave wave(int husks, int pillagers) {
@@ -65,7 +65,7 @@ class ArenaWishedWavesTest {
     }
 
     @Test
-    void aWeakerRungAnUnknownBodyOrSchemeOrKeyIsRefusedInWords() {
+    void aWeakerRungAMisspeltBodyOrAnUnknownKeyIsRefusedInWords() {
         assertFalse(parse(Map.of("ramp", List.of(Map.of("after", 0, "size", "big", "strength", 3),
                 Map.of("after", 2, "size", "huge", "strength", 2)))).ok(), "Huge at 2 hits weaker than Big at 3");
         assertFalse(parse(Map.of("ramp", List.of(Map.of("after", 1)))).ok(), "the first rung must be after 0");
@@ -93,11 +93,13 @@ class ArenaWishedWavesTest {
     }
 
     @Test
-    void championsAreSchemedBuilderDesignsTheWorldsListAllowsAndNoChildsDoes() {
+    void championsAreBuilderDesignsTheWorldsListAllowsAndNoChildsDoes() {
         ArenaWishedWaves.Picks picks = D.pick(new Random(1));
         for (int r = 0; r < D.ramp().size(); r++) {
             BuilderSpec c = D.champion(r, picks);
-            assertEquals(D.scheme(), c.scheme());
+            assertEquals("", c.scheme(), "no scheme in the core: the arena's colours go inline");
+            assertEquals("#16131A,#B3121B,#FF3B3B", c.opt(com.moddingfromamod.wishbuilder.Schemes.PALETTE_OPT));
+            assertTrue(c.name().startsWith("Shadow "), c.name());
             assertTrue(c.from().startsWith("preset:bodies/"), c.from());
             assertTrue(c.powers().contains("power:hostile") && c.powers().contains("power:glowing"));
             // Moddy-Worlds#61: "" lowers to friendly; a champion is on the monsters' side
@@ -146,27 +148,53 @@ class ArenaWishedWavesTest {
         }
     }
 
-    /** A body or scheme the installed Builder lacks never refuses the file: a battle leaves it out, with a warning. */
+    /** A body the installed Builder lacks never refuses the file: a battle leaves it out, with a warning. */
     @Test
-    void anUnknownBodyOrSchemeIsSkippedNotRefused() {
-        ArenaWishedWaves.Parsed p = parse(Map.of("scheme", "neon", "bodies", List.of(
+    void anUnknownBodyIsSkippedNotRefused() {
+        ArenaWishedWaves.Parsed p = parse(Map.of("bodies", List.of(
                 Map.of("after", 0, "pick", List.of("unicorn_dragon", "ogre")),
                 Map.of("after", 5, "pick", List.of("gone_body")),
                 Map.of("after", 10, "pick", List.of("yeti")))));
         assertTrue(p.ok(), String.valueOf(p.problem()));
-        ArenaWishedWaves.Usable u = p.waves().usable(b -> List.of("ogre", "yeti").contains(b), s -> s.equals("shadow"));
-        assertEquals("shadow", u.waves().scheme(), "the default scheme instead");
+        ArenaWishedWaves.Usable u = p.waves().usable(b -> List.of("ogre", "yeti").contains(b));
         assertEquals(List.of(new ArenaWishedWaves.Bodies(0, List.of("ogre")), new ArenaWishedWaves.Bodies(10,
                 List.of("yeti"))), u.waves().bodies());
-        assertEquals(3, u.skipped().size(), u.skipped().toString());
-        ArenaWishedWaves.Usable none = p.waves().usable(b -> false, s -> false);
+        assertEquals(2, u.skipped().size(), u.skipped().toString());
+        ArenaWishedWaves.Usable none = p.waves().usable(b -> false);
         assertTrue(none.waves().bodies().isEmpty());
-        assertEquals("", none.waves().scheme(), "the Builder's own colours");
         assertTrue(none.waves().designsAhead(0, none.waves().pick(new java.util.Random(1))).isEmpty());
         ArenaWaves.Wave w = new ArenaWaves.Wave(List.of(new ArenaWaves.Group("minecraft:husk", 8)));
         for (ArenaWishedWaves.Plan plan : none.waves().plan(w, 6, none.waves().pick(new java.util.Random(1)))) {
             assertTrue(plan.design() == null, "every champion is its stand-in");
         }
-        assertEquals(D, D.usable(b -> true, s -> true).waves(), "nothing missing: unchanged");
+        assertEquals(D, D.usable(b -> true).waves(), "nothing missing: unchanged");
+    }
+
+    /** Champion colours are the arena's data: a palette by name, three hex colours each; a bad one is skipped. */
+    @Test
+    void palettesAreDataAndABadOneIsSkipped() {
+        ArenaWishedWaves.Parsed p = parse(Map.of("palette", "ember", "palettes", Map.of(
+                "ember", "#401000, #FF6A00,#FFD000", "broken", "red,green,blue")));
+        assertTrue(p.ok(), String.valueOf(p.problem()));
+        assertTrue(p.waves().palettes().containsKey("shadow"), "the shipped palette stays beside a server's own");
+        ArenaWishedWaves.Usable u = p.waves().usable(b -> true);
+        assertEquals("#401000,#FF6A00,#FFD000", u.waves().colours());
+        assertFalse(u.waves().palettes().containsKey("broken"));
+        assertEquals(1, u.skipped().size(), u.skipped().toString());
+        BuilderSpec c = u.waves().champion(0, u.waves().pick(new Random(1)));
+        assertEquals("#401000,#FF6A00,#FFD000", c.opt(com.moddingfromamod.wishbuilder.Schemes.PALETTE_OPT));
+        assertTrue(c.name().startsWith("Ember "), c.name());
+        assertNotNull(com.moddingfromamod.wishbuilder.Schemes.parsePalette(
+                c.opt(com.moddingfromamod.wishbuilder.Schemes.PALETTE_OPT)), "the core reads the arena's palette");
+        // the named palette is the broken one: champions keep their bodies' own colours, and say so
+        ArenaWishedWaves.Usable bad = parse(Map.of("palette", "broken", "palettes", Map.of("broken", "#12345,#000000,#000000")))
+                .waves().usable(b -> true);
+        assertEquals("", bad.waves().colours());
+        assertEquals(2, bad.skipped().size(), bad.skipped().toString());
+        BuilderSpec own = bad.waves().champion(0, bad.waves().pick(new Random(1)));
+        assertEquals("", own.opt(com.moddingfromamod.wishbuilder.Schemes.PALETTE_OPT));
+        assertFalse(own.name().startsWith("Broken"), own.name());
+        assertFalse(parse(Map.of("palettes", List.of("#000000"))).ok(), "palettes is a map");
+        assertFalse(parse(Map.of("palette", "Not A Name")).ok());
     }
 }
