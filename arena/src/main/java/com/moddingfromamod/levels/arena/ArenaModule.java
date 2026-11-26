@@ -364,7 +364,22 @@ public final class ArenaModule implements WorldModule {
 
     /** The unlock ladder in force: the world's {@code arena_ladder} rule, or the default. */
     static ArenaLadder ladder() {
-        return ArenaLadderRule.ladderOf(WorldRulesService.current());
+        return ArenaLadderRule.ladderOf(rules());
+    }
+
+    /**
+     * The rules an arena reads its own rule types from: the world's, when they carry the arena's (an arena world, or a
+     * server that names a rules file with them), else this jar's own (Moddy-Worlds#58). A world the arena is not, with
+     * an arena built in it by {@code /moddy arena create}, has none of {@code arena_waves} and friends in its rules,
+     * so its arenas run on the arena's shipped ones.
+     */
+    static WorldRules rules() {
+        WorldRules world = WorldRulesService.current();
+        if (world != null && world.first(ArenaWavesRule.KEY) != null) {
+            return world;
+        }
+        WorldRules own = bundledWorldRules();
+        return own != null ? own : world;
     }
 
     @Override
@@ -508,7 +523,13 @@ public final class ArenaModule implements WorldModule {
     static WorldRules bundledWorldRules() {
         WorldRules r = bundledParsed;
         if (r == null) {
-            r = parse(bundledRules());
+            // parsed as the arena's own (its "world": "arena"), whatever world it runs in: an Isle world is "isle"
+            String text = bundledRules();
+            WorldRules.Parsed p = text == null ? null : WorldRules.parse(text, ID);
+            r = p != null && p.ok() ? p.rules() : null;
+            if (p != null && !p.ok()) {
+                LOG.warn("Moddy Arena: the arena's own rules were refused: {}", p.errors());
+            }
             bundledParsed = r;
         }
         return r;

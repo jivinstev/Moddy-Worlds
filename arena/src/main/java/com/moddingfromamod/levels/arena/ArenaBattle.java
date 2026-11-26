@@ -254,7 +254,7 @@ final class ArenaBattle {
         ladderReset(true);   // every battle starts at the ladder's first step
         // wished waves (Moddy-Worlds#55): this battle's rule and its champions, drawn now that its settings are locked
         // in, and the first designs made by the Builder during the countdown
-        var usable = ArenaWishedWavesRule.of(com.moddingfromamod.world.WorldRulesService.current())
+        var usable = ArenaWishedWavesRule.of(ArenaModule.rules())
                 .usable(ArenaWishedWaves::builderBody, ArenaWishedWaves::builderScheme);
         wished = usable.waves();
         for (String w : usable.skipped()) {
@@ -278,7 +278,7 @@ final class ArenaBattle {
         com.moddingfromamod.world.WorldWishes.cancelAll(wishModule);   // pillars still rising: called off
         held.clear();
         ready.clear();
-        roles.battleStarted(ArenaCreaturesRule.creaturesOf(com.moddingfromamod.world.WorldRulesService.current()));
+        roles.battleStarted(ArenaCreaturesRule.creaturesOf(ArenaModule.rules()));
         LOG.info("Moddy Arena: battle: COUNTDOWN, started by {}: {} waves, the first in {} s (wave size {}, difficulty"
                 + " {}; the first wave {} mobs; boss waves {}; {} lives)", by, ArenaWords.wavesValue(waves.count()),
                 waves.countdownSeconds(), waves.waveSize(), settings.difficulty().word(), waves.size(1),
@@ -352,7 +352,7 @@ final class ArenaBattle {
         }
         board.refresh(level, match, ArenaBattle::baseWaves, ev != null);
         if (ev != null || ticks % 10 == 0) {
-            ArenaLadder ladder = ArenaLadderRule.ladderOf(com.moddingfromamod.world.WorldRulesService.current());
+            ArenaLadder ladder = ArenaLadderRule.ladderOf(ArenaModule.rules());
             ladderBoard.refresh(level, ArenaWords.ladderBoard(ladder, ladderOn, reached(ladder)));
         }
         ArenaWaves rules = baseWaves();
@@ -735,7 +735,7 @@ final class ArenaBattle {
                     continue;
                 }
                 if (ladder == null) {
-                    ladder = ArenaLadderRule.ladderOf(com.moddingfromamod.world.WorldRulesService.current());
+                    ladder = ArenaLadderRule.ladderOf(ArenaModule.rules());
                 }
                 tellPin(p, e.getKey(), e.getValue(), ladder);
             }
@@ -1212,7 +1212,7 @@ final class ArenaBattle {
             players.add(new double[] {p.getX(), p.getZ()});
         }
         List<int[]> spots = ArenaSpawns.pick(place, players, wave.size(), level.random.nextLong());
-        ArenaLadder ladder = ArenaLadderRule.ladderOf(com.moddingfromamod.world.WorldRulesService.current());
+        ArenaLadder ladder = ArenaLadderRule.ladderOf(ArenaModule.rules());
         int cleared = reached(ladder);
         wantDesigns(cleared);
         var limits = com.moddingfromamod.world.WorldWishes.Limits.of(ladder.limits(cleared));
@@ -1273,7 +1273,7 @@ final class ArenaBattle {
                     spot[0] + 0.5, place.floorY(), spot[1] + 0.5, wished.bossUncapped()
                             ? com.moddingfromamod.world.WorldWishes.Limits.UNCAPPED
                             : com.moddingfromamod.world.WorldWishes.Limits.of(ArenaLadderRule.ladderOf(
-                                    com.moddingfromamod.world.WorldRulesService.current()).limits(reached())),
+                                    ArenaModule.rules()).limits(reached())),
                     false, m -> {
                         markWave(m);
                         bossStats(m, b, difficultyHealth);
@@ -1329,7 +1329,7 @@ final class ArenaBattle {
 
     /** Where the battle is on the ladder in force now (0 outside a battle). Any thread. */
     int reached() {
-        return reached(ArenaLadderRule.ladderOf(com.moddingfromamod.world.WorldRulesService.current()));
+        return reached(ArenaLadderRule.ladderOf(ArenaModule.rules()));
     }
 
     /** The ladder back at its first step: a battle starting ({@code on}), or the arena ready again after one. */
@@ -1369,7 +1369,7 @@ final class ArenaBattle {
      * again at once ({@link #refitWished}).
      */
     private void ladderUp() {
-        ArenaLadder ladder = ArenaLadderRule.ladderOf(com.moddingfromamod.world.WorldRulesService.current());
+        ArenaLadder ladder = ArenaLadderRule.ladderOf(ArenaModule.rules());
         int now = reached(ladder);
         ArenaLadder.Rise rise = ladder.rise(ladderTold, now);
         int was = ladderTold;
@@ -1457,7 +1457,7 @@ final class ArenaBattle {
 
     /** The wave table the world's rules name now (the panel's settings are applied on top), or null. */
     private static ArenaWaves baseWaves() {
-        return ArenaWavesRule.wavesOf(com.moddingfromamod.world.WorldRulesService.current());
+        return ArenaWavesRule.wavesOf(ArenaModule.rules());
     }
 
     /** How many of the wave's mobs are left; one that has left the place is removed and counts as cleared. */

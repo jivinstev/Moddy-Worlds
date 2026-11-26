@@ -291,7 +291,7 @@ public final class ArenaSites extends SavedData {
             return fail(src, "Arenas are built in the Overworld.");
         }
         String name = ArenaSiteRules.name(rawName);
-        ArenaPlace sized = ArenaRule.placeOf(com.moddingfromamod.world.WorldRulesService.current());
+        ArenaPlace sized = ArenaRule.placeOf(ArenaModule.rules());
         // he stands where a player arrives: in the prep room, facing the arena
         int[] a0 = sized.arrival();
         ArenaPlace place = sized.at(p.getBlockX() - (a0[0] - sized.centreX()), p.getBlockZ() - (a0[2] - sized.centreZ()))
@@ -501,7 +501,7 @@ public final class ArenaSites extends SavedData {
     }
 
     private static ArenaWaves baseWaves() {
-        return ArenaWavesRule.wavesOf(com.moddingfromamod.world.WorldRulesService.current());
+        return ArenaWavesRule.wavesOf(ArenaModule.rules());
     }
 
     private static int fail(CommandSourceStack src, String why) {

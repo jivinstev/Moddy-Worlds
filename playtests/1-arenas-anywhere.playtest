@@ -7,9 +7,11 @@
 # play-timeout: 600
 @intent arenas built by command in a plain world, two of them each with its own battle; the config's layers reach a battle's start; a change during that arena's battle is refused while the other arena still changes
 @world flat seed=4
+@continue-on-fail
 
 @step build the arena north where he stands
 @wait 3s
+difficulty hard
 difficulty normal
 gamemode survival
 effect give @s minecraft:saturation 600 0 true
@@ -40,8 +42,10 @@ moddy arena config global countdownSeconds 9
 @expect chat /countdownSeconds for all arenas is now 9 seconds/ within 10s
 moddy arena config south countdownSeconds 12
 @expect chat /countdownSeconds for south is now 12 seconds/ within 10s
-moddy arena config south
-@expect chat /countdownSeconds = 12 seconds  \(from this arena/ within 10s
+moddy arena config south countdownSeconds
+@expect chat /countdownSeconds for south is 12 seconds \(from this arena\)/ within 10s
+moddy arena config south breatherSeconds
+@expect chat /breatherSeconds for south is [0-9]+ seconds \(from the rules file\)/ within 10s
 
 @step south's battle starts with its own countdown, and its settings are locked while it is on
 moddy arena start south
