@@ -74,7 +74,7 @@ moddy builder
 @click button "Make it!"
 @expect chat /is on your hotbar/ within 120s
 @wait 2s
-@assert execute unless entity @e[tag=wishmob]
+@assert execute unless entity @e[tag=wishmob,tag=!moddy_world_wished]
 
 @step outside every arena, a new Builder creature stands where he aimed, and is in his Wish Bag too (core #189)
 teleport @s ~400 ~ ~
@@ -102,4 +102,4 @@ moddy builder
 @click button "Make it!"
 @expect chat /is in your Wish Bag now/ within 120s
 @wait 1s
-@assert execute if entity @e[tag=wishmob]
+@assert execute if entity @e[tag=wishmob,tag=!moddy_world_wished]

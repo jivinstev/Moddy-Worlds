@@ -109,7 +109,7 @@ moddy builder
 @assert execute if items entity @s hotbar.2 minecraft:paper
 # the copy on the spot is gone (it was only shown), and no creature stands anywhere
 @assert execute unless entity @e[type=minecraft:item,tag=moddyarena_handover]
-@assert execute unless entity @e[tag=wishmob]
+@assert execute unless entity @e[tag=wishmob,tag=!moddy_world_wished]
 # nothing was given twice: no other hotbar wish, no item lying about
 @assert execute unless items entity @s hotbar.3 *
 @assert execute unless entity @e[type=minecraft:item]
@@ -170,7 +170,7 @@ moddy apprentice a cat
 @expect actionbar /is ready! Slot 5\. Use it in the arena\./ within 120s
 @wait 5t
 @assert execute if items entity @s hotbar.4 minecraft:paper
-@assert execute unless entity @e[tag=wishmob]
+@assert execute unless entity @e[tag=wishmob,tag=!moddy_world_wished]
 @shot apprentice-cat
 
 @step an Apprentice sword made in prep is the real sword
@@ -195,10 +195,10 @@ moddy apprentice a cat
 @click slot 0
 @expect chat /is ready/ within 120s
 @wait 2s
-@assert execute if entity @e[tag=wishmob,x=-15,y=60,z=-15,dx=30,dy=20,dz=30]
+@assert execute if entity @e[tag=wishmob,tag=!moddy_world_wished,x=-15,y=60,z=-15,dx=30,dy=20,dz=30]
 @assert execute unless items entity @s hotbar.6 *
 @shot landed-in-the-arena
-kill @e[tag=wishmob]
+kill @e[tag=wishmob,tag=!moddy_world_wished]
 
 @step with the hotbar full, it goes to his Wish Bag and the line says so
 execute unless items entity @s hotbar.2 * run item replace entity @s hotbar.2 with minecraft:dirt
@@ -216,7 +216,7 @@ moddy apprentice a cat
 @wait 10t
 @click slot 0
 @expect actionbar /Your hotbar is full, so it is in your Wish Bag\./ within 120s
-@assert execute unless entity @e[tag=wishmob]
+@assert execute unless entity @e[tag=wishmob,tag=!moddy_world_wished]
 @shot hotbar-full
 
 @step in a battle a fire of the kept creature costs one of the wave's hotbar wishes
@@ -236,5 +236,5 @@ teleport @s 2.5 64 18.5 180 0
 @expect bossbar Your wishes this wave: 4 of 5 within 10s
 @expect chat /is ready/ within 90s
 @wait 2s
-@assert execute if entity @e[tag=wishmob]
+@assert execute if entity @e[tag=wishmob,tag=!moddy_world_wished]
 @shot fired-in-the-battle

@@ -67,7 +67,7 @@ moddy apprentice a rock golem
 @click slot 0
 @expect chat /Golem is ready/ within 90s
 @wait 2s
-kill @e[tag=wishmob]
+kill @e[tag=wishmob,tag=!moddy_world_wished]
 teleport @s 0.5 64 22.5 180 12
 @key key.hotbar.1
 @key key.use
