@@ -2,7 +2,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # play.sh — play a world locally, in a REAL Minecraft client, on the PUBLIC core alone.
 #
-#   tools/play.sh WORLD [--tag TAG | --jars DIR | --build] [--only NAME] [--video] [--mmvu DIR] [--no-install]
+#   tools/play.sh WORLD [--tag TAG | --jars DIR | --build] [--only NAME] [--video] [--mmvu DIR] [--no-install | --install-only]
 #   tools/play.sh isle --build                 # this checkout's Isle jar beside the pinned core, every playtest
 #   tools/play.sh isle,arena --build           # SEVERAL worlds in one instance: playtests/ at the repository root
 #
@@ -45,7 +45,7 @@ MULTI=0; [ "${#WORLDS[@]}" -gt 1 ] && MULTI=1
 MC="$(prop minecraft_version "$HERE/gradle.properties")"
 MODID="$(prop mod_id "$HERE/gradle.properties")"
 GH_REPO="${PLAY_REPO:-jivinstev/moddy-worlds}"
-TAG=""; JARS=""; ONLY=""; VIDEO=""; INSTALL=1; BUILD=0
+TAG=""; JARS=""; ONLY=""; VIDEO=""; INSTALL=1; BUILD=0; INSTALL_ONLY=0
 MMVU="${MMVU:-$(cd "$REPO/.." && pwd)/mc-mod-version-upgrade}"
 WORK="${PLAY_WORK:-$HOME/.mmvu/$(printf '%s' "$WORLDS_ARG" | tr ',' '+')-play}"
 
@@ -58,6 +58,7 @@ while [ $# -gt 0 ]; do
         --video) VIDEO="--video"; shift ;;
         --mmvu) MMVU="${2:-}"; shift 2 ;;
         --no-install) INSTALL=0; shift ;;
+        --install-only) INSTALL_ONLY=1; shift ;;
         *) die "unknown argument '$1' (see --help)" ;;
     esac
 done
@@ -66,7 +67,7 @@ done
 if [ "$(uname)" = Linux ] && [ -z "${DISPLAY:-}" ] && [ -z "${PLAY_XVFB:-}" ]; then
     command -v xvfb-run >/dev/null || die "no DISPLAY and no xvfb-run (apt-get install -y xvfb mesa-utils libgl1-mesa-dri)"
     PLAY_XVFB=1 exec xvfb-run -a -s "-screen 0 1280x720x24" "$0" "$WORLDS_ARG" ${TAG:+--tag "$TAG"} ${JARS:+--jars "$JARS"} \
-        $([ "$BUILD" = 1 ] && echo --build) ${ONLY:+--only "$ONLY"} $VIDEO --mmvu "$MMVU" $([ "$INSTALL" = 0 ] && echo --no-install)
+        $([ "$BUILD" = 1 ] && echo --build) ${ONLY:+--only "$ONLY"} $VIDEO --mmvu "$MMVU" $([ "$INSTALL" = 0 ] && echo --no-install) $([ "$INSTALL_ONLY" = 1 ] && echo --install-only)
 fi
 
 command -v python3 >/dev/null || die "needs python3"
@@ -189,10 +190,20 @@ COMMON=(--mc "$MC" "${JAR_ARGS[@]}" --neoforge "$MC=$NEO" --with-carrier --label
 [ -n "${CARRIER_DIR:-}" ] && COMMON+=(--carrier-dir "$CARRIER_DIR")
 if [ "$INSTALL" = 1 ]; then
     "${RI[@]}" plan "${COMMON[@]}" || die "real-install could not plan the instance"
+    # Minecraft's own files, in PARALLEL, before the install: real-install.py fetches the ~4,300 of a first install one
+    # at a time (measured: 35-40 min on a fresh machine), MMVU's ensure-vanilla.py the same sha1-checked files in about
+    # half a minute. Best effort: whatever it could not fetch, real-install fetches below. PLAY_PREFETCH=off skips it.
+    MCDIR="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("minecraft_dir",""))' "$WORK/ri/plan.json" 2>/dev/null)"
+    if [ "${PLAY_PREFETCH:-on}" != off ] && [ -n "$MCDIR" ] && [ -f "$MMVU/tools/ensure-vanilla.py" ] && mkdir -p "$MCDIR" 2>/dev/null; then
+        say "Minecraft $MC files, fetched in parallel into $MCDIR"
+        python3 "$MMVU/tools/ensure-vanilla.py" "$MC" --dir "$MCDIR" --jobs "${PLAY_PREFETCH_JOBS:-16}" \
+            || say "the parallel fetch did not finish; the installer fetches the rest one at a time"
+    fi
     "${RI[@]}" install "${COMMON[@]}" || die "real-install could not make the instance"
 fi
 PLAN="$WORK/ri/plan.json"
 [ -f "$PLAN" ] || die "no plan at $PLAN (run without --no-install once)"
+[ "$INSTALL_ONLY" = 1 ] && { say "the instance is ready ($WORK/ri); --install-only, so no playtest was run"; exit 0; }
 
 # ── 3. the playtests ──
 FAILED=0; RAN=0

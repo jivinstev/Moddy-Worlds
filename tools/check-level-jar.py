@@ -2,7 +2,12 @@
 """check-level-jar.py — a level jar holds its level and nothing else.
 
     python3 tools/check-level-jar.py isle/build/libs/moddyisle-0.1.0+mc1.21.8.jar [--level isle]   # the world's folder
+        [--core CORE.jar]          # the core jar it was built against (default: <level>/.core/<the pinned asset>)
+        [--allow-unpinned]         # the build's own check (shared/level.gradle) of an unpinned build: say it, go on
     python3 tools/check-level-jar.py --self-test
+
+Every world's `build` (and `assemble`) runs this on the jar it made (shared/level.gradle, task checkLevelJar), so CI,
+Port CI and a local build all check it.
 
 A level jar is loaded BESIDE the core mod, so FML refuses it outright if it carries a package the core carries (a
 split package), and the store reviews what it ships. This checks, entry by entry, that the jar holds only:
@@ -17,8 +22,11 @@ split package), and the store reviews what it ships. This checks, entry by entry
     marker pack (datapacks/level_marker/), plus
     THIRD_PARTY_NOTICES.txt and this repository's licence (LICENSE_<modid>);
   * no nested jar (META-INF/jarjar/), no secret-shaped or private file name (an .env, a key, a store file);
-  * no package the pinned core jar also carries (FML refuses a split package), checked when the core jar is in
-    <level>/.core/ (tools/fetch-core.sh puts it there; CI and the release do);
+  * no package the pinned core jar also carries (FML refuses a split package), checked against --core (the build
+    passes the core jar it compiled against) or else the core jar in <level>/.core/ when it is there;
+  * NO MARK OF AN UNPINNED CORE: a jar built with -PcoreJar or on Port CI's dependent gate (PORT_CI_DEP_OVERRIDE naming
+    the core) carries the manifest attribute Moddy-Unpinned-Core (shared/level.gradle), and is refused here, so it is
+    never released. --allow-unpinned (only the build's own check of such a build passes it) prints it and goes on;
   * NOTHING A STOCK CLIENT CANNOT DRAW (the vanilla-client principle, README "A stock client is all a player needs"):
     no client-only code but the one host-side piece every world shares (the World Type picker that ticks its packs,
     <level>/shared/LevelWorldType, and the @Mod class's Dist check that registers it); no custom network channel or
@@ -130,13 +138,43 @@ def vanilla_client_findings(z, names, level, modid):
     return out
 
 
-def check(jar, level, cfg=None, core=None):
+UNPINNED = "Moddy-Unpinned-Core"
+
+
+def unpinned_mark(z):
+    """The jar's Moddy-Unpinned-Core manifest attribute (why it was not built against the pinned core), or None."""
+    try:
+        mf = z.read("META-INF/MANIFEST.MF").decode("utf-8", "replace")
+    except KeyError:
+        return None
+    lines, cur = [], None
+    for raw in mf.replace("\r\n", "\n").split("\n"):      # a manifest line longer than 72 bytes continues after " "
+        if raw.startswith(" ") and cur is not None:
+            lines[-1] += raw[1:]
+        else:
+            lines.append(raw)
+            cur = raw
+    for line in lines:
+        k, _, v = line.partition(":")
+        if k.strip().lower() == UNPINNED.lower():
+            return v.strip() or "(no reason given)"
+    return None
+
+
+def check(jar, level, cfg=None, core=None, allow_unpinned=False):
     cfg = level_config(level) if cfg is None else cfg
     packs = json.loads(pathlib.Path(cfg["lock"]).read_text())["packs"]
     folders = sorted(row["folder"] for row in packs.values()) + ["level_marker"]   # the marker every level carries
     findings = []
     with zipfile.ZipFile(jar) as z:
         names = z.namelist()
+        mark = unpinned_mark(z)
+        if mark and allow_unpinned:
+            print(f"check-level-jar: WARNING: built against an unpinned core ({mark}): this jar is marked "
+                  f"{UNPINNED} and is never released")
+        elif mark:
+            findings.append(f"META-INF/MANIFEST.MF: {UNPINNED}: {mark}: built against a core that is not the pinned one "
+                            f"(-PcoreJar or Port CI's dependent gate); never released: build it again against core.lock")
         for n in names:
             why = allowed(n, level, cfg, folders)
             if why:
@@ -250,14 +288,31 @@ def self_test():
         got = check(jar(good, "c.jar"), "isle", cfg, core=core)
         assert any("com/moddingfromamod/isle/" in f and "split package" in f for f in got), got
         assert check(jar(good, "c2.jar"), "isle", cfg, core=jar({"com/moddingfromamod/wish/W.class": ""}, "k.jar")) == []
+        # the mark of an unpinned core (shared/level.gradle): refused, unless the build's own check allows it
+        for mf in ("Manifest-Version: 1.0\r\nModdy-Unpinned-Core: PORT_CI_DEP_OVERRIDE=com.moddingfromamod:moddingfromamo\r\n"
+                   " d\r\n\r\n", "Manifest-Version: 1.0\nModdy-Unpinned-Core: -PcoreJar=core.jar\n"):
+            marked = jar({**good, "META-INF/MANIFEST.MF": mf}, "u.jar")
+            got = check(marked, "isle", cfg)
+            assert len(got) == 1 and "Moddy-Unpinned-Core" in got[0] and "never released" in got[0], got
+            assert check(marked, "isle", cfg, allow_unpinned=True) == []
+            assert main([str(marked), "--level", "isle"], cfg=cfg) == 1
+        z = zipfile.ZipFile(jar({**good, "META-INF/MANIFEST.MF": "Manifest-Version: 1.0\r\nModdy-Unpinned-Core: "
+                                 "PORT_CI_DEP_OVERRIDE=com.moddingfromamod:moddingfromamo\r\n d\r\n"}, "w.jar"))
+        assert unpinned_mark(z) == "PORT_CI_DEP_OVERRIDE=com.moddingfromamod:moddingfromamod", unpinned_mark(z)
+        assert main([str(jar(good, "ok.jar")), "--level", "isle"], cfg=cfg) == 0
     print("check-level-jar: self-test passed")
     return 0
 
 
-def main(argv=None):
+def main(argv=None, cfg=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("jar", nargs="?")
     ap.add_argument("--level", default="isle", help="the world's folder (default isle)")
+    ap.add_argument("--core", help="the core jar the world was built against (default: <level>/.core/<pinned asset>, "
+                                   "when it is there)")
+    ap.add_argument("--allow-unpinned", action="store_true",
+                    help="only for the build's own check of a build that is itself unpinned (shared/level.gradle): "
+                         "report the Moddy-Unpinned-Core mark instead of refusing it")
     ap.add_argument("--self-test", action="store_true")
     a = ap.parse_args(argv)
     if a.self_test:
@@ -265,7 +320,9 @@ def main(argv=None):
     if not a.jar:
         ap.error("name a jar (or --self-test)")
     try:
-        findings = check(a.jar, a.level)
+        if a.core and not pathlib.Path(a.core).is_file():
+            raise OSError(f"--core {a.core}: no such file")
+        findings = check(a.jar, a.level, cfg=cfg, core=a.core, allow_unpinned=a.allow_unpinned)
     except (OSError, zipfile.BadZipFile, KeyError, ValueError) as e:
         print(f"check-level-jar: cannot read {a.jar}: {e}", file=sys.stderr)
         return 2

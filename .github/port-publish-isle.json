@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "own_mod": true,
+  "auto": false,
+  "modid": "moddyisle",
+  "title": "Moddy Scarcity Isle",
+  "summary": "Scarcity Isle, a Moddy level: a tiny island in the sky for every player, and a wish bank where every wish counts.",
+  "body_file": ".github/port-publish/description-isle.md",
+  "icon": null,
+  "license": "MPL-2.0",
+  "categories": [],
+  "additional_categories": [],
+  "ledger_issues": [],
+  "differences": [],
+  "original_name": "Moddy Scarcity Isle",
+  "environment": "client_and_server",
+  "disclosures": [
+    {
+      "type": "ai_content",
+      "uses": [
+        "text"
+      ],
+      "note": "This page's text was drafted with an AI assistant."
+    }
+  ],
+  "dependencies": [
+    {
+      "modrinth": "moddy-the-wish-watch",
+      "curseforge": "moddy-the-wish-watch",
+      "type": "required",
+      "modid": "moddingfromamod"
+    }
+  ],
+  "modrinth": {
+    "slug": "moddyisle",
+    "asset": ""
+  },
+  "curseforge": {
+    "project_id": null,
+    "slug": "moddyisle",
+    "asset": ""
+  },
+  "tag_name": "isle",
+  "mod_dir": "isle"
+}
