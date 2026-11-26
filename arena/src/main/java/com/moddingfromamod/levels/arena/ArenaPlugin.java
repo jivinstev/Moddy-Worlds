@@ -55,29 +55,47 @@ public final class ArenaPlugin implements ModdyPlugin {
         plugins.add(WorldRuleType.class, new ArenaCreaturesRule());
         plugins.add(WorldRuleType.class, new ArenaLadderRule());
         plugins.add(WorldRuleType.class, new ArenaWishedWavesRule());   // Moddy-Worlds#55
+        // /moddy arena …: the grammar every Moddy World can use, /moddy <world> <verb> … (Moddy-Worlds#58, #59)
         plugins.add(ChildBranch.class, ArenaPlugin::arenaBranch);
+        // every built-on-demand arena is a region of its world: its rules inside, the world's outside (core #182)
+        plugins.add(com.moddingfromamod.world.WorldRegions.class, ArenaSites.REGIONS);
     }
 
     /**
-     * {@code /moddy arena}: {@code start}, and {@code config [<scope> [<key> [<value>|reset]]]} (Moddy-Worlds#59), where
-     * a scope is {@code global} (every arena) or an arena's name. Anyone may read the settings; the command itself
-     * refuses a change from anyone but an operator.
+     * {@code /moddy arena}: {@code start [name]}, {@code list}, {@code create <name> [confirm]}, {@code go <name>},
+     * {@code remove <name> confirm} (Moddy-Worlds#58), and {@code config [scope [key [value|reset]]]} (#59), where a
+     * scope is {@code global} (every arena) or an arena's name. Operator checks are in each command.
      */
     static com.mojang.brigadier.builder.LiteralArgumentBuilder<net.minecraft.commands.CommandSourceStack> arenaBranch() {
         var word = com.mojang.brigadier.arguments.StringArgumentType.word();
         return Commands.literal("arena")
-                .then(Commands.literal("start").executes(ctx -> ArenaModule.startCommand(ctx.getSource())))
+                .then(Commands.literal("start")
+                        .executes(ctx -> ArenaSites.start(ctx.getSource(), null))
+                        .then(Commands.argument("name", word)
+                                .executes(ctx -> ArenaSites.start(ctx.getSource(), arg(ctx, "name")))))
+                .then(Commands.literal("list").executes(ctx -> ArenaSites.list(ctx.getSource())))
+                .then(Commands.literal("create")
+                        .then(Commands.argument("name", word)
+                                .executes(ctx -> ArenaSites.create(ctx.getSource(), arg(ctx, "name"), false))
+                                .then(Commands.literal("confirm")
+                                        .executes(ctx -> ArenaSites.create(ctx.getSource(), arg(ctx, "name"), true)))))
+                .then(Commands.literal("go")
+                        .then(Commands.argument("name", word)
+                                .executes(ctx -> ArenaSites.go(ctx.getSource(), arg(ctx, "name")))))
+                .then(Commands.literal("remove")
+                        .then(Commands.argument("name", word)
+                                .executes(ctx -> ArenaSites.remove(ctx.getSource(), arg(ctx, "name"), false))
+                                .then(Commands.literal("confirm")
+                                        .executes(ctx -> ArenaSites.remove(ctx.getSource(), arg(ctx, "name"), true)))))
                 .then(Commands.literal("config")
-                        .executes(ctx -> ArenaModule.configCommand(ctx.getSource(), null, java.util.List.of()))
+                        .executes(ctx -> ArenaSites.config(ctx.getSource(), null, java.util.List.of()))
                         .then(Commands.argument("scope", word)
-                                .executes(ctx -> ArenaModule.configCommand(ctx.getSource(), arg(ctx, "scope"),
-                                        java.util.List.of()))
+                                .executes(ctx -> ArenaSites.config(ctx.getSource(), arg(ctx, "scope"), java.util.List.of()))
                                 .then(Commands.argument("key", word)
-                                        .executes(ctx -> ArenaModule.configCommand(ctx.getSource(), arg(ctx, "scope"),
+                                        .executes(ctx -> ArenaSites.config(ctx.getSource(), arg(ctx, "scope"),
                                                 java.util.List.of(arg(ctx, "key"))))
                                         .then(Commands.argument("value", word)
-                                                .executes(ctx -> ArenaModule.configCommand(ctx.getSource(),
-                                                        arg(ctx, "scope"),
+                                                .executes(ctx -> ArenaSites.config(ctx.getSource(), arg(ctx, "scope"),
                                                         java.util.List.of(arg(ctx, "key"), arg(ctx, "value"))))))));
     }
 

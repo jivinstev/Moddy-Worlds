@@ -199,6 +199,20 @@ public final class ArenaState extends SavedData {
         return server.overworld().getDataStorage().computeIfAbsent(TYPE);
     }
 
+    /** One record per built-on-demand arena (Moddy-Worlds#58): {@code data/moddyarena_place_<name>.dat}. */
+    private static final java.util.Map<String, SavedDataType<ArenaState>> SITE_TYPES =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** The record of the arena {@code site}; {@code main} is the arena world's own, {@link #of(MinecraftServer)}. */
+    static ArenaState of(MinecraftServer server, String site) {
+        if (site == null || site.equals(ArenaSiteRules.MAIN)) {
+            return of(server);
+        }
+        SavedDataType<ArenaState> type = SITE_TYPES.computeIfAbsent(site,
+                s -> new SavedDataType<>(ArenaMod.MODID + "_place_" + s, ArenaState::new, CODEC));
+        return server.overworld().getDataStorage().computeIfAbsent(type);
+    }
+
     /** The place as it was built here, or null when nothing has been built yet (or the record is unreadable). */
     ArenaPlace built() {
         if (built == null) {

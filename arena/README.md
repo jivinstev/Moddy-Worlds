@@ -693,6 +693,53 @@ Apprentice goes by the same rule: made in the arena it lands there (made in the 
 made outside the place it is refused. The rules also carry a clamp
 (powers at most 60 seconds, one stack of each item, 2 kinds and 2 XP levels a wish).
 
+## Arenas in any world: `/moddy arena create`
+
+An operator (in singleplayer: a world with cheats on) can build a battle arena **in any world**, including one made
+long before, and several in one world (at most 16, with 8 blocks between any two). Each has its own prep room,
+control panel, Champions board, battles and wished waves.
+
+| Command | What it does |
+|---|---|
+| `/moddy arena create <name>` | Says how big it is and that everything inside it is replaced; add `confirm` to build it. The prep room is built where you stand, with the arena to the north. It refuses to overlap another arena, a player's base (an Isle world's island) or another world feature's region. |
+| `/moddy arena list` | The arenas in this world, where each prep room is, and which has a battle on. |
+| `/moddy arena go <name>` | Takes you to its prep room (operator). |
+| `/moddy arena start [<name>]` | Starts a battle: the named arena, else the one you stand in, else the only one. |
+| `/moddy arena remove <name> confirm` | Ends its battle and forgets it (operator). Its blocks are left standing. |
+
+**A built arena changes nothing outside itself:** no spawn move, no game rule, nobody moved on join. **Inside it,
+wishes follow the arena's rules,** the same as in an arena world:
+- in a battle, only hotbar wishes, each resting, so many a wave;
+- every make held to the wish ladder;
+- a wish cast inside lands inside.
+
+That works through the core's `WorldRegions` (jivinstev/ModdyTheWishWatch#182): each arena is a region of its world.
+Outside every arena, the world's own rules answer. In an Isle world, a new island is never placed in a cell an arena
+stands in. In the arena world type, the place its first start builds is the arena `main`.
+
+### Settings: `/moddy arena config`
+
+`/moddy arena config <scope> [<key> [<value>|reset]]`, where the scope is `global` (every arena in this world) or an
+arena's name. With no key it lists every setting, its value, and where the value comes from.
+
+| Key | What it is | Range |
+|---|---|---|
+| `breatherSeconds` | the wait between rounds: the break after a wave | 3–120 |
+| `bossBreatherSeconds` | the longer break after a boss wave | 3–300 |
+| `countdownSeconds` | the countdown before the first wave | 3–60 |
+| `waveSeconds` | how long a wave may last before the battle is lost | 30–1800 |
+
+- **Layers, lowest to highest:** the rules file (`arena_waves`, below), then `global`, then one arena. The highest
+  that sets a key wins.
+- **When they apply:** values are read when a battle starts.
+- **The guard:** a change is refused while a battle it would touch is on. `global` waits for every arena; one arena
+  waits only for itself.
+- **Who:** anyone may read; only an operator may set or reset.
+- **Where they're kept:** in the world (`data/moddyarena_config.dat`); on a dedicated server, that is the server's
+  settings.
+- **Grammar:** `/moddy <world> config <scope> [<key> [<value>|reset]]` is meant for every Moddy World. A new setting is
+  one entry in `ArenaConfig.KEYS`.
+
 ## The rules file
 
 `src/level/resources/worlds/rules/arena.rules.json`, the core's rules format, plus the arena's own rule types,

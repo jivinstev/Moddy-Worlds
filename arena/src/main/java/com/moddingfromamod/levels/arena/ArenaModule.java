@@ -42,12 +42,6 @@ public final class ArenaModule implements WorldModule {
 
     private static final Logger LOG = LoggerFactory.getLogger("moddingfromamod/arena");
 
-    /**
-     * The arena world's own arena, as the settings command names it ({@code /moddy arena config main …}): the name an
-     * arena built by command takes is its own (Moddy-Worlds#58), and this is the one the world was made with.
-     */
-    static final String ARENA_NAME = "main";
-
     /** The running arena module, for {@code /moddy arena start}; null in any other world. */
     private static volatile ArenaModule live;
 
@@ -76,8 +70,7 @@ public final class ArenaModule implements WorldModule {
      * at a battle's end, never removes them. Only in an arena world, while its module runs. Server thread.
      */
     static void onDrops(net.neoforged.neoforge.event.entity.living.LivingDropsEvent event) {
-        ArenaModule m = live;
-        ArenaBattle b = m == null ? null : m.battle;
+        ArenaBattle b = battleFor(event.getEntity());
         if (b == null || !(event.getEntity() instanceof ServerPlayer)) {
             return;
         }
@@ -94,8 +87,7 @@ public final class ArenaModule implements WorldModule {
      * datapack power runs), which a player takes as from anything else.
      */
     static void onIncomingDamage(net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent event) {
-        ArenaModule m = live;
-        ArenaBattle b = m == null ? null : m.battle;
+        ArenaBattle b = battleFor(event.getEntity());
         if (b == null || !(event.getEntity() instanceof ServerPlayer p)) {
             return;
         }
@@ -103,7 +95,7 @@ public final class ArenaModule implements WorldModule {
         if (ArenaSide.spare(true, b.inPlace(p), wishMade(source.getEntity()), wishMade(source.getDirectEntity()))) {
             event.setCanceled(true);
             net.minecraft.world.entity.Entity by = source.getEntity() != null ? source.getEntity() : source.getDirectEntity();
-            if (by != null && m.spared.add(by.getUUID())) {
+            if (by != null && SPARED.add(by.getUUID())) {
                 LOG.info("Moddy Arena: a wished {} would have hurt {}; stopped (a wished creature is on the players' side"
                         + " here)", net.minecraft.world.entity.EntityType.getKey(by.getType()), p.getScoreboardName());
             }
@@ -115,8 +107,7 @@ public final class ArenaModule implements WorldModule {
      * ({@link ArenaSide}); the role keeper's pass lets go of one it still holds.
      */
     static void onChangeTarget(net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent event) {
-        ArenaModule m = live;
-        ArenaBattle b = m == null ? null : m.battle;
+        ArenaBattle b = battleFor(event.getEntity());
         if (b == null || !(event.getNewAboutToBeSetTarget() instanceof net.minecraft.world.entity.player.Player)) {
             return;
         }
@@ -125,6 +116,19 @@ public final class ArenaModule implements WorldModule {
             event.setNewAboutToBeSetTarget(null);
         }
     }
+
+    /** The battle of the arena {@code e} stands in (any site), else the arena world's own (its old behaviour), or null. */
+    private static ArenaBattle battleFor(net.minecraft.world.entity.Entity e) {
+        ArenaBattle here = ArenaSites.battleAt(e);
+        if (here != null) {
+            return here;
+        }
+        ArenaModule m = live;
+        return m == null ? null : m.battle;
+    }
+
+    /** The wished creatures whose hurt to a player was stopped, across every arena, so the log says it once for each. */
+    private static final Set<UUID> SPARED = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     /** True for an entity a wish made, or one whose owner a wish made (what such a creature shot or threw). */
     private static boolean wishMade(net.minecraft.world.entity.Entity e) {
@@ -140,8 +144,7 @@ public final class ArenaModule implements WorldModule {
 
     /** The game's event for an item a player throws (Q, or out of his inventory): his own, as {@link #onDrops}. */
     static void onToss(net.neoforged.neoforge.event.entity.item.ItemTossEvent event) {
-        ArenaModule m = live;
-        ArenaBattle b = m == null ? null : m.battle;
+        ArenaBattle b = battleFor(event.getPlayer());
         if (b != null && event.getPlayer() instanceof ServerPlayer) {
             b.playersItem(event.getEntity().getUUID());
         }
@@ -213,6 +216,7 @@ public final class ArenaModule implements WorldModule {
         LOG.info("Moddy Arena: wishes: the arena's wish charge is in force (in prep, {} Magician wishes a player;"
                 + " in a battle, hotbar wishes only, each resting {} s)", w.magicianWishes(), w.cooldownSeconds());
         live = this;
+        ArenaSites.module(place, battle);   // this world's own arena is the site main (Moddy-Worlds#58)
         return bases;
     }
 
@@ -306,6 +310,7 @@ public final class ArenaModule implements WorldModule {
         }
         if (live == this) {
             live = null;
+            ArenaSites.moduleStopped();
         }
         ArenaHandOverShow h = handOver;
         if (h != null) {
@@ -368,69 +373,11 @@ public final class ArenaModule implements WorldModule {
         return b == null ? null : b.keepTicking();
     }
 
-    /**
-     * The game's respawn-position event (Moddy-Worlds#60), asked before a player is respawned: a fighter knocked out in
-     * the battle that is on, whose respawn is outside the place (his bed, say), comes back in the prep room instead.
-     * Only this one respawn is moved: his own respawn point is kept as it is (the event copies it over as for any
-     * respawn), the world spawn never changes, and the first respawn after the battle is the normal one
-     * ({@link ArenaRespawn}). Moving the respawn itself, not teleporting after it, leaves no moment outside the place
-     * for the battle to count as having left it. Server thread.
-     */
-    static void onRespawnPosition(net.neoforged.neoforge.event.entity.player.PlayerRespawnPositionEvent event) {
-        ArenaModule m = live;
-        ArenaBattle b = m == null ? null : m.battle;
-        if (b == null || !(event.getEntity() instanceof ServerPlayer p)) {
-            return;
-        }
-        var to = event.getTeleportTransition();
-        int[] a = b.respawnAt(p, event.isFromEndFight(), to.newLevel(), to.position().x, to.position().y,
-                to.position().z);
-        if (a == null) {
-            return;
-        }
-        event.setTeleportTransition(new net.minecraft.world.level.portal.TeleportTransition(b.placeLevel(),
-                new net.minecraft.world.phys.Vec3(a[0] + 0.5, a[1], a[2] + 0.5), net.minecraft.world.phys.Vec3.ZERO,
-                ArenaPlace.ARRIVAL_YAW, 0f, net.minecraft.world.level.portal.TeleportTransition.DO_NOTHING));
-        LOG.info("Moddy Arena: {} comes back in the prep room (knocked out in a battle; his respawn point is kept)",
-                p.getScoreboardName());
-    }
-
-    /**
-     * {@code /moddy arena config [<scope> [<key> [<value>|reset]]]} (Moddy-Worlds#59): the arena's settings, for all
-     * arenas ({@code global}) or one by its name. Anyone may read them; only an operator may change them, and never
-     * under a battle they would touch ({@link ArenaConfig#guard}).
-     */
-    static int configCommand(net.minecraft.commands.CommandSourceStack source, String scope, java.util.List<String> args) {
-        ArenaModule m = live;
-        ArenaBattle b = m == null ? null : m.battle;
-        if (b == null) {
-            source.sendFailure(net.minecraft.network.chat.Component.literal(ArenaWords.notAnArena()));
-            return 0;
-        }
-        String sc = scope == null ? ArenaConfig.GLOBAL : scope.strip().toLowerCase(java.util.Locale.ROOT);
-        if (!ArenaConfig.GLOBAL.equals(sc) && !ARENA_NAME.equals(sc)) {
-            source.sendFailure(net.minecraft.network.chat.Component.literal("There is no arena called " + scope
-                    + ". Use 'global' for all arenas, or the name of one: " + ARENA_NAME + "."));
-            return 0;
-        }
-        ArenaConfigStore store = ArenaConfigStore.of(source.getServer());
-        java.util.Set<String> battlesOn = b.match().busy() ? java.util.Set.of(ARENA_NAME) : java.util.Set.of();
-        ArenaConfig.Outcome o = store.config().run(sc, args,
-                ArenaWavesRule.wavesOf(WorldRulesService.current()), battlesOn, source.hasPermission(2));
-        if (o.refused()) {
-            source.sendFailure(net.minecraft.network.chat.Component.literal(o.words()));
-            return 0;
-        }
-        if (o.changed()) {
-            store.set(o.config());
-            LOG.info("Moddy Arena: config: {} set {} ({})", source.getTextName(), args, sc);
-        }
-        source.sendSuccess(() -> net.minecraft.network.chat.Component.literal(o.words()), o.changed());
-        return 1;
-    }
-
     /** {@code /moddy arena start}: starts a battle in an arena world; says why not anywhere else. */
     static int startCommand(net.minecraft.commands.CommandSourceStack source) {
+        if (!ArenaSites.live().isEmpty()) {
+            return ArenaSites.start(source, null);
+        }
         ArenaModule m = live;
         ArenaBattle b = m == null ? null : m.battle;
         if (b == null) {
@@ -553,6 +500,18 @@ public final class ArenaModule implements WorldModule {
             return null;
         }
         return p.rules();
+    }
+
+    private static volatile WorldRules bundledParsed;
+
+    /** The arena's own rules (this jar's), parsed once: what a site judges reach by as a region (#182). */
+    static WorldRules bundledWorldRules() {
+        WorldRules r = bundledParsed;
+        if (r == null) {
+            r = parse(bundledRules());
+            bundledParsed = r;
+        }
+        return r;
     }
 
     /** The arena's own rules file text (worlds/rules/arena.rules.json, in this jar), or null. */

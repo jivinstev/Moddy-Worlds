@@ -1,0 +1,62 @@
+# Arenas on demand (Moddy-Worlds#58, #59). A plain flat world (no world switched on: the arena's module does not run,
+# and the Isle's jar is installed too), and an operator builds two battle arenas in it with /moddy arena create: each
+# stands where he stood, with its own prep room, and is listed. The settings command's layers (all arenas, then one
+# arena) are what a battle starts with: its countdown says so. A change to an arena whose battle is on is refused,
+# and the other arena's settings still change. The first wave comes as real monsters wished in under the arena's
+# red pillars.
+# play-timeout: 600
+@intent arenas built by command in a plain world, two of them each with its own battle; the config's layers reach a battle's start; a change during that arena's battle is refused while the other arena still changes
+@world flat seed=4
+
+@step build the arena north where he stands
+@wait 3s
+difficulty normal
+gamemode survival
+effect give @s minecraft:saturation 600 0 true
+effect give @s minecraft:resistance 600 4 true
+moddy arena create north
+@expect chat /This builds the arena north here/ within 15s
+moddy arena create north confirm
+@expect chat /Built the arena north/ within 60s
+@wait 2s
+@assert execute if block ~ ~-1 ~ minecraft:oak_planks
+@aim look 0 10
+@wait 10t
+@shot north-prep-room
+
+@step a second arena, south, far to the east
+teleport @s ~300 ~ ~
+@wait 3s
+moddy arena create south confirm
+@expect chat /Built the arena south/ within 60s
+@wait 2s
+@assert execute if block ~ ~-1 ~ minecraft:oak_planks
+moddy arena list
+@expect chat /north: prep room at/ within 10s
+@expect chat /south: prep room at/ within 10s
+
+@step the settings: all arenas, then one
+moddy arena config global countdownSeconds 9
+@expect chat /countdownSeconds for all arenas is now 9 seconds/ within 10s
+moddy arena config south countdownSeconds 12
+@expect chat /countdownSeconds for south is now 12 seconds/ within 10s
+moddy arena config south
+@expect chat /countdownSeconds = 12 seconds  \(from this arena/ within 10s
+
+@step south's battle starts with its own countdown, and its settings are locked while it is on
+moddy arena start south
+@expect chat /The first comes in 12/ within 15s
+moddy arena config south breatherSeconds 5
+@expect chat /A battle is on in south/ within 10s
+moddy arena config north breatherSeconds 5
+@expect chat /breatherSeconds for north is now 5 seconds/ within 10s
+
+@step the first wave: real monsters wished in under red pillars
+@wait 8s
+@shot south-pillars-rising
+@wait 8s
+@assert execute if entity @e[tag=moddyarena_wave,distance=..80]
+@assert execute if entity @e[tag=moddy_world_wished,distance=..80]
+@aim look 0 20
+@wait 10t
+@shot south-first-wave
