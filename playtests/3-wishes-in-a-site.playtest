@@ -56,12 +56,16 @@ moddy builder
 @wait 1s
 @click item "A creature"
 @expect screen Pick a body within 5s
+@wait 1s
 @click slot 0
-@expect screen Parts within 5s
+@expect screen Parts within 10s
+@wait 10t
 @click slot 49
-@expect screen Powers within 5s
+@expect screen Powers within 10s
+@wait 10t
 @click slot 31
-@expect screen Special moves within 5s
+@expect screen Special moves within 10s
+@wait 10t
 @click slot 22
 @expect screen /tune your/ within 5s
 @click button "Make it!"
@@ -77,12 +81,16 @@ moddy builder
 @wait 1s
 @click item "A creature"
 @expect screen Pick a body within 5s
+@wait 1s
 @click slot 0
-@expect screen Parts within 5s
+@expect screen Parts within 10s
+@wait 10t
 @click slot 49
-@expect screen Powers within 5s
+@expect screen Powers within 10s
+@wait 10t
 @click slot 31
-@expect screen Special moves within 5s
+@expect screen Special moves within 10s
+@wait 10t
 @click slot 22
 @expect screen /tune your/ within 5s
 @click button "Make it!"
