@@ -1,0 +1,76 @@
+# What a wish does inside an arena built by command (Moddy-Worlds#58), and what it did wrong in play on 2026-11-26.
+# A strong creature wished in the prep room is held to the wish ladder at once; one wished outside every arena stands
+# at its own numbers, and is held the moment its owner walks into an arena with it (jivinstev/ModdyTheWishWatch#174),
+# and stands at its own numbers again once he walks out. A Builder creature made in the prep room goes to his hotbar
+# as a wish and does not stand in the room (the prep room's hand-over, the same as in the arena world).
+# play-timeout: 600
+@intent inside an arena built by command a strong wished creature is held to the ladder at once, one brought in from outside is held when its owner walks in and let go when he walks out, and a Builder creature made in the prep room is a hotbar wish
+@world flat seed=11
+@continue-on-fail
+
+@step build the arena
+@wait 3s
+difficulty peaceful
+gamemode survival
+effect give @s minecraft:resistance 1500 4 true
+effect give @s minecraft:saturation 1500 0 true
+scoreboard objectives add arenatest dummy
+moddy arena create pit confirm
+@expect chat /Built the arena pit/ within 60s
+@wait 2s
+
+@step a strong wolf wished in the prep room is held to the ladder at once
+wishsummon minecraft:wolf {"damage":100,"health":200,"name":"Probe In"}
+@wait 10t
+execute store result score #in arenatest run attribute @e[type=minecraft:wolf,name="Probe In",limit=1] minecraft:max_health get
+@assert execute if score #in arenatest matches 1..40
+kill @e[type=minecraft:wolf,name="Probe In"]
+
+@step a strong wolf wished outside every arena stands at its own numbers
+teleport @s ~400 ~ ~
+@wait 2s
+wishsummon minecraft:wolf {"damage":100,"health":200,"name":"Probe Out"}
+@wait 10t
+execute store result score #out arenatest run attribute @e[type=minecraft:wolf,name="Probe Out",limit=1] minecraft:max_health get
+@assert execute if score #out arenatest matches 200
+
+@step brought into the arena with him, it is held; taken out again, it is let go
+teleport @s ~-400 ~ ~
+teleport @e[type=minecraft:wolf,name="Probe Out"] @s
+@wait 3s
+execute store result score #brought arenatest run attribute @e[type=minecraft:wolf,name="Probe Out",limit=1] minecraft:max_health get
+@assert execute if score #brought arenatest matches 1..40
+teleport @s ~400 ~ ~
+teleport @e[type=minecraft:wolf,name="Probe Out"] @s
+@wait 3s
+execute store result score #left arenatest run attribute @e[type=minecraft:wolf,name="Probe Out",limit=1] minecraft:max_health get
+@assert execute if score #left arenatest matches 200
+kill @e[type=minecraft:wolf,name="Probe Out"]
+teleport @s ~-400 ~ ~
+@wait 2s
+
+@step a Builder creature made in the prep room is a hotbar wish, and does not stand in the room
+moddy builder
+@expect screen Wish Builder within 10s
+# the first page's tiles are worked out in the background (🔒 "Getting this page ready…" until then)
+@wait 3s
+@click item "A creature"
+@expect screen Pick a body within 5s
+@wait 1s
+@click slot 0
+@expect screen Parts within 10s
+@wait 10t
+@click slot 49
+@expect screen Powers within 10s
+@wait 10t
+@click slot 31
+@expect screen Special moves within 10s
+@wait 10t
+@click slot 22
+@expect screen /tune your/ within 5s
+# a page is drawn again once its tiles are judged; a click on the first drawing is lost (core)
+@wait 10t
+@click button "Make it!"
+@expect chat /is on your hotbar/ within 120s
+@wait 2s
+@assert execute unless entity @e[tag=wishmob,tag=!moddy_world_wished]

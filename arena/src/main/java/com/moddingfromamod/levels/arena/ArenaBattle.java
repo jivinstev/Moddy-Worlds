@@ -55,6 +55,8 @@ final class ArenaBattle {
 
     /** The tag on every mob a wave brings, so a battle counts only its own. */
     static final String TAG = ArenaMod.MODID + "_wave";
+    /** A wave's champion (wished waves, Moddy-Worlds#55) carries this beside {@link #TAG}: one in four, a rung up. */
+    static final String CHAMPION_TAG = ArenaMod.MODID + "_champion";
 
     /**
      * For a server run with nobody on (a test): {@code -Dmoddingfromamod.arena.allowEmptyBattle=true} lets a battle
@@ -136,11 +138,28 @@ final class ArenaBattle {
     private volatile int bossesBeaten;
     /** True from the button to the arena being ready again: the ladder is the battle's. */
     private volatile boolean ladderOn;
+    /** This battle's {@link ArenaRespawn#KEY} setting, read when it began. */
+    private boolean respawnInPrep = true;
     /** Where the ladder was when its step was last told (at the start of a break). */
     private int ladderTold;
     private long ticks;
 
+    /** Which arena this is ({@code main} for an arena world's own), and the id its world wishes go under. */
+    private final String site;
+    private final String wishModule;
+
     ArenaBattle(MinecraftServer server, ArenaPlace place, ArenaState state, ArenaCharge wishes) {
+        this(server, place, state, wishes, ArenaSiteRules.MAIN);
+    }
+
+    /**
+     * A battle for the arena {@code site} (Moddy-Worlds#58). Its world wishes (pillars, champion designs) go under its
+     * own module id, so one arena's {@code cancelAll} never touches another's: {@code moddyarena} for {@code main}, as it
+     * always was, {@code moddyarena/<site>} for the rest.
+     */
+    ArenaBattle(MinecraftServer server, ArenaPlace place, ArenaState state, ArenaCharge wishes, String site) {
+        this.site = site == null ? ArenaSiteRules.MAIN : site;
+        this.wishModule = ArenaSiteRules.MAIN.equals(this.site) ? ArenaMod.MODID : ArenaMod.MODID + "/" + this.site;
         this.server = server;
         this.place = place;
         this.state = state;
@@ -162,6 +181,24 @@ final class ArenaBattle {
     }
 
     /** Whether an entity is in the place (the arena or its prep room) in the arena's world. */
+    /**
+     * Where a player the game is about to respawn at {@code to} in {@code toLevel} should come back instead
+     * (Moddy-Worlds#60): this place's prep room when he fought in the battle that is on and {@code to} is outside the
+     * place, else null (where the game would put him). Server thread.
+     */
+    int[] respawnAt(ServerPlayer p, boolean fromTheEnd, ServerLevel toLevel, double x, double y, double z) {
+        UUID id = p.getUUID();
+        boolean fought = fighters.containsKey(id) || told.contains(id);
+        boolean inPlace = toLevel == level() && place.keeps(x, y, z);
+        return ArenaRespawn.toPrepRoom(fromTheEnd, p.isSpectator(), match.phase() != ArenaMatch.Phase.IDLE, fought,
+                respawnInPrep, inPlace) ? place.arrival() : null;
+    }
+
+    /** The world the place stands in. */
+    ServerLevel placeLevel() {
+        return level();
+    }
+
     boolean inPlace(Entity e) {
         return e != null && e.level() == level() && place.keeps(e.getX(), e.getY(), e.getZ());
     }
@@ -201,7 +238,10 @@ final class ArenaBattle {
             return ArenaWords.nobody();
         }
         ArenaSettings settings = state.settings().within(base.limits());
-        ArenaRun waves = settings.run(base);
+        // the settings command's layers on the rules' timings (Moddy-Worlds#59), read now, once, for this battle
+        ArenaConfig config = server == null ? ArenaConfig.EMPTY : ArenaConfigStore.of(server).config();
+        ArenaRun waves = settings.run(config.apply(base, site));
+        respawnInPrep = config.value(ArenaConfig.key(ArenaRespawn.KEY), site, base) != 0;
         battleDifficulty = settings.difficulty();
         battleKey = ArenaChampions.Key.of(settings);
         match.start(waves);
@@ -214,11 +254,38 @@ final class ArenaBattle {
         backIn.clear();
         boss = null;
         ladderReset(true);   // every battle starts at the ladder's first step
+        // wished waves (Moddy-Worlds#55): this battle's rule and its champions, drawn now that its settings are locked
+        // in, and the first designs made by the Builder during the countdown
+        var usable = ArenaWishedWavesRule.of(ArenaModule.rules())
+                .usable(ArenaWishedWaves::builderBody);
+        wished = usable.waves();
+        // the settings command may turn wished waves on or off for this arena; unset, the rules file decides
+        ArenaConfig.Effective wishedSetting = config.effective(ArenaWishedWaves.CONFIG_KEY, site, wished.on() ? 1 : 0);
+        if (wishedSetting.source() != ArenaConfig.Source.RULES) {
+            wished = wished.withOn(wishedSetting.value() != 0);
+        }
+        for (String w : usable.skipped()) {
+            LOG.warn("Moddy Arena: wished waves: {}", w);
+        }
+        picks = wished.pick(new java.util.Random(level().random.nextLong()));
+        designs.clear();
+        held.clear();
+        designQueue.clear();
+        designing.clear();
+        if (makingKey != null) {
+            designing.add(makingKey);   // still being made: it lands in this battle's designs if this battle wants it
+        }
+        if (wished.active()) {
+            LOG.info("Moddy Arena: champions: this battle's bodies are {} ({})", picks.perTier(), wished.colours().isEmpty() ? "their own colours" : wished.palette());
+            wantDesigns(0);
+        }
         unranked.clear();
         told.clear();
         waveMobs.clear();
+        com.moddingfromamod.world.WorldWishes.cancelAll(wishModule);   // pillars still rising: called off
+        held.clear();
         ready.clear();
-        roles.battleStarted(ArenaCreaturesRule.creaturesOf(com.moddingfromamod.world.WorldRulesService.current()));
+        roles.battleStarted(ArenaCreaturesRule.creaturesOf(ArenaModule.rules()));
         LOG.info("Moddy Arena: battle: COUNTDOWN, started by {}: {} waves, the first in {} s (wave size {}, difficulty"
                 + " {}; the first wave {} mobs; boss waves {}; {} lives)", by, ArenaWords.wavesValue(waves.count()),
                 waves.countdownSeconds(), waves.waveSize(), settings.difficulty().word(), waves.size(1),
@@ -247,6 +314,7 @@ final class ArenaBattle {
         ticks++;
         ServerLevel level = level();
         safetyNet(level);
+        releaseChampions(level);
         if (match.fighting()) {
             watchModes(level);   // before the fighters are counted: one who turned Spectator is out, and unrecorded
         }
@@ -291,7 +359,7 @@ final class ArenaBattle {
         }
         board.refresh(level, match, ArenaBattle::baseWaves, ev != null);
         if (ev != null || ticks % 10 == 0) {
-            ArenaLadder ladder = ArenaLadderRule.ladderOf(com.moddingfromamod.world.WorldRulesService.current());
+            ArenaLadder ladder = ArenaLadderRule.ladderOf(ArenaModule.rules());
             ladderBoard.refresh(level, ArenaWords.ladderBoard(ladder, ladderOn, reached(ladder)));
         }
         ArenaWaves rules = baseWaves();
@@ -425,9 +493,19 @@ final class ArenaBattle {
                 keepGate(level, true);
                 ArenaRun run = match.table();
                 ArenaBosses.Boss b = run.boss(ev.wave());
-                int n = spawnWave(level, run.wave(ev.wave()), run.health(ev.wave()));
-                if (b != null && spawnBoss(level, b, run.bossHealth())) {
-                    n++;
+                int n;
+                if (wishedOn()) {
+                    // wished waves (Moddy-Worlds#55): the arena wishes them, under its red pillars, and they arrive
+                    // in about two seconds; the wave is not over while any is still on its way (mobsLeft)
+                    n = wishWave(level, run.wave(ev.wave()), run.health(ev.wave()));
+                    if (b != null && wishBoss(level, b, run.bossHealth())) {
+                        n++;
+                    }
+                } else {
+                    n = spawnWave(level, run.wave(ev.wave()), run.health(ev.wave()));
+                    if (b != null && spawnBoss(level, b, run.bossHealth())) {
+                        n++;
+                    }
                 }
                 match.spawned(n);
                 LOG.info("Moddy Arena: battle: WAVE {} of {} begins: {} mobs{}", ev.wave(),
@@ -445,6 +523,9 @@ final class ArenaBattle {
                 }
             }
             case WAVE_CLEARED -> {
+                if (wishedOn()) {
+                    wantDesigns(reached());   // the next rung's champions, made during the break
+                }
                 LOG.info("Moddy Arena: battle: wave {} cleared; BREATHER of {} s; the hotbar wishes start again",
                         ev.wave(), ev.seconds());
                 sayToPlace(ArenaWords.cleared(ev.wave(), ev.seconds()));
@@ -485,6 +566,8 @@ final class ArenaBattle {
                 int entities = clearArena(level);
                 fighters.clear();
                 waveMobs.clear();
+                com.moddingfromamod.world.WorldWishes.cancelAll(wishModule);   // pillars still rising: called off
+                held.clear();
                 LOG.info("Moddy Arena: battle: RESETTING: the arena is put back as built ({} blocks set, {} things"
                         + " removed) in {} ms", blocks, entities, (System.nanoTime() - t0) / 1_000_000);
             }
@@ -659,7 +742,7 @@ final class ArenaBattle {
                     continue;
                 }
                 if (ladder == null) {
-                    ladder = ArenaLadderRule.ladderOf(com.moddingfromamod.world.WorldRulesService.current());
+                    ladder = ArenaLadderRule.ladderOf(ArenaModule.rules());
                 }
                 tellPin(p, e.getKey(), e.getValue(), ladder);
             }
@@ -955,12 +1038,22 @@ final class ArenaBattle {
         for (ServerPlayer p : level.players()) {
             players.add(new double[] {p.getX(), p.getZ()});
         }
-        int[] spot = ArenaSpawns.nearestPlayer(new int[] {0, 0}, players) >= ArenaSpawns.MIN_FROM_PLAYER
-                ? new int[] {0, 0} : ArenaSpawns.pick(place, players, 1, level.random.nextLong()).get(0);
+        int[] centre = {place.centreX(), place.centreZ()};      // the arena's middle, wherever the place stands
+        int[] spot = ArenaSpawns.nearestPlayer(centre, players) >= ArenaSpawns.MIN_FROM_PLAYER
+                ? centre : ArenaSpawns.pick(place, players, 1, level.random.nextLong()).get(0);
         Entity e = spawnOne(level, type, new BlockPos(spot[0], place.floorY(), spot[1]), 1.0);
         if (!(e instanceof LivingEntity living)) {
             return false;
         }
+        bossStats(living, b, difficultyHealth);
+        waveMobs.add(e.getUUID());
+        boss = e.getUUID();
+        bossName = b.name();
+        return true;
+    }
+
+    /** A boss's own numbers (its health, attack, size, knockback resistance, name), and the difficulty's health. */
+    private static void bossStats(LivingEntity living, ArenaBosses.Boss b, double difficultyHealth) {
         setBase(living, Attributes.MAX_HEALTH, b.health());
         if (difficultyHealth != 1.0) {
             living.getAttribute(Attributes.MAX_HEALTH).addOrReplacePermanentModifier(new AttributeModifier(HEALTH_ID,
@@ -976,10 +1069,242 @@ final class ArenaBattle {
         living.setHealth(living.getMaxHealth());
         living.setCustomName(Component.literal(b.name()));
         living.setCustomNameVisible(true);
-        waveMobs.add(e.getUUID());
-        boss = e.getUUID();
-        bossName = b.name();
-        return true;
+    }
+
+    // ── wished waves (Moddy-Worlds#55) ──────────────────────────────────────────────────────────────────────────────
+
+    /** This battle's wished waves (its rule, read at its start) and its champions' bodies, drawn then. */
+    private ArenaWishedWaves wished = ArenaWishedWaves.DEFAULT;
+    private ArenaWishedWaves.Picks picks;
+
+    /**
+     * Does this wave monster drop its loot and experience when killed? Only when the battle's rules say so
+     * ({@code arena_wished_waves}' {@code drops}, off by default: the owner's call, 2026-11-26): a wave's monsters,
+     * plain or wished, champions and bosses alike, leave nothing on the floor. Server thread.
+     */
+    boolean dropsOf(Entity e) {
+        return e == null || !e.getTags().contains(TAG) || (wished != null && wished.drops());
+    }
+
+    private boolean wishedOn() {
+        return wished != null && wished.active();
+    }
+
+    /** A champion waiting for its design: it arrives last, once the design is made, or as its stand-in at the deadline. */
+    private record Held(ArenaWishedWaves.Plan plan, int[] spot, com.moddingfromamod.world.WorldWishes.Limits limits,
+                        Consumer<LivingEntity> arrived, long deadline) {
+    }
+
+    private final List<Held> held = new ArrayList<>();
+
+    /**
+     * Each champion still waiting is wished the moment its design is made, or, past its deadline
+     * ({@code championWaitSeconds}), as the wave's mob one rung up (a design that failed or is slow). Server thread.
+     */
+    private void releaseChampions(ServerLevel level) {
+        if (held.isEmpty()) {
+            return;
+        }
+        long now = server.getTickCount();
+        for (var it = held.iterator(); it.hasNext(); ) {
+            Held h = it.next();
+            String key = h.plan().design().toJson().toString();
+            String species = designs.get(key);
+            if (species == null && now < h.deadline() && !unmade.contains(key)) {
+                continue;
+            }
+            it.remove();
+            try {
+                if (species != null) {
+                    com.moddingfromamod.world.WorldWishes.species(level, wishModule, species, h.spot()[0] + 0.5,
+                            place.floorY(), h.spot()[1] + 0.5, h.limits(), h.plan().slim(), h.arrived());
+                } else {
+                    LOG.info("Moddy Arena: champions: {} was not made in time; its stand-in comes instead",
+                            h.plan().design().name());
+                    com.moddingfromamod.world.WorldWishes.creature(level, wishModule, h.plan().mob(),
+                            h.spot()[0] + 0.5, place.floorY(), h.spot()[1] + 0.5, h.limits(), h.plan().slim(),
+                            h.arrived());
+                }
+            } catch (IllegalArgumentException notAMob) {
+                LOG.warn("Moddy Arena: battle: a champion is left out: {}", notAMob.getMessage());
+            }
+        }
+    }
+
+    /** The world's own champion designs: a design spec (its JSON) → the species the Builder made for it. */
+    private final Map<String, String> designs = new HashMap<>();
+    /** Designs asked for and not made yet: the queue, and the one being made (keys are design spec JSON). */
+    private final java.util.Set<String> designing = new java.util.HashSet<>();
+    private final java.util.ArrayDeque<com.moddingfromamod.wishbuilder.BuilderSpec> designQueue = new java.util.ArrayDeque<>();
+    private String makingKey;
+
+    /**
+     * Have the Builder make the champion designs this battle will want next (this rung's and the next one's) that are
+     * not made or asked for yet. Each is a real Builder make, owned by the arena ({@code BuilderMake.forWorld}), made
+     * once a battle and then wished as copies. They are made ONE AT A TIME, in order: the core runs one Builder make
+     * per owner at once and answers a second with BUSY, so asking for two together lost the second. Measured
+     * (WorldWishesGameTest#everyChampionBodyIsMadeWellInsideTheCountdown): 77–510 ms a design, the slowest two in a
+     * row 760 ms, against the 5 s countdown. Server thread.
+     */
+    private void wantDesigns(int cleared) {
+        for (com.moddingfromamod.wishbuilder.BuilderSpec spec : wished.designsAhead(cleared, picks)) {
+            String key = spec.toJson().toString();
+            if (designs.containsKey(key) || unmade.contains(key) || !designing.add(key)) {
+                continue;
+            }
+            designQueue.add(spec);
+        }
+        makeNextDesign();
+    }
+
+    /** Start the next queued design if none is being made. Server thread. */
+    /**
+     * The designs the Builder would not make this run of the game (refused, failed): not asked again, and their
+     * champions come as their stand-ins at once rather than after a wait.
+     */
+    private final java.util.Set<String> unmade = new java.util.HashSet<>();
+
+    /** The name a champion takes when the Builder's name sweep refuses the one the rules gave it. */
+    static final String SAFE_CHAMPION_NAME = "Champion";
+
+    private void makeNextDesign() {
+        if (makingKey != null || designQueue.isEmpty()) {
+            return;
+        }
+        com.moddingfromamod.wishbuilder.BuilderSpec spec = designQueue.poll();
+        makeDesign(spec, spec.toJson().toString(), false);
+    }
+
+    /**
+     * One design made, kept under {@code key} (the spec the battle asked for). A make the core refuses (its name fails
+     * the child-name safety sweep) is asked once more under {@link #SAFE_CHAMPION_NAME}; one that still does not come
+     * is {@link #unmade}: its champions are their stand-ins, and no wave waits for it or breaks on it.
+     */
+    private void makeDesign(com.moddingfromamod.wishbuilder.BuilderSpec spec, String key, boolean renamed) {
+        makingKey = key;
+        long t0 = System.nanoTime();
+        LOG.info("Moddy Arena: champions: the Builder makes {} ({}, {}); {} more queued", spec.name(), spec.from(),
+                spec.scheme(), designQueue.size());
+        com.moddingfromamod.wishbuilder.BuilderMake.forWorld(server, wishModule, "The Arena", spec)
+                .whenComplete((r, err) -> server.execute(() -> {
+                    makingKey = null;
+                    designing.remove(key);
+                    boolean ok = err == null && r != null
+                            && (r.outcome() == com.moddingfromamod.wishbuilder.BuilderMake.Outcome.MADE
+                            || r.outcome() == com.moddingfromamod.wishbuilder.BuilderMake.Outcome.PARTIAL)
+                            && r.madeId() != null && !r.madeId().isEmpty();
+                    if (ok) {
+                        designs.put(key, r.madeId());
+                    } else if (!renamed && r != null
+                            && r.outcome() == com.moddingfromamod.wishbuilder.BuilderMake.Outcome.REFUSED) {
+                        LOG.warn("Moddy Arena: champions: the Builder refused {} ({}); asked again as {}", spec.name(),
+                                r.detail(), SAFE_CHAMPION_NAME);
+                        makingKey = key;
+                        designing.add(key);
+                        makeDesign(new com.moddingfromamod.wishbuilder.BuilderSpec(spec.version(), spec.kind(),
+                                spec.from(), spec.scheme(), spec.size(), spec.powers(), spec.temper(), spec.count(),
+                                spec.at(), SAFE_CHAMPION_NAME, spec.opts()), key, true);
+                        return;
+                    } else if (r == null || r.outcome() != com.moddingfromamod.wishbuilder.BuilderMake.Outcome.BUSY) {
+                        unmade.add(key);
+                    }
+                    LOG.info("Moddy Arena: champions: {} {} in {} ms", spec.name(), ok ? "is ready (" + r.madeId() + ")"
+                            : "could not be made: " + (err != null ? err.toString() : r == null ? "no result"
+                            : r.outcome() + " " + r.detail()), (System.nanoTime() - t0) / 1_000_000);
+                    makeNextDesign();
+                }));
+    }
+
+    /**
+     * The wave, wished through the Builder: each monster is a Builder real mob ({@link ArenaWishedWaves#mob}), or a
+     * champion's Builder design once made, held at the ladder's limits for a PLAYER at the battle's place now, at the
+     * spot {@link ArenaSpawns} picks, and marked as a wave mob when it arrives (as {@link #spawnOne} marks one).
+     * @return how many were wished.
+     */
+    private int wishWave(ServerLevel level, ArenaWaves.Wave wave, double health) {
+        waveMobs.clear();
+        List<double[]> players = new ArrayList<>();
+        for (ServerPlayer p : level.players()) {
+            players.add(new double[] {p.getX(), p.getZ()});
+        }
+        List<int[]> spots = ArenaSpawns.pick(place, players, wave.size(), level.random.nextLong());
+        ArenaLadder ladder = ArenaLadderRule.ladderOf(ArenaModule.rules());
+        int cleared = reached(ladder);
+        wantDesigns(cleared);
+        var limits = com.moddingfromamod.world.WorldWishes.Limits.of(ladder.limits(cleared));
+        int i = 0;
+        int count = 0;
+        int asDesigns = 0;
+        long now = server.getTickCount();
+        int waiting = 0;
+        for (ArenaWishedWaves.Plan plan : wished.plan(wave, cleared, picks)) {
+            int[] s = spots.get(i++);
+            Consumer<LivingEntity> arrived = m -> {
+                markWave(m);
+                if (plan.champion()) {
+                    m.addTag(CHAMPION_TAG);
+                }
+                difficultyHealth(m, health);
+                waveMobs.add(m.getUUID());
+            };
+            String species = plan.design() == null ? null : designs.get(plan.design().toJson().toString());
+            boolean neverComes = plan.design() != null && unmade.contains(plan.design().toJson().toString());
+            if (plan.design() != null && species == null && !neverComes && wished.championWaitSeconds() > 0) {
+                // its design is still being made: it arrives last, as soon as it is (releaseChampions)
+                held.add(new Held(plan, s, limits, arrived, now + wished.championWaitSeconds() * 20L));
+                waiting++;
+                count++;
+                continue;
+            }
+            try {
+                if (species != null) {
+                    com.moddingfromamod.world.WorldWishes.species(level, wishModule, species, s[0] + 0.5,
+                            place.floorY(), s[1] + 0.5, limits, plan.slim(), arrived);
+                    asDesigns++;
+                } else {
+                    com.moddingfromamod.world.WorldWishes.creature(level, wishModule, plan.mob(), s[0] + 0.5,
+                            place.floorY(), s[1] + 0.5, limits, plan.slim(), arrived);
+                }
+                count++;
+            } catch (IllegalArgumentException notAMob) {
+                LOG.warn("Moddy Arena: battle: {} is left out: {}", plan.mob().from(), notAMob.getMessage());
+            }
+        }
+        LOG.info("Moddy Arena: battle: {} wished through the Builder ({} as champion designs, {} champion(s) arriving"
+                + " last) at {} waves cleared, held to {}", count, asDesigns, waiting, cleared, limits.ceiling());
+        return count;
+    }
+
+    /**
+     * The boss, wished under a full pillar as a Builder real mob, UNCAPPED (a boss fight is meant to be hard): its own
+     * numbers as {@link #spawnBoss} gives them, when it arrives.
+     */
+    private boolean wishBoss(ServerLevel level, ArenaBosses.Boss b, double difficultyHealth) {
+        List<double[]> players = new ArrayList<>();
+        for (ServerPlayer p : level.players()) {
+            players.add(new double[] {p.getX(), p.getZ()});
+        }
+        int[] centre = {place.centreX(), place.centreZ()};      // the arena's middle, wherever the place stands
+        int[] spot = ArenaSpawns.nearestPlayer(centre, players) >= ArenaSpawns.MIN_FROM_PLAYER
+                ? centre : ArenaSpawns.pick(place, players, 1, level.random.nextLong()).get(0);
+        try {
+            com.moddingfromamod.world.WorldWishes.creature(level, wishModule, wished.mob(b.mob(), 0),
+                    spot[0] + 0.5, place.floorY(), spot[1] + 0.5, wished.bossUncapped()
+                            ? com.moddingfromamod.world.WorldWishes.Limits.UNCAPPED
+                            : com.moddingfromamod.world.WorldWishes.Limits.of(ArenaLadderRule.ladderOf(
+                                    ArenaModule.rules()).limits(reached())),
+                    false, m -> {
+                        markWave(m);
+                        bossStats(m, b, difficultyHealth);
+                        waveMobs.add(m.getUUID());
+                        boss = m.getUUID();
+                        bossName = b.name();
+                    });
+            return true;
+        } catch (IllegalArgumentException notAMob) {
+            LOG.warn("Moddy Arena: battle: the boss {} ({}) is left out: {}", b.name(), b.mob(), notAMob.getMessage());
+            return false;
+        }
     }
 
     private static void setBase(LivingEntity e, net.minecraft.core.Holder<net.minecraft.world.entity.ai.attributes.Attribute> a,
@@ -1023,7 +1348,7 @@ final class ArenaBattle {
 
     /** Where the battle is on the ladder in force now (0 outside a battle). Any thread. */
     int reached() {
-        return reached(ArenaLadderRule.ladderOf(com.moddingfromamod.world.WorldRulesService.current()));
+        return reached(ArenaLadderRule.ladderOf(ArenaModule.rules()));
     }
 
     /** The ladder back at its first step: a battle starting ({@code on}), or the arena ready again after one. */
@@ -1034,8 +1359,11 @@ final class ArenaBattle {
         ladderTold = 0;
         ladderOn = on;
         ladderBoard.changed();
-        if (wasUp) {
-            refitWished("the ladder is back at its first step");
+        if (wasUp || on) {
+            // a battle starting refits too: a creature that stood at its own numbers before it (made outside the
+            // arena and brought in) fights wave 1 at the first step, not at full strength until a step opens
+            // (jivinstev/ModdyTheWishWatch#174: three Super Wolves at attack 100 carried waves 1 and 2)
+            refitWished(on ? "a battle starts at the first step" : "the ladder is back at its first step");
         }
     }
 
@@ -1063,7 +1391,7 @@ final class ArenaBattle {
      * again at once ({@link #refitWished}).
      */
     private void ladderUp() {
-        ArenaLadder ladder = ArenaLadderRule.ladderOf(com.moddingfromamod.world.WorldRulesService.current());
+        ArenaLadder ladder = ArenaLadderRule.ladderOf(ArenaModule.rules());
         int now = reached(ladder);
         ArenaLadder.Rise rise = ladder.rise(ladderTold, now);
         int was = ladderTold;
@@ -1092,6 +1420,33 @@ final class ArenaBattle {
     /** The id of the difficulty's change to a wave mob's most health. */
     private static final net.minecraft.resources.ResourceLocation HEALTH_ID =
             net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(ArenaMod.MODID, "difficulty_health");
+
+    /** What makes a mob the arena's wave mob: its tag, and the rules a wave mob keeps ({@link #spawnOne}). */
+    private static void markWave(Entity e) {
+        e.addTag(TAG);
+        if (e instanceof Mob m) {
+            m.setPersistenceRequired();
+            m.setCanPickUpLoot(false);
+        }
+        if (e instanceof net.minecraft.world.entity.monster.piglin.AbstractPiglin piglin) {
+            piglin.setImmuneToZombification(true);
+        }
+        if (e instanceof net.minecraft.world.entity.monster.hoglin.Hoglin hoglin) {
+            hoglin.setImmuneToZombification(true);
+        }
+    }
+
+    /** The difficulty's health on a wave mob (none at 1.0). */
+    private static void difficultyHealth(Entity e, double health) {
+        if (e instanceof LivingEntity living && health != 1.0) {
+            AttributeInstance max = living.getAttribute(Attributes.MAX_HEALTH);
+            if (max != null) {
+                max.addOrReplacePermanentModifier(new AttributeModifier(HEALTH_ID, health - 1.0,
+                        AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+                living.setHealth(living.getMaxHealth());
+            }
+        }
+    }
 
     private static <T extends Entity> T spawnOne(ServerLevel level, EntityType<T> type, BlockPos at, double health) {
         Consumer<T> mark = e -> {
@@ -1124,7 +1479,7 @@ final class ArenaBattle {
 
     /** The wave table the world's rules name now (the panel's settings are applied on top), or null. */
     private static ArenaWaves baseWaves() {
-        return ArenaWavesRule.wavesOf(com.moddingfromamod.world.WorldRulesService.current());
+        return ArenaWavesRule.wavesOf(ArenaModule.rules());
     }
 
     /** How many of the wave's mobs are left; one that has left the place is removed and counts as cleared. */
@@ -1157,7 +1512,8 @@ final class ArenaBattle {
                 }
             }
         }
-        return waveMobs.size();
+        // a wished monster still under its pillar is a mob left: the wave is not cleared before it arrives
+        return waveMobs.size() + held.size() + com.moddingfromamod.world.WorldWishes.pending(wishModule);
     }
 
     private int discardWave(ServerLevel level) {
@@ -1170,6 +1526,8 @@ final class ArenaBattle {
             }
         }
         waveMobs.clear();
+        com.moddingfromamod.world.WorldWishes.cancelAll(wishModule);   // pillars still rising: called off
+        held.clear();
         return n;
     }
 
@@ -1399,5 +1757,10 @@ final class ArenaBattle {
 
     private ServerLevel level() {
         return server.overworld();
+    }
+
+    /** Which arena this battle is. */
+    String site() {
+        return site;
     }
 }

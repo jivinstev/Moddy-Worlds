@@ -70,8 +70,11 @@ public final class ArenaModule implements WorldModule {
      * at a battle's end, never removes them. Only in an arena world, while its module runs. Server thread.
      */
     static void onDrops(net.neoforged.neoforge.event.entity.living.LivingDropsEvent event) {
-        ArenaModule m = live;
-        ArenaBattle b = m == null ? null : m.battle;
+        ArenaBattle b = battleFor(event.getEntity());
+        if (b != null && !b.dropsOf(event.getEntity())) {
+            event.setCanceled(true);   // a wave monster leaves nothing on the floor (arena_wished_waves' drops)
+            return;
+        }
         if (b == null || !(event.getEntity() instanceof ServerPlayer)) {
             return;
         }
@@ -88,8 +91,7 @@ public final class ArenaModule implements WorldModule {
      * datapack power runs), which a player takes as from anything else.
      */
     static void onIncomingDamage(net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent event) {
-        ArenaModule m = live;
-        ArenaBattle b = m == null ? null : m.battle;
+        ArenaBattle b = battleFor(event.getEntity());
         if (b == null || !(event.getEntity() instanceof ServerPlayer p)) {
             return;
         }
@@ -97,7 +99,7 @@ public final class ArenaModule implements WorldModule {
         if (ArenaSide.spare(true, b.inPlace(p), wishMade(source.getEntity()), wishMade(source.getDirectEntity()))) {
             event.setCanceled(true);
             net.minecraft.world.entity.Entity by = source.getEntity() != null ? source.getEntity() : source.getDirectEntity();
-            if (by != null && m.spared.add(by.getUUID())) {
+            if (by != null && SPARED.add(by.getUUID())) {
                 LOG.info("Moddy Arena: a wished {} would have hurt {}; stopped (a wished creature is on the players' side"
                         + " here)", net.minecraft.world.entity.EntityType.getKey(by.getType()), p.getScoreboardName());
             }
@@ -109,8 +111,7 @@ public final class ArenaModule implements WorldModule {
      * ({@link ArenaSide}); the role keeper's pass lets go of one it still holds.
      */
     static void onChangeTarget(net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent event) {
-        ArenaModule m = live;
-        ArenaBattle b = m == null ? null : m.battle;
+        ArenaBattle b = battleFor(event.getEntity());
         if (b == null || !(event.getNewAboutToBeSetTarget() instanceof net.minecraft.world.entity.player.Player)) {
             return;
         }
@@ -119,6 +120,19 @@ public final class ArenaModule implements WorldModule {
             event.setNewAboutToBeSetTarget(null);
         }
     }
+
+    /** The battle of the arena {@code e} stands in (any site), else the arena world's own (its old behaviour), or null. */
+    private static ArenaBattle battleFor(net.minecraft.world.entity.Entity e) {
+        ArenaBattle here = ArenaSites.battleAt(e);
+        if (here != null) {
+            return here;
+        }
+        ArenaModule m = live;
+        return m == null ? null : m.battle;
+    }
+
+    /** The wished creatures whose hurt to a player was stopped, across every arena, so the log says it once for each. */
+    private static final Set<UUID> SPARED = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     /** True for an entity a wish made, or one whose owner a wish made (what such a creature shot or threw). */
     private static boolean wishMade(net.minecraft.world.entity.Entity e) {
@@ -132,10 +146,17 @@ public final class ArenaModule implements WorldModule {
                 && com.moddingfromamod.world.Wished.isWished(t.getOwner());
     }
 
+    /** The game's experience event: a wave monster gives none, as it drops nothing ({@link ArenaBattle#dropsOf}). */
+    static void onExperience(net.neoforged.neoforge.event.entity.living.LivingExperienceDropEvent event) {
+        ArenaBattle b = battleFor(event.getEntity());
+        if (b != null && !b.dropsOf(event.getEntity())) {
+            event.setCanceled(true);
+        }
+    }
+
     /** The game's event for an item a player throws (Q, or out of his inventory): his own, as {@link #onDrops}. */
     static void onToss(net.neoforged.neoforge.event.entity.item.ItemTossEvent event) {
-        ArenaModule m = live;
-        ArenaBattle b = m == null ? null : m.battle;
+        ArenaBattle b = battleFor(event.getPlayer());
         if (b != null && event.getPlayer() instanceof ServerPlayer) {
             b.playersItem(event.getEntity().getUUID());
         }
@@ -207,6 +228,7 @@ public final class ArenaModule implements WorldModule {
         LOG.info("Moddy Arena: wishes: the arena's wish charge is in force (in prep, {} Magician wishes a player;"
                 + " in a battle, hotbar wishes only, each resting {} s)", w.magicianWishes(), w.cooldownSeconds());
         live = this;
+        ArenaSites.module(place, battle);   // this world's own arena is the site main (Moddy-Worlds#58)
         return bases;
     }
 
@@ -300,6 +322,7 @@ public final class ArenaModule implements WorldModule {
         }
         if (live == this) {
             live = null;
+            ArenaSites.moduleStopped();
         }
         ArenaHandOverShow h = handOver;
         if (h != null) {
@@ -353,7 +376,22 @@ public final class ArenaModule implements WorldModule {
 
     /** The unlock ladder in force: the world's {@code arena_ladder} rule, or the default. */
     static ArenaLadder ladder() {
-        return ArenaLadderRule.ladderOf(WorldRulesService.current());
+        return ArenaLadderRule.ladderOf(rules());
+    }
+
+    /**
+     * The rules an arena reads its own rule types from: the world's, when they carry the arena's (an arena world, or a
+     * server that names a rules file with them), else this jar's own (Moddy-Worlds#58). A world the arena is not, with
+     * an arena built in it by {@code /moddy arena create}, has none of {@code arena_waves} and friends in its rules,
+     * so its arenas run on the arena's shipped ones.
+     */
+    static WorldRules rules() {
+        WorldRules world = WorldRulesService.current();
+        if (world != null && world.first(ArenaWavesRule.KEY) != null) {
+            return world;
+        }
+        WorldRules own = bundledWorldRules();
+        return own != null ? own : world;
     }
 
     @Override
@@ -364,6 +402,9 @@ public final class ArenaModule implements WorldModule {
 
     /** {@code /moddy arena start}: starts a battle in an arena world; says why not anywhere else. */
     static int startCommand(net.minecraft.commands.CommandSourceStack source) {
+        if (!ArenaSites.live().isEmpty()) {
+            return ArenaSites.start(source, null);
+        }
         ArenaModule m = live;
         ArenaBattle b = m == null ? null : m.battle;
         if (b == null) {
@@ -486,6 +527,24 @@ public final class ArenaModule implements WorldModule {
             return null;
         }
         return p.rules();
+    }
+
+    private static volatile WorldRules bundledParsed;
+
+    /** The arena's own rules (this jar's), parsed once: what a site judges reach by as a region (#182). */
+    static WorldRules bundledWorldRules() {
+        WorldRules r = bundledParsed;
+        if (r == null) {
+            // parsed as the arena's own (its "world": "arena"), whatever world it runs in: an Isle world is "isle"
+            String text = bundledRules();
+            WorldRules.Parsed p = text == null ? null : WorldRules.parse(text, ID);
+            r = p != null && p.ok() ? p.rules() : null;
+            if (p != null && !p.ok()) {
+                LOG.warn("Moddy Arena: the arena's own rules were refused: {}", p.errors());
+            }
+            bundledParsed = r;
+        }
+        return r;
     }
 
     /** The arena's own rules file text (worlds/rules/arena.rules.json, in this jar), or null. */

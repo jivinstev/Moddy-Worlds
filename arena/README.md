@@ -291,6 +291,33 @@ them.
    room and everything in it, and players' inventories, are never touched (`ArenaTidy`, below: "Items between
    battles").
 
+**Knocked out, back in the prep room, wherever his own respawn point is** (Moddy-Worlds#60): while a battle is on, a
+fighter (or one out of lives, watching) whose respawn would be outside the place (a bed elsewhere) comes back at the
+prep room's arrival spot instead, so he never counts as having left the place. Only that one respawn is moved, before
+it happens (NeoForge's respawn-position event): nothing is saved, his bed or point and the world spawn are kept, and
+the first respawn after the battle is the game's own. The setting `respawnInPrep` (below) turns it off.
+
+### The arena's settings: `/moddy arena config`
+
+The battle's timings can be changed in game, without editing the rules file (Moddy-Worlds#59):
+
+| command | what it does |
+|---|---|
+| `/moddy arena config` | every setting for all arenas, its value, and where it came from |
+| `/moddy arena config <scope>` | the same for `global` (all arenas) or one arena by its name (the arena world's own is `main`) |
+| `/moddy arena config <scope> <key>` | one setting |
+| `/moddy arena config <scope> <key> <value>` | sets it (an operator only; a singleplayer host with cheats on is one) |
+| `/moddy arena config <scope> <key> reset` | drops that scope's own value |
+
+The keys: `breatherSeconds` (the break after a wave, 3 to 120), `bossBreatherSeconds` (after a boss wave, 3 to 300),
+`countdownSeconds` (3 to 60), `waveSeconds` (a wave's time limit, 30 to 1800), each the same range the rules file
+allows, and `respawnInPrep` (on or off, above). **Layers**: the rules file (`arena_waves`), under `global`, under one
+arena's own; the highest that sets a key wins. A value is read when a battle starts, and a change is refused while a
+battle it would touch is on ("A battle is on in main. Change its settings when it is over."); anyone may read them,
+during a battle too. They are kept in the world (`data/moddyarena_config.dat`), so on a dedicated server they are the
+server's. A key is one entry in `ArenaConfig.KEYS`; a value an older version stored outside a range a newer one allows is
+clamped when read.
+
 ### The gate in a battle
 
 `ArenaGate` (pure, unit-tested) decides; the battle carries it out.
@@ -666,6 +693,37 @@ Apprentice goes by the same rule: made in the arena it lands there (made in the 
 made outside the place it is refused. The rules also carry a clamp
 (powers at most 60 seconds, one stack of each item, 2 kinds and 2 XP levels a wish).
 
+## Arenas in any world: `/moddy arena create`
+
+An operator (in singleplayer: a world with cheats on) can build a battle arena **in any world**, including one made
+long before, and several in one world (at most 16, with 8 blocks between any two). Each has its own prep room,
+control panel, Champions board, battles and wished waves.
+
+| Command | What it does |
+|---|---|
+| `/moddy arena create <name>` | Says how big it is and that everything inside it is replaced; add `confirm` to build it. The prep room is built where you stand, with the arena to the north. It refuses, saying what is in the way and where: another arena (the whole place, prep room and base included, with 8 blocks between), a player's base (an Isle world's island), another world feature's region, any block entity from the base's bedrock to the sky (a chest, a bed, a sign, a furnace, a spawner: a player's things, or a structure's), another player, ground past the world border or the world's bottom or top, and ground that is not loaded. |
+| `/moddy arena list` | The arenas in this world, where each prep room is, and which has a battle on. |
+| `/moddy arena go <name>` | Takes you to its prep room (operator). |
+| `/moddy arena start [<name>]` | Starts a battle: the named arena, else the one you stand in, else the only one. A player who is not an operator starts only the arena he stands in (a battle takes whoever is in the place). |
+| `/moddy arena remove <name> confirm` | Ends its battle and forgets it (operator). Its blocks are left standing. |
+
+**A built arena changes nothing outside itself:** no spawn move, no game rule, nobody moved on join. **Inside it,
+wishes follow the arena's rules,** the same as in an arena world:
+- in a battle, only hotbar wishes, each resting, so many a wave;
+- every make held to the wish ladder;
+- a wish cast inside lands inside.
+
+That works through the core's `WorldRegions` (jivinstev/ModdyTheWishWatch#182): each arena is a region of its world.
+Outside every arena, the world's own rules answer. In an Isle world, a new island is never placed in a cell an arena
+stands in. In the arena world type, the place its first start builds is the arena `main`.
+
+**For now:** arenas are built in the Overworld only, and a world holds at most 16. A built arena's record is
+`data/moddyarena_place_<name>.dat` (version 6, which added where the place stands; the arena world's own record,
+`moddyarena_place.dat`, reads a version 5 one as standing at x 0, z 0), and the list of them `data/moddyarena_sites.dat`.
+
+The arena's settings (`/moddy arena config`, the same for every arena: `global` or an arena's name) are under "A
+battle" above.
+
 ## The rules file
 
 `src/level/resources/worlds/rules/arena.rules.json`, the core's rules format, plus the arena's own rule types,
@@ -924,7 +982,9 @@ All of it in `com.moddingfromamod.levels.arena`:
 | class | what it does |
 |---|---|
 | `ArenaMod` | the `@Mod` class: the World Type and the built-in marker pack (shared code) |
-| `ArenaPlugin` | the plug-in: the `arena` world module, the `arena_place` and `arena_waves` rule types, `/moddy arena start` |
+| `ArenaPlugin` | the plug-in: the `arena` world module, the `arena_place` and `arena_waves` rule types, `/moddy arena start` and `config` |
+| `ArenaConfig`, `ArenaConfigStore` | the settings command's keys, layers, guard and words (pure), and where the world keeps them |
+| `ArenaRespawn` | where a fighter knocked out in a battle comes back (pure) |
 | `ArenaPlace` | **pure**: the sizes and their checks, every box of the place and the base it stands on, the start button, the arrival spot and the floor under it, the reach, the start decision, the upgrades, what a reset puts back, whether a body is still in the place or fell out under it |
 | `ArenaGate` | **pure**: the gate in a battle: shut (iron bars) only while a wave is on, who is moved in and when (at a wave's start, and a knocked-out fighter after a count), where, and what happens to a monster outside the arena |
 | `ArenaWaves` | **pure**: the wave table and its checks, and what the rule fixes or limits on the control panel |
