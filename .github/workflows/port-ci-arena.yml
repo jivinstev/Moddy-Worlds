@@ -125,12 +125,12 @@ jobs:
           java-version: "21"
       - name: Software OpenGL for the client gate
         run: sudo apt-get update && sudo apt-get install -y xvfb mesa-utils libgl1-mesa-dri
-      - name: moddingfromamod 1.0.11 from the moddingfromamod-1.0.11-mc1.21.8 release into mavenLocal (pinned by sha256)
+      - name: moddingfromamod 1.0.12 from the moddingfromamod-1.0.12-mc1.21.8 release into mavenLocal (pinned by sha256)
         run: |
-          mkdir -p "$HOME/.m2/repository/com/moddingfromamod/moddingfromamod/1.0.11"
-          curl -fsSL -o "$HOME/.m2/repository/com/moddingfromamod/moddingfromamod/1.0.11/moddingfromamod-1.0.11.jar" "https://github.com/jivinstev/ModdyTheWishWatch/releases/download/moddingfromamod-1.0.11-mc1.21.8/moddingfromamod-1.0.11+mc1.21.8.jar"
-          echo "e6a9318f6e34776edb08ba3d57bf07919ca39ba59ba117314c34f556b9431e09  $HOME/.m2/repository/com/moddingfromamod/moddingfromamod/1.0.11/moddingfromamod-1.0.11.jar" | sha256sum -c -
-          echo '<project><modelVersion>4.0.0</modelVersion><groupId>com.moddingfromamod</groupId><artifactId>moddingfromamod</artifactId><version>1.0.11</version><packaging>jar</packaging></project>' > "$HOME/.m2/repository/com/moddingfromamod/moddingfromamod/1.0.11/moddingfromamod-1.0.11.pom"
+          mkdir -p "$HOME/.m2/repository/com/moddingfromamod/moddingfromamod/1.0.12"
+          curl -fsSL -o "$HOME/.m2/repository/com/moddingfromamod/moddingfromamod/1.0.12/moddingfromamod-1.0.12.jar" "https://github.com/jivinstev/ModdyTheWishWatch/releases/download/moddingfromamod-1.0.12-mc1.21.8/moddingfromamod-1.0.12+mc1.21.8.jar"
+          echo "7ddc98c38fdcd802b75f375d88b90da14fa5c637ef0795b49983dbbfa0e81b98  $HOME/.m2/repository/com/moddingfromamod/moddingfromamod/1.0.12/moddingfromamod-1.0.12.jar" | sha256sum -c -
+          echo '<project><modelVersion>4.0.0</modelVersion><groupId>com.moddingfromamod</groupId><artifactId>moddingfromamod</artifactId><version>1.0.12</version><packaging>jar</packaging></project>' > "$HOME/.m2/repository/com/moddingfromamod/moddingfromamod/1.0.12/moddingfromamod-1.0.12.pom"
       - name: Dependent gate -- candidate dependency jars instead of the pinned ones (dep_override)
         if: ${{ inputs.dep_override }}
         env:
