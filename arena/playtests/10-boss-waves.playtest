@@ -14,6 +14,9 @@
 @wait 2s
 difficulty hard
 difficulty normal
+# this playtest proves the plain wave table (its kinds, the generator, the bosses): wished waves off for it
+moddy arena config main wishedWaves off
+@expect chat wishedWaves for main is now off within 5s
 gamemode survival
 effect give @s minecraft:resistance 900 4 true
 effect give @s minecraft:saturation 900 0 true
@@ -39,16 +42,36 @@ teleport @s 0.5 64 21.5 180 0
 
 @step waves 1 to 4
 @wait 1s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 1 cleared within 10s
 @expect title Wave 2 of 10 within 20s
 @wait 1s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect title Wave 3 of 10 within 20s
 @wait 1s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect title Wave 4 of 10 within 20s
 @wait 1s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 4 cleared within 10s
 @expect bossbar BOSS wave 5 of 10 in within 3s
@@ -57,17 +80,24 @@ kill @e[tag=moddyarena_wave]
 @expect title BOSS WAVE within 20s
 @expect chat Wave 5 is a boss wave: Rumble the Ravager is here! within 3s
 @wait 1s
+@repeat 60 until execute if entity @e[type=minecraft:ravager,tag=moddyarena_wave,name="Rumble the Ravager"]
+@wait 5t
+@end-repeat
 @assert execute if entity @e[type=minecraft:ravager,tag=moddyarena_wave,name="Rumble the Ravager"]
 execute store result score #hp arenatest run attribute @e[type=minecraft:ravager,tag=moddyarena_wave,name="Rumble the Ravager",limit=1] minecraft:max_health get
 @assert execute if score #hp arenatest matches 150
 # the escort: a third of wave 5 (a husk, a pillager, a witch and a vindicator)
-execute store result score #n arenatest if entity @e[tag=moddyarena_wave,type=!minecraft:ravager]
+execute store result score #n arenatest if entity @e[tag=moddyarena_wave,type=!minecraft:ravager,tag=!moddyarena_champion]
 @assert execute if score #n arenatest matches 4
 @expect bossbar BOSS: Rumble the Ravager (wave 5 of 10) within 3s
 @assert execute if entity @e[type=minecraft:text_display,tag=moddyarena_panel_state,nbt={text:{text:"BOSS wave 5 of 10!"}}]
 # the boss hurt a little, so its bar is seen going down. The picture: from inside the arena, the wave held still
 # (no AI) so it stays in view, and after the chat has faded
 damage @e[type=minecraft:ravager,name="Rumble the Ravager",limit=1] 40 minecraft:player_attack
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 execute as @e[tag=moddyarena_wave] run data merge entity @s {NoAI:1b}
 teleport @e[type=minecraft:ravager,name="Rumble the Ravager",limit=1] 0.5 64 2.5 0 0
 teleport @s 0.5 64 13.5 180 5
@@ -79,6 +109,11 @@ teleport @s 0.5 64 13.5 180 5
 kill @e[type=minecraft:ravager,tag=moddyarena_wave]
 @expect chat You beat Rumble the Ravager! within 3s
 @expect bossbar Wave 5 of 10: 4 monsters left within 3s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 5 cleared within 10s
 
@@ -87,26 +122,57 @@ kill @e[tag=moddyarena_wave]
 @wait 1s
 execute store result score #n arenatest if entity @e[tag=moddyarena_wave]
 @assert execute if score #n arenatest matches 11
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect title Wave 7 of 10 within 20s
 @wait 1s
+@repeat 60 until execute if entity @e[type=minecraft:piglin_brute,tag=moddyarena_wave]
+@wait 5t
+@end-repeat
 @assert execute if entity @e[type=minecraft:piglin_brute,tag=moddyarena_wave]
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect title Wave 8 of 10 within 20s
 @wait 1s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect title Wave 9 of 10 within 20s
 @wait 1s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 9 cleared within 10s
 
 @step wave 10 is the second boss, Captain Chop, and beating it wins
 @expect title BOSS WAVE within 20s
 @wait 1s
+@repeat 60 until execute if entity @e[type=minecraft:vindicator,tag=moddyarena_wave,name="Captain Chop"]
+@wait 5t
+@end-repeat
 @assert execute if entity @e[type=minecraft:vindicator,tag=moddyarena_wave,name="Captain Chop"]
 execute store result score #hp arenatest run attribute @e[type=minecraft:vindicator,tag=moddyarena_wave,name="Captain Chop",limit=1] minecraft:max_health get
 @assert execute if score #hp arenatest matches 200
 @expect bossbar BOSS: Captain Chop (wave 10 of 10) within 3s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect title You won within 10s
 @expect chat All 10 waves are cleared within 5s

@@ -11,7 +11,7 @@ import java.util.Set;
  * (a smaller walled, lit room where a player arrives), joined by one gate. Pure: no Minecraft here, so every size,
  * box and block of it is a unit test; {@link ArenaBuilder} only carries the list of {@link Fill}s out.
  *
- * <p>Layout, seen from above (north is up, -z), centred on x = 0:
+ * <p>Layout, seen from above (north is up, -z), centred on x = {@code ox}:
  * <pre>
  *   +-----------------+   the arena: arenaSize x arenaSize inside, its wall wallHeight high,
  *   |                 |   with a rim on top that overhangs inward so nothing climbs out
@@ -21,14 +21,18 @@ import java.util.Set;
  *       |  prep  |        is glass there, so the arena is in view from the prep room
  *       +--------+        the prep room: prepSize x prepSize inside, glass walls, a lit floor and a roof
  * </pre>
- * The arena's centre is at (0, floorY, 0); the floor is at {@code floorY - 1}, people stand at {@code floorY}.
+ * The arena's centre is at (ox, floorY, oz); the floor is at {@code floorY - 1}, people stand at {@code floorY}. Every
+ * coordinate the place gives is its (0, 0) one moved by (ox, oz): a place can stand anywhere in a world. The 4-number
+ * constructor means (0, 0), which is where every place stood before.
  *
  * @param arenaSize  the arena floor's inside width (odd, so it has a centre block)
  * @param prepSize   the prep room's inside width (odd)
  * @param wallHeight the arena wall's height above the floor
  * @param floorY     the y a player stands at
+ * @param ox         the x of the arena's centre
+ * @param oz         the z of the arena's centre
  */
-public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY) {
+public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY, int ox, int oz) {
 
     public static final int MIN_ARENA = 15;
     public static final int MAX_ARENA = 63;
@@ -47,6 +51,37 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
         if (why != null) {
             throw new IllegalArgumentException(why);
         }
+    }
+
+    /** A place centred on (0, 0), where every place stood before a place could stand anywhere. */
+    public ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY) {
+        this(arenaSize, prepSize, wallHeight, floorY, 0, 0);
+    }
+
+    /** The x of the arena's centre. */
+    public int centreX() {
+        return ox;
+    }
+
+    /** The z of the arena's centre. */
+    public int centreZ() {
+        return oz;
+    }
+
+    /** This place, the same sizes, with its arena's centre at (ox, oz). */
+    public ArenaPlace at(int ox, int oz) {
+        return new ArenaPlace(arenaSize, prepSize, wallHeight, floorY, ox, oz);
+    }
+
+    /** This place with people standing at {@code y} (a site built where he stands, Moddy-Worlds#58). */
+    public ArenaPlace withFloorY(int y) {
+        return new ArenaPlace(arenaSize, prepSize, wallHeight, y, ox, oz);
+    }
+
+    /** True when the two have the same sizes and floor, wherever each stands. */
+    public boolean sameShape(ArenaPlace o) {
+        return o != null && arenaSize == o.arenaSize && prepSize == o.prepSize && wallHeight == o.wallHeight
+                && floorY == o.floorY;
     }
 
     /** What is wrong with these sizes, in words, or null when they make a place. Pure. */
@@ -186,35 +221,35 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
 
     /** The arena's inside: where mobs and players fight (feet level up to the wall's top). */
     public Box arenaInside() {
-        return new Box(-ah(), floorY, -ah(), ah(), floorY + wallHeight - 1, ah());
+        return new Box(ox - ah(), floorY, oz - ah(), ox + ah(), floorY + wallHeight - 1, oz + ah());
     }
 
     /** The z of the wall the arena and the prep room share (the arena's south wall). */
     public int sharedWallZ() {
-        return ah() + 1;
+        return oz + ah() + 1;
     }
 
     /** The prep room's inside. */
     public Box prepInside() {
         int z0 = sharedWallZ() + 1;
-        return new Box(-ph(), floorY, z0, ph(), floorY + PREP_HEIGHT - 1, z0 + prepSize - 1);
+        return new Box(ox - ph(), floorY, z0, ox + ph(), floorY + PREP_HEIGHT - 1, z0 + prepSize - 1);
     }
 
     /** The gate's block: in the shared wall, at the middle, at feet height. */
     public int[] gate() {
-        return new int[] {0, floorY, sharedWallZ()};
+        return new int[] {ox, floorY, sharedWallZ()};
     }
 
     /** Where a player arrives: the middle of the prep room, facing the arena (north). Block coordinates. */
     public int[] arrival() {
         Box p = prepInside();
-        return new int[] {0, floorY, (p.z0() + p.z1()) / 2};
+        return new int[] {ox, floorY, (p.z0() + p.z1()) / 2};
     }
 
     /** The whole place's footprint, walls included. */
     public Box footprint() {
         Box p = prepInside();
-        return new Box(-ah() - 1, floorY - 1, -ah() - 1, ah() + 1, floorY + wallHeight, p.z1() + 1);
+        return new Box(ox - ah() - 1, floorY - 1, oz - ah() - 1, ox + ah() + 1, floorY + wallHeight, p.z1() + 1);
     }
 
     /** How far the base reaches past the place's walls, each way, in blocks. */
@@ -367,16 +402,17 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
         if (built == null) {
             return new Start(want, true, "");
         }
-        if (built.equals(want)) {
-            return new Start(built, false, "");
+        if (built.sameShape(want)) {
+            return new Start(built, false, "");      // where it stands is the built place's own, not the rules'
         }
         return new Start(built, false, "the rules now ask for " + want.describe() + ", but this world's place was built as "
                 + built.describe() + " and is kept as it is (a new world gets the new sizes)");
     }
 
-    /** "arena 31, prep room 9, wall 4" */
+    /** "arena 31, prep room 9, wall 4" (and " at x 1000, z -2000" for a place not centred on (0, 0)) */
     public String describe() {
-        return "arena " + arenaSize + ", prep room " + prepSize + ", wall " + wallHeight;
+        String at = ox == 0 && oz == 0 ? "" : " at x " + ox + ", z " + oz;
+        return "arena " + arenaSize + ", prep room " + prepSize + ", wall " + wallHeight + at;
     }
 
     /** The boxes to fill, in order, to build the place on nothing (a void world). */
@@ -391,16 +427,16 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
         out.add(new Fill(arenaInside(), Kind.AIR));
         out.add(new Fill(prepInside(), Kind.AIR));
         // the arena: floor, then the wall ring (floor to top), then the rim one block wider inward on top
-        out.add(new Fill(new Box(-a - 1, fy, -a - 1, a + 1, fy, a + 1), Kind.ARENA_FLOOR));
-        out.add(new Fill(new Box(-a - 1, floorY, -a - 1, a + 1, top, -a - 1), Kind.ARENA_WALL));
-        out.add(new Fill(new Box(-a - 1, floorY, a + 1, a + 1, top, a + 1), Kind.ARENA_WALL));
-        out.add(new Fill(new Box(-a - 1, floorY, -a, -a - 1, top, a), Kind.ARENA_WALL));
-        out.add(new Fill(new Box(a + 1, floorY, -a, a + 1, top, a), Kind.ARENA_WALL));
+        out.add(new Fill(moved(-a - 1, fy, -a - 1, a + 1, fy, a + 1), Kind.ARENA_FLOOR));
+        out.add(new Fill(moved(-a - 1, floorY, -a - 1, a + 1, top, -a - 1), Kind.ARENA_WALL));
+        out.add(new Fill(moved(-a - 1, floorY, a + 1, a + 1, top, a + 1), Kind.ARENA_WALL));
+        out.add(new Fill(moved(-a - 1, floorY, -a, -a - 1, top, a), Kind.ARENA_WALL));
+        out.add(new Fill(moved(a + 1, floorY, -a, a + 1, top, a), Kind.ARENA_WALL));
         int ry = top + 1;
-        out.add(new Fill(new Box(-a - 1, ry, -a - 1, a + 1, ry, -a), Kind.ARENA_RIM));
-        out.add(new Fill(new Box(-a - 1, ry, a, a + 1, ry, a + 1), Kind.ARENA_RIM));
-        out.add(new Fill(new Box(-a - 1, ry, -a + 1, -a, ry, a - 1), Kind.ARENA_RIM));
-        out.add(new Fill(new Box(a, ry, -a + 1, a + 1, ry, a - 1), Kind.ARENA_RIM));
+        out.add(new Fill(moved(-a - 1, ry, -a - 1, a + 1, ry, -a), Kind.ARENA_RIM));
+        out.add(new Fill(moved(-a - 1, ry, a, a + 1, ry, a + 1), Kind.ARENA_RIM));
+        out.add(new Fill(moved(-a - 1, ry, -a + 1, -a, ry, a - 1), Kind.ARENA_RIM));
+        out.add(new Fill(moved(a, ry, -a + 1, a + 1, ry, a - 1), Kind.ARENA_RIM));
         // the prep room: floor and walls (one block around its inside), a roof, lights
         Box p = prepInside();
         int pTop = p.y1();
@@ -416,13 +452,18 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
         int wz = sharedWallZ();
         int winTop = Math.min(top, floorY + PREP_HEIGHT - 1);
         out.add(new Fill(new Box(p.x0(), floorY, wz, p.x1(), winTop, wz), Kind.GLASS));
-        out.add(new Fill(new Box(0, floorY + 1, wz, 0, floorY + 1, wz), Kind.AIR));
-        out.add(new Fill(new Box(0, floorY, wz, 0, floorY, wz), Kind.GATE));
+        out.add(new Fill(new Box(ox, floorY + 1, wz, ox, floorY + 1, wz), Kind.AIR));
+        out.add(new Fill(new Box(ox, floorY, wz, ox, floorY, wz), Kind.GATE));
         out.addAll(controlFills());
         out.addAll(championsFills());
         out.addAll(ladderFills());
         out.addAll(handOverFills());
         return out;
+    }
+
+    /** A box given relative to the arena's centre, moved to where the place stands. */
+    private Box moved(int x0, int y0, int z0, int x1, int y1, int z1) {
+        return new Box(ox + x0, y0, oz + z0, ox + x1, y1, oz + z1);
     }
 
     /**
@@ -495,7 +536,8 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
      * shared wall, two east of the gate, a block and two blocks up. A place that had it loses them to the panel.
      */
     public List<int[]> firstStartControl() {
-        return List.of(new int[] {2, floorY + 1, sharedWallZ() + 1}, new int[] {2, floorY + 2, sharedWallZ() + 1});
+        return List.of(new int[] {ox + 2, floorY + 1, sharedWallZ() + 1},
+                new int[] {ox + 2, floorY + 2, sharedWallZ() + 1});
     }
 
     /** The upgrade that gave a place built without one its first start control (a button and a sign). */
@@ -541,7 +583,8 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
      */
     public Box resetBox(int maxY) {
         int a = ah();
-        return new Box(-a - 1, bedrockY(), -a - 1, a + 1, Math.max(maxY, floorY + wallHeight + 1), sharedWallZ());
+        return new Box(ox - a - 1, bedrockY(), oz - a - 1, ox + a + 1, Math.max(maxY, floorY + wallHeight + 1),
+                sharedWallZ());
     }
 
     /**
@@ -615,7 +658,9 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
                 return null;
             }
             int a = place.ah();
-            boolean inArenaColumns = x >= -a - 1 && x <= a + 1 && z >= -a - 1 && z <= place.sharedWallZ();
+            int cx = place.ox();
+            int cz = place.oz();
+            boolean inArenaColumns = x >= cx - a - 1 && x <= cx + a + 1 && z >= cz - a - 1 && z <= place.sharedWallZ();
             return inArenaColumns ? Kind.AIR : null;
         }
     }
@@ -625,6 +670,7 @@ public record ArenaPlace(int arenaSize, int prepSize, int wallHeight, int floorY
         Box p = prepInside();
         int cz = (p.z0() + p.z1()) / 2;
         int d = Math.max(1, ph() - 1);
-        return List.of(new int[] {-d, cz - d}, new int[] {d, cz - d}, new int[] {-d, cz + d}, new int[] {d, cz + d});
+        return List.of(new int[] {ox - d, cz - d}, new int[] {ox + d, cz - d}, new int[] {ox - d, cz + d},
+                new int[] {ox + d, cz + d});
     }
 }

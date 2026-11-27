@@ -1,0 +1,70 @@
+# Moddy Arena: the arena's settings command (Moddy-Worlds#59). /moddy arena config lists every setting and which layer
+# set it; a value for all arenas ("global") and one for this arena ("main") stack on the rules file, the arena's own
+# winning; the next battle starts with them (its countdown and its break between waves); a change is refused while the
+# battle it would touch is on, and reading never is; a reset drops one layer.
+# play-timeout: 600
+@intent an operator sets the countdown and the break between waves with /moddy arena config, the battle uses them, a change during the battle is refused, and a reset drops back a layer
+@world flat seed=1
+@continue-on-fail
+
+@step arrive
+@expect chat Welcome to Moddy Arena within 90s
+@wait 2s
+difficulty hard
+difficulty normal
+gamemode survival
+effect give @s minecraft:resistance 600 4 true
+
+@step the list, then a value for all arenas and one for this arena
+moddy arena config
+@expect chat /Settings for all arenas/ within 5s
+@expect chat /breatherSeconds = [0-9]+ seconds.*from the rules file/ within 3s
+moddy arena config global countdownSeconds 9
+@expect chat countdownSeconds for all arenas is now 9 seconds, from the next battle. within 5s
+moddy arena config main countdownSeconds 4
+@expect chat countdownSeconds for main is now 4 seconds, from the next battle. within 5s
+moddy arena config main breatherSeconds 3
+@expect chat breatherSeconds for main is now 3 seconds, from the next battle. within 5s
+moddy arena config main
+@expect chat /countdownSeconds = 4 seconds.*from this arena/ within 5s
+moddy arena config global breatherSeconds 1
+@expect chat /breatherSeconds must be a whole number of seconds from 3 to 120/ within 5s
+moddy arena config nowhere breatherSeconds 5
+@expect chat /There is no arena called nowhere/ within 5s
+
+@step the battle starts with this arena's countdown
+moddy arena start
+@expect chat /The first comes in 4 seconds/ within 5s
+@expect title Wave 1 of 5 within 10s
+
+@step during the battle a change is refused, and reading is not
+moddy arena config main breatherSeconds 5
+@expect chat A battle is on in main. Change its settings when it is over. within 5s
+moddy arena config global breatherSeconds 5
+@expect chat /A battle is on in main. Change the settings for all arenas when no battle is on./ within 5s
+moddy arena config main breatherSeconds
+@expect chat /breatherSeconds for main is 3 seconds \(from this arena\)/ within 5s
+
+@step the break between waves is this arena's
+@wait 1s
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
+kill @e[tag=moddyarena_wave]
+@expect chat /Wave 1 cleared!.*next wave comes in 3 seconds/ within 10s
+@expect title Wave 2 of 5 within 8s
+
+@step the battle ends, and a reset drops back to the value for all arenas
+kill @s
+@expect chat Knocked out! 2 lives left within 10s
+@wait 2s
+kill @s
+@expect chat Knocked out! 1 life left within 10s
+@wait 2s
+kill @s
+@expect chat no lives left within 10s
+@expect chat The arena is tidy again within 30s
+moddy arena config main countdownSeconds reset
+@expect chat countdownSeconds for main is back to 9 seconds (from all arenas), from the next battle. within 5s

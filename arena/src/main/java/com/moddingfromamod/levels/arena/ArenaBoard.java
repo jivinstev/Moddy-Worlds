@@ -216,7 +216,7 @@ final class ArenaBoard {
         if (mode != ArenaUnranked.Mode.PLAY) {
             best = ArenaWords.bestNotRecorded(who[1], mode);   // about him, by name: true for whoever reads it
         }
-        int perWave = ArenaWishesRule.wishesOf(com.moddingfromamod.world.WorldRulesService.current()).wishesPerWave();
+        int perWave = ArenaWishesRule.wishesOf(ArenaModule.rules()).wishesPerWave();
         Map<Words, String> want = new EnumMap<>(Words.class);
         for (Slot s : panel.slots()) {
             want.put(s.words(), String.join("\n",

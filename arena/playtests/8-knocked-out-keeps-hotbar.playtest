@@ -57,6 +57,9 @@ moddy apprentice a fire sword
 @key key.forward hold 20t
 @key key.hotbar.4
 @wait 1s
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
 @assert execute if entity @e[tag=moddyarena_wave]
 @expect chat Knocked out! 2 lives left within 180s
 @wait 1s
@@ -68,6 +71,9 @@ moddy apprentice a fire sword
 @wait 5t
 @end-repeat
 @assert execute if items entity @s hotbar.3 minecraft:paper
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
 @assert execute if entity @e[tag=moddyarena_wave]
 # the wish fires in the battle that goes on: it makes the sword again (a kept thing made again)
 @key key.hotbar.4

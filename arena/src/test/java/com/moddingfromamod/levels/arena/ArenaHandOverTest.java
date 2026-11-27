@@ -227,7 +227,7 @@ class ArenaHandOverTest {
         assertTrue(s.tellHandOver(HIM), "a record from before the hand-over: nobody told yet");
         assertFalse(s.tellHandOver(HIM), "only once");
         var saved = ArenaState.CODEC.encodeStart(JsonOps.INSTANCE, s).getOrThrow();
-        assertEquals(5, saved.getAsJsonObject().get("v").getAsInt());
+        assertEquals(ArenaState.VERSION, saved.getAsJsonObject().get("v").getAsInt());
         ArenaState again = ArenaState.CODEC.parse(JsonOps.INSTANCE, saved).getOrThrow();
         assertFalse(again.tellHandOver(HIM), "remembered after a restart");
         assertTrue(again.tellHandOver(UUID.randomUUID()), "another player is told his first time");

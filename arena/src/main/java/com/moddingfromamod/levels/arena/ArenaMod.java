@@ -21,10 +21,20 @@ public final class ArenaMod {
         LevelPacks.register(modBus, LEVEL);
         // a player's dropped things are his: kept by the arena's tidying (in an arena world only; ArenaModule)
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ArenaModule::onDrops);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ArenaModule::onExperience);
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ArenaModule::onToss);
         // a wished creature is on the players' side in the arena: it never hurts or targets one there
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ArenaModule::onIncomingDamage);
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ArenaModule::onChangeTarget);
+        // a fighter knocked out in a battle comes back in the prep room, only while the battle is on (Moddy-Worlds#60)
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ArenaSites::onRespawnPosition);
+        // arenas built with /moddy arena create, in any world (Moddy-Worlds#58): opened, ticked and closed here
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
+                (net.neoforged.neoforge.event.server.ServerStartedEvent e) -> ArenaSites.started(e.getServer()));
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
+                (net.neoforged.neoforge.event.tick.ServerTickEvent.Post e) -> ArenaSites.tick());
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
+                (net.neoforged.neoforge.event.server.ServerStoppingEvent e) -> ArenaSites.stopped());
         if (FMLEnvironment.dist.isClient()) {
             LevelWorldType.register(LEVEL);
         }

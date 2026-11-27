@@ -44,6 +44,10 @@ moddy arena start
 @expect title Wave 1 of 5 within 15s
 @wait 1s
 # the monsters held still where they stand, one of them marked to watch (SHORTCUT: so the test can see one take blows)
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 execute as @e[tag=moddyarena_wave] run data merge entity @s {NoAI:1b}
 tag @e[tag=moddyarena_wave,limit=1,sort=random] add watched
 execute at @e[tag=watched] run summon minecraft:polar_bear ~1.5 ~ ~ {Tags:["wishmob","bear"],PersistenceRequired:1b,CustomName:"Snowy"}
@@ -62,5 +66,10 @@ scoreboard players get #h1 arenatest
 @expect chat /Snowy is a Fighter/ within 5s
 @expect chat /Softie is a (Healer|Tank)/ within 5s
 @assert execute unless score #h1 arenatest >= #h0 arenatest
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 kill @e[tag=moddyarena_wave]
 @expect chat Wave 1 cleared within 10s

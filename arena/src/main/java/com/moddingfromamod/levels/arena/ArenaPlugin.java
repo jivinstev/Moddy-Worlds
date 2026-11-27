@@ -54,8 +54,54 @@ public final class ArenaPlugin implements ModdyPlugin {
         plugins.add(WorldRuleType.class, new ArenaWishesRule());
         plugins.add(WorldRuleType.class, new ArenaCreaturesRule());
         plugins.add(WorldRuleType.class, new ArenaLadderRule());
-        plugins.add(ChildBranch.class, () -> Commands.literal("arena")
-                .then(Commands.literal("start").executes(ctx -> ArenaModule.startCommand(ctx.getSource()))));
+        plugins.add(WorldRuleType.class, new ArenaWishedWavesRule());   // Moddy-Worlds#55
+        // /moddy arena …: the grammar every Moddy World can use, /moddy <world> <verb> … (Moddy-Worlds#58, #59)
+        plugins.add(ChildBranch.class, ArenaPlugin::arenaBranch);
+        // every built-on-demand arena is a region of its world: its rules inside, the world's outside (core #182)
+        plugins.add(com.moddingfromamod.world.WorldRegions.class, ArenaSites.REGIONS);
+    }
+
+    /**
+     * {@code /moddy arena}: {@code start [name]}, {@code list}, {@code create <name> [confirm]}, {@code go <name>},
+     * {@code remove <name> confirm} (Moddy-Worlds#58), and {@code config [scope [key [value|reset]]]} (#59), where a
+     * scope is {@code global} (every arena) or an arena's name. Operator checks are in each command.
+     */
+    static com.mojang.brigadier.builder.LiteralArgumentBuilder<net.minecraft.commands.CommandSourceStack> arenaBranch() {
+        var word = com.mojang.brigadier.arguments.StringArgumentType.word();
+        return Commands.literal("arena")
+                .then(Commands.literal("start")
+                        .executes(ctx -> ArenaSites.start(ctx.getSource(), null))
+                        .then(Commands.argument("name", word)
+                                .executes(ctx -> ArenaSites.start(ctx.getSource(), arg(ctx, "name")))))
+                .then(Commands.literal("list").executes(ctx -> ArenaSites.list(ctx.getSource())))
+                .then(Commands.literal("create")
+                        .then(Commands.argument("name", word)
+                                .executes(ctx -> ArenaSites.create(ctx.getSource(), arg(ctx, "name"), false))
+                                .then(Commands.literal("confirm")
+                                        .executes(ctx -> ArenaSites.create(ctx.getSource(), arg(ctx, "name"), true)))))
+                .then(Commands.literal("go")
+                        .then(Commands.argument("name", word)
+                                .executes(ctx -> ArenaSites.go(ctx.getSource(), arg(ctx, "name")))))
+                .then(Commands.literal("remove")
+                        .then(Commands.argument("name", word)
+                                .executes(ctx -> ArenaSites.remove(ctx.getSource(), arg(ctx, "name"), false))
+                                .then(Commands.literal("confirm")
+                                        .executes(ctx -> ArenaSites.remove(ctx.getSource(), arg(ctx, "name"), true)))))
+                .then(Commands.literal("config")
+                        .executes(ctx -> ArenaSites.config(ctx.getSource(), null, java.util.List.of()))
+                        .then(Commands.argument("scope", word)
+                                .executes(ctx -> ArenaSites.config(ctx.getSource(), arg(ctx, "scope"), java.util.List.of()))
+                                .then(Commands.argument("key", word)
+                                        .executes(ctx -> ArenaSites.config(ctx.getSource(), arg(ctx, "scope"),
+                                                java.util.List.of(arg(ctx, "key"))))
+                                        .then(Commands.argument("value", word)
+                                                .executes(ctx -> ArenaSites.config(ctx.getSource(), arg(ctx, "scope"),
+                                                        java.util.List.of(arg(ctx, "key"), arg(ctx, "value"))))))));
+    }
+
+    private static String arg(com.mojang.brigadier.context.CommandContext<net.minecraft.commands.CommandSourceStack> ctx,
+                              String name) {
+        return com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, name);
     }
 
     /** True when the id names a living entity this game knows (one with attributes: every living entity has them). */

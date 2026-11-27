@@ -120,4 +120,24 @@ class ArenaStateTest {
                 "a save has no size any more: " + saved);
         assertEquals(s.champions(), read(saved.toString()).champions());
     }
+
+    /** A version 5 record (0.1.7, before a place could stand anywhere): its place is centred on (0, 0) (version 6). */
+    @Test
+    void aVersionFiveRecordIsAPlaceAtTheOriginAndAMovedPlaceIsKept() {
+        String v5 = "{\"v\":5,\"built\":{\"arenaSize\":31,\"prepSize\":9,\"wallHeight\":4,\"floorY\":64}}";
+        ArenaState s = read(v5);
+        assertEquals(5, s.readVersion());
+        assertEquals(0, s.built().ox());
+        assertEquals(0, s.built().oz());
+        assertEquals(ArenaPlace.DEFAULT, s.built());
+        JsonElement saved = write(s);
+        assertEquals(6, saved.getAsJsonObject().get("v").getAsInt());
+        assertTrue(!saved.toString().contains("\"ox\""), "a place at (0, 0) saves what it saved before: " + saved);
+        ArenaPlace moved = ArenaPlace.DEFAULT.at(1000, -2000);
+        s.markBuilt(moved);
+        ArenaState again = read(write(s).toString());
+        assertEquals(moved, again.built());
+        assertEquals(1000, again.built().ox());
+        assertEquals(-2000, again.built().oz());
+    }
 }

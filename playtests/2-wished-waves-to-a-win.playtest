@@ -1,0 +1,91 @@
+# Wished waves, from start to a won battle (Moddy-Worlds#55, #58). An arena built by command in a plain world, with
+# wished waves ON (the default; the arena's own playtests prove its base mechanics with them off). Every wave's
+# monsters are wished by the arena through the Builder: they arrive under its pillars a moment after the wave begins,
+# one in four is a shadow champion (a Builder design the arena made at the battle's start), every capped monster is
+# held at the wish ladder's limits, and wave 5's boss, Rumble the Ravager, is wished UNCAPPED. The waves are cleared
+# by command (the arena's own playtests prove fighting them), each counted down only once every monster has arrived;
+# the fifth cleared is a won battle, and the arena is tidied.
+# play-timeout: 900
+@intent with wished waves on, a battle in an arena built by command runs all five waves to a win: monsters arrive under the arena's pillars, a shadow champion design in wave 1, every monster the arena's, the boss wished uncapped, and the arena tidied after
+@world flat seed=7
+@continue-on-fail
+
+@step build the arena and set it quick
+@wait 3s
+difficulty hard
+difficulty normal
+gamemode survival
+effect give @s minecraft:resistance 1500 4 true
+effect give @s minecraft:saturation 1500 0 true
+scoreboard objectives add arenatest dummy
+moddy arena create pit confirm
+@expect chat /Built the arena pit/ within 60s
+moddy arena config pit countdownSeconds 4
+@expect chat /countdownSeconds for pit is now 4 seconds/ within 10s
+moddy arena config pit breatherSeconds 3
+@expect chat /breatherSeconds for pit is now 3 seconds/ within 10s
+moddy arena config pit bossBreatherSeconds 3
+@expect chat /bossBreatherSeconds for pit is now 3 seconds/ within 10s
+
+@step wave 1: wished under the pillars, a shadow champion among them
+moddy arena start pit
+@expect chat /The first comes in 4 seconds/ within 10s
+@expect title Wave 1 of 5 within 20s
+@repeat 400 until execute if entity @e[tag=moddyarena_wave,tag=wishmob]
+@wait 5t
+@end-repeat
+@assert execute if entity @e[tag=moddyarena_wave,tag=wishmob]
+@assert execute unless entity @e[tag=moddyarena_wave,tag=!moddy_world_wished]
+@aim look 0 15
+@wait 10t
+@shot wave-1-with-champion
+@repeat 400 until execute unless entity @e[tag=moddyarena_wave]
+kill @e[tag=moddyarena_wave]
+@wait 10t
+@end-repeat
+@expect chat Wave 1 cleared within 30s
+
+@step waves 2 to 4, each wished and cleared
+@expect title Wave 2 of 5 within 30s
+@repeat 400 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@repeat 400 until execute unless entity @e[tag=moddyarena_wave]
+kill @e[tag=moddyarena_wave]
+@wait 10t
+@end-repeat
+@expect chat Wave 2 cleared within 30s
+@expect title Wave 3 of 5 within 30s
+@repeat 400 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@repeat 400 until execute unless entity @e[tag=moddyarena_wave]
+kill @e[tag=moddyarena_wave]
+@wait 10t
+@end-repeat
+@expect chat Wave 3 cleared within 30s
+@expect title Wave 4 of 5 within 30s
+@repeat 400 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@repeat 400 until execute unless entity @e[tag=moddyarena_wave]
+kill @e[tag=moddyarena_wave]
+@wait 10t
+@end-repeat
+@expect chat Wave 4 cleared within 30s
+
+@step wave 5: the boss, wished uncapped, and the win
+@expect title BOSS WAVE within 30s
+@repeat 400 until execute if entity @e[type=minecraft:ravager,tag=moddyarena_wave,name="Rumble the Ravager"]
+@wait 5t
+@end-repeat
+@assert execute if entity @e[type=minecraft:ravager,tag=moddyarena_wave,tag=moddy_world_wished_uncapped]
+execute store result score #hp arenatest run attribute @e[type=minecraft:ravager,tag=moddyarena_wave,limit=1] minecraft:max_health get
+@assert execute if score #hp arenatest matches 150..
+@shot boss-wave
+@repeat 400 until execute unless entity @e[tag=moddyarena_wave]
+kill @e[tag=moddyarena_wave]
+@wait 10t
+@end-repeat
+@expect title You won within 30s
+@expect chat The arena is tidy again within 30s

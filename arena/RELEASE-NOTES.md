@@ -1,3 +1,11 @@
+## What's new in Moddy Arena 0.1.8
+
+- **The arena wishes its monsters.** Each wave's monsters rise from red wish pillars and grow with the battle: bigger, stronger and faster as you clear waves, never stronger than the strongest creature you may wish at that point. One in four is a glowing shadow champion (a rock golem, an ogre, a yeti, a raptor or a T-Rex, different each battle), and champions fight on the monsters' side. Bosses are wished too. It is all in the world's rules file (`arena_wished_waves`), and can be turned off there.
+- **Arenas in any world.** An operator can build an arena in a world you already have, several in one world: `/moddy arena create <name>`, then `list`, `go`, `start` and `remove`. Building never goes over a player's things: it refuses, and says what is in the way, over a chest, a bed or another block that holds things, another player, a base or island, or another arena. Inside a built arena its wishes follow the arena's rules, the prep room included: the wish ladder's limits, the hand-over, the hotbar rule in a battle. Removing an arena leaves its blocks standing.
+- **Settings in game.** `/moddy arena config` shows and changes the wait between rounds, the countdown, the break after a boss and a wave's time limit, for all arenas or one; an operator changes them, never during a battle they would change.
+- **Knocked out, back in the prep room.** A fighter knocked out in a battle comes back in that arena's prep room, even with a bed elsewhere, and keeps his place in the battle; your bed is never changed.
+- Built for Moddy core 1.0.12.
+
 ## What's new in Moddy Arena 0.1.7
 
 - **What you make in the prep room comes to you.** A make finished in the prep room (Builder, Apprentice or Magician) no longer appears beside you: it shows for a moment on the gold hand-over spot in the prep room's floor, then flies to you. A thing you hold, like a sword, is a real item in your inventory; a creature, a ride, a building or an event is a wish on your hotbar, to use in the arena. One line says what it is and which slot it went to (or your Wish Bag, when the hotbar is full), and the first time a longer line explains the difference. A make you start while standing in the arena lands there, as before. A world made with an earlier version gets the hand-over spot the first time it is loaded with 0.1.7.

@@ -71,6 +71,11 @@ public final class ArenaPanel {
         this.place = place;
     }
 
+    /** The x of the gate's column (the arena's centre): every x here is measured from it. */
+    private int cx() {
+        return place.centreX();
+    }
+
     /** Half the prep room's width: how many columns each side of the gate has. */
     private int h() {
         return place.prepSize() / 2;
@@ -88,12 +93,12 @@ public final class ArenaPanel {
     /** The board: the whole window of the shared wall, but the gate and the opening above it. */
     public Box board() {
         int wz = place.sharedWallZ();
-        return new Box(-h(), place.floorY(), wz, h(), top(), wz);
+        return new Box(cx() - h(), place.floorY(), wz, cx() + h(), top(), wz);
     }
 
     /** True when the board's block (x, y) is the gate's or the opening above it (left as built). */
     public boolean isGateway(int x, int y) {
-        return x == 0 && (y == place.floorY() || y == place.floorY() + 1);
+        return x == cx() && (y == place.floorY() || y == place.floorY() + 1);
     }
 
     /** The column of the start button: the middle of the right half (round up). */
@@ -134,8 +139,8 @@ public final class ArenaPanel {
         int r = difficultyRow();
         List<int[]> out = new ArrayList<>();
         for (int row = r; row >= r - 2; row--) {
-            out.add(new int[] {-h(), row, z});
-            out.add(new int[] {-1, row, z});
+            out.add(new int[] {cx() - h(), row, z});
+            out.add(new int[] {cx() - 1, row, z});
         }
         return out;
     }
@@ -144,11 +149,11 @@ public final class ArenaPanel {
     public List<Button> buttons() {
         int z = place.sharedWallZ() + 1;
         return List.of(
-                new Button(Control.DIFFICULTY_DOWN, -h(), difficultyRow(), z),
-                new Button(Control.DIFFICULTY_UP, -1, difficultyRow(), z),
-                new Button(Control.WAVES_DOWN, -h(), wavesRow(), z),
-                new Button(Control.WAVES_UP, -1, wavesRow(), z),
-                new Button(Control.START, startX(), startRow(), z));
+                new Button(Control.DIFFICULTY_DOWN, cx() - h(), difficultyRow(), z),
+                new Button(Control.DIFFICULTY_UP, cx() - 1, difficultyRow(), z),
+                new Button(Control.WAVES_DOWN, cx() - h(), wavesRow(), z),
+                new Button(Control.WAVES_UP, cx() - 1, wavesRow(), z),
+                new Button(Control.START, cx() + startX(), startRow(), z));
     }
 
     public Button button(Control c) {
@@ -169,13 +174,14 @@ public final class ArenaPanel {
         int wz = place.sharedWallZ();
         int fy = place.floorY();
         // the board, in three boxes round the gateway (the gate and the opening above it are left as built)
-        out.add(new Fill(new Box(-h(), fy, wz, -1, top(), wz), Kind.PANEL_BOARD));
-        out.add(new Fill(new Box(1, fy, wz, h(), top(), wz), Kind.PANEL_BOARD));
-        out.add(new Fill(new Box(0, fy + 2, wz, 0, top(), wz), Kind.PANEL_BOARD));
+        int c = cx();
+        out.add(new Fill(new Box(c - h(), fy, wz, c - 1, top(), wz), Kind.PANEL_BOARD));
+        out.add(new Fill(new Box(c + 1, fy, wz, c + h(), top(), wz), Kind.PANEL_BOARD));
+        out.add(new Fill(new Box(c, fy + 2, wz, c, top(), wz), Kind.PANEL_BOARD));
         for (Button b : buttons()) {
             if (b.control() == Control.START) {
-                int x0 = Math.max(1, b.x() - 1);
-                int x1 = Math.min(h(), b.x() + 1);
+                int x0 = Math.max(c + 1, b.x() - 1);
+                int x1 = Math.min(c + h(), b.x() + 1);
                 out.add(new Fill(new Box(x0, b.y(), wz, x1, b.y(), wz), Kind.PANEL_START));
             } else {
                 out.add(new Fill(new Box(b.x(), b.y(), wz, b.x(), b.y(), wz), Kind.PANEL_SELECT));
@@ -295,7 +301,7 @@ public final class ArenaPanel {
         return out;
     }
 
-    /** The middle of the right half's words: over the start button, unless that leaves them too little room. */
+    /** The middle of the right half's words, measured from the gate's column: over the start button, unless that leaves them too little room. */
     double rightMiddle() {
         double c = startX() + 0.5;
         return rightRoom(c) >= 2.0 ? c : (h() + 2) / 2.0;
@@ -309,18 +315,19 @@ public final class ArenaPanel {
     /** Every line of words on the board, with where it floats and how big. */
     public List<Slot> slots() {
         double z = wordsZ();
-        double left = -h() / 2.0;                   // the middle of the left half (x -h to 0)
-        double right = rightMiddle();
-        double down = -h() + 0.5;
-        double up = -0.5;
+        int c = cx();
+        double left = c - h() / 2.0;                // the middle of the left half (x -h to 0, from the gate)
+        double right = c + rightMiddle();
+        double down = c - h() + 0.5;
+        double up = c - 0.5;
         double between = h() >= 3 ? h() - 2 - 0.15 : h() - 0.2;    // between a selector's two buttons
-        double rightRoom = rightRoom(right);
+        double rightRoom = rightRoom(right - c);
         List<Slot> out = new ArrayList<>();
         if (hasTitleRow()) {
             float title = fit(2.1, 2 * h() + 1 - 0.6, longest(Words.TITLE));
-            out.add(new Slot(Words.TITLE, 0.5, top() + 0.97 - LINE * title, z, title, "gold"));
+            out.add(new Slot(Words.TITLE, c + 0.5, top() + 0.97 - LINE * title, z, title, "gold"));
             float best = fit(0.9, 2 * h() + 1 - 0.6, longest(Words.BEST));
-            out.add(new Slot(Words.BEST, 0.5, top() + 0.08, z, best, "white"));
+            out.add(new Slot(Words.BEST, c + 0.5, top() + 0.08, z, best, "white"));
         }
         row(out, Words.DIFFICULTY_LABEL, Words.DIFFICULTY_VALUE, Words.DIFFICULTY_DOWN_SIGN, Words.DIFFICULTY_UP_SIGN,
                 difficultyRow(), left, down, up, between, z, 2.2);
@@ -368,14 +375,15 @@ public final class ArenaPanel {
      */
     public Box ladderBoard() {
         int z0 = place.sharedWallZ() + 1;
-        return new Box(-h() - 1, place.floorY(), z0, -h() - 1, place.floorY() + ArenaPlace.PREP_HEIGHT - 1, z0 + 3);
+        int x = cx() - h() - 1;
+        return new Box(x, place.floorY(), z0, x, place.floorY() + ArenaPlace.PREP_HEIGHT - 1, z0 + 3);
     }
 
     /** Where each line of the wish ladder board's words floats, and how big ({@link ArenaLadderLayout#lay}). */
     public List<LadderSlot> ladderSlots(ArenaWords.LadderBoardWords words) {
         Box b = ladderBoard();
         double width = b.z1() - b.z0() + 1;
-        double x = -h() + IN_FRONT;                                     // the west wall's inside face
+        double x = cx() - h() + IN_FRONT;                               // the west wall's inside face
         double z = b.z0() + width / 2;                                  // the board's middle
         List<LadderSlot> out = new ArrayList<>();
         for (ArenaLadderLayout.Line l : ArenaLadderLayout.lay(words, width, b.y1() - b.y0() + 1)) {
@@ -394,6 +402,6 @@ public final class ArenaPanel {
     /** The box round every line of words (and its buttons), to find the board's words in the world. */
     public Box wordsBox() {
         int z = place.sharedWallZ() + 1;
-        return new Box(-h() - 1, place.floorY() - 1, z - 1, h() + 1, top() + 2, z + 1);
+        return new Box(cx() - h() - 1, place.floorY() - 1, z - 1, cx() + h() + 1, top() + 2, z + 1);
     }
 }

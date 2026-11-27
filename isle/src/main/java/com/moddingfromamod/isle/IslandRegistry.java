@@ -186,13 +186,24 @@ public final class IslandRegistry {
         Set<Long> taken = taken();
         for (int index = 1; ; index++) {
             int[] c = IslandGrid.cellAt(index);
-            if (!taken.contains(key(c[0], c[1]))) {
+            if (!taken.contains(key(c[0], c[1])) && clearOfRegions(c)) {
                 Island made = new Island(owner, c[0], c[1], grid.originX(c[0]), grid.y(),
                         grid.originZ(c[1]), nowMs);
                 byOwner.put(owner, made);
                 return new Claim(made, true);
             }
         }
+    }
+
+    /**
+     * Is this cell clear of every region another world feature has put in this world (core's {@code WorldRegions},
+     * jivinstev/ModdyTheWishWatch#182)? A battle arena built with {@code /moddy arena create} in an island world is
+     * one: a new island never goes into a cell it stands in. Only a NEW island is placed this way; one already held is
+     * never moved. With no region anywhere, every cell is clear, exactly as before.
+     */
+    private boolean clearOfRegions(int[] c) {
+        return !com.moddingfromamod.world.Regions.overlaps(com.moddingfromamod.world.Bases.OVERWORLD,
+                grid.cell(grid.originX(c[0]), grid.originZ(c[1])));
     }
 
     /** Every cell {@link #claim} must skip: the service cell, every held cell, every rested one. */
@@ -220,7 +231,7 @@ public final class IslandRegistry {
         Set<Long> taken = taken();
         for (int index = 1; out.size() < n; index++) {
             int[] c = IslandGrid.cellAt(index);
-            if (!taken.contains(key(c[0], c[1]))) {
+            if (!taken.contains(key(c[0], c[1])) && clearOfRegions(c)) {
                 out.add(c);
             }
         }

@@ -34,7 +34,7 @@ class ArenaLadderTest {
 
     private static final UUID HIM = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private static final List<WorldRuleType> TYPES = List.of(new ArenaRule(), new ArenaWavesRule(null),
-            new ArenaWishesRule(), new ArenaCreaturesRule(), new ArenaLadderRule());
+            new ArenaWishesRule(), new ArenaCreaturesRule(), new ArenaLadderRule(), new ArenaWishedWavesRule());
 
     private static WorldRules bundled() throws IOException {
         try (InputStream in = ArenaLadderTest.class.getResourceAsStream("/worlds/rules/arena.rules.json")) {

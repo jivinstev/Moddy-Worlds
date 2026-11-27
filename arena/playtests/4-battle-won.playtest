@@ -54,8 +54,11 @@ teleport @s 0.5 64 21.5 180 0
 
 @step wave 1: husks, and the gate shuts with him taken inside
 @expect title Wave 1 of 5 within 15s
+@repeat 60 until execute if entity @e[type=minecraft:husk,tag=moddyarena_wave]
+@wait 5t
+@end-repeat
 @assert execute if entity @e[type=minecraft:husk,tag=moddyarena_wave]
-@assert execute unless entity @e[tag=moddyarena_wave,type=!minecraft:husk]
+@assert execute unless entity @e[tag=moddyarena_wave,type=!minecraft:husk,tag=!moddyarena_champion]
 # he waited in the prep room: as the wave came he was taken just inside the gate, and the gate is iron bars
 @assert execute if entity @s[x=-1,y=63,z=14,dx=3,dy=3,dz=2]
 @assert execute if block 0 64 16 minecraft:iron_bars
@@ -64,6 +67,11 @@ teleport @s 0.5 64 21.5 180 0
 @key key.hotbar.3
 @expect bossbar /Wave 1 of 5: [0-9]+ monsters? left/ within 5s
 @shot wave-1
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 @repeat each @e[tag=moddyarena_wave] max 60 until execute unless entity {it}
 @aim entity {it}
 @key key.forward hold 6t
@@ -76,7 +84,15 @@ teleport @s 0.5 64 21.5 180 0
 @step wave 2: more husks
 @expect title Wave 2 of 5 within 20s
 @wait 1s
+@repeat 60 until execute if entity @e[type=minecraft:husk,tag=moddyarena_wave]
+@wait 5t
+@end-repeat
 @assert execute if entity @e[type=minecraft:husk,tag=moddyarena_wave]
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 @repeat each @e[tag=moddyarena_wave] max 60 until execute unless entity {it}
 @aim entity {it}
 @key key.forward hold 6t
@@ -89,8 +105,16 @@ teleport @s 0.5 64 21.5 180 0
 @step wave 3: husks and pillagers
 @expect title Wave 3 of 5 within 20s
 @wait 1s
+@repeat 60 until execute if entity @e[type=minecraft:pillager,tag=moddyarena_wave]
+@wait 5t
+@end-repeat
 @assert execute if entity @e[type=minecraft:pillager,tag=moddyarena_wave]
 @shot wave-3
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 @repeat each @e[tag=moddyarena_wave] max 60 until execute unless entity {it}
 @aim entity {it}
 @key key.forward hold 6t
@@ -103,8 +127,19 @@ teleport @s 0.5 64 21.5 180 0
 @step wave 4: husks, pillagers, a witch and a vindicator
 @expect title Wave 4 of 5 within 20s
 @wait 1s
+@repeat 60 until execute if entity @e[type=minecraft:witch,tag=moddyarena_wave]
+@wait 5t
+@end-repeat
 @assert execute if entity @e[type=minecraft:witch,tag=moddyarena_wave]
+@repeat 60 until execute if entity @e[type=minecraft:vindicator,tag=moddyarena_wave]
+@wait 5t
+@end-repeat
 @assert execute if entity @e[type=minecraft:vindicator,tag=moddyarena_wave]
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 @repeat each @e[tag=moddyarena_wave] max 60 until execute unless entity {it}
 @aim entity {it}
 @key key.forward hold 6t
@@ -117,9 +152,17 @@ teleport @s 0.5 64 21.5 180 0
 @step the last wave: a boss, Rumble the Ravager, and its escort; and the win
 @expect title BOSS WAVE within 20s
 @wait 1s
+@repeat 60 until execute if entity @e[type=minecraft:ravager,tag=moddyarena_wave,name="Rumble the Ravager"]
+@wait 5t
+@end-repeat
 @assert execute if entity @e[type=minecraft:ravager,tag=moddyarena_wave,name="Rumble the Ravager"]
 @expect bossbar BOSS: Rumble the Ravager within 3s
 @shot wave-5
+# wished waves (#55): a wave's monsters rise under pillars for 2 s; wait until they have all arrived
+@repeat 60 until execute if entity @e[tag=moddyarena_wave]
+@wait 5t
+@end-repeat
+@wait 3s
 @repeat each @e[tag=moddyarena_wave] max 150 until execute unless entity {it}
 @aim entity {it}
 @key key.forward hold 6t
