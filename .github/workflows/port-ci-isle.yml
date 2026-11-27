@@ -152,12 +152,12 @@ jobs:
         run: echo "PORT_CACHE_BEFORE=$(find ~/.gradle/caches/modules-2/files-2.1 -type f 2>/dev/null | wc -l)" >> "$GITHUB_ENV"
       - name: Software OpenGL for the client gate
         run: sudo apt-get update && sudo apt-get install -y xvfb mesa-utils libgl1-mesa-dri
-      - name: moddingfromamod 1.0.12 from the moddingfromamod-1.0.12-mc1.21.8 release into mavenLocal (pinned by sha256)
+      - name: moddingfromamod 1.0.13 from the moddingfromamod-1.0.13-mc1.21.8 release into mavenLocal (pinned by sha256)
         run: |
-          mkdir -p "$HOME/.m2/repository/com/moddingfromamod/moddingfromamod/1.0.12"
-          curl -fsSL -o "$HOME/.m2/repository/com/moddingfromamod/moddingfromamod/1.0.12/moddingfromamod-1.0.12.jar" "https://github.com/jivinstev/ModdyTheWishWatch/releases/download/moddingfromamod-1.0.12-mc1.21.8/moddingfromamod-1.0.12+mc1.21.8.jar"
-          echo "7ddc98c38fdcd802b75f375d88b90da14fa5c637ef0795b49983dbbfa0e81b98  $HOME/.m2/repository/com/moddingfromamod/moddingfromamod/1.0.12/moddingfromamod-1.0.12.jar" | sha256sum -c -
-          echo '<project><modelVersion>4.0.0</modelVersion><groupId>com.moddingfromamod</groupId><artifactId>moddingfromamod</artifactId><version>1.0.12</version><packaging>jar</packaging></project>' > "$HOME/.m2/repository/com/moddingfromamod/moddingfromamod/1.0.12/moddingfromamod-1.0.12.pom"
+          mkdir -p "$HOME/.m2/repository/com/moddingfromamod/moddingfromamod/1.0.13"
+          curl -fsSL -o "$HOME/.m2/repository/com/moddingfromamod/moddingfromamod/1.0.13/moddingfromamod-1.0.13.jar" "https://github.com/jivinstev/ModdyTheWishWatch/releases/download/moddingfromamod-1.0.13-mc1.21.8/moddingfromamod-1.0.13+mc1.21.8.jar"
+          echo "5019d9f19fc0856b9a41b01c4ff4574be34569a7b420bd371db1bb06ef6ea07c  $HOME/.m2/repository/com/moddingfromamod/moddingfromamod/1.0.13/moddingfromamod-1.0.13.jar" | sha256sum -c -
+          echo '<project><modelVersion>4.0.0</modelVersion><groupId>com.moddingfromamod</groupId><artifactId>moddingfromamod</artifactId><version>1.0.13</version><packaging>jar</packaging></project>' > "$HOME/.m2/repository/com/moddingfromamod/moddingfromamod/1.0.13/moddingfromamod-1.0.13.pom"
       - name: Dependent gate -- candidate dependency jars instead of the pinned ones (dep_override)
         if: ${{ inputs.dep_override }}
         env:
