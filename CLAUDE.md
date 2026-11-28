@@ -71,4 +71,4 @@ restarted the machine and lost the work. So:
   heavy was running before calling it a flake or a bug.
 - **`-PcoreJar=<jar>` builds against an unreleased core** and marks the jar; it is for trying a core change, and such
   a jar is never released. The pin (`tools/core-pins.py --set`) is the only way a world moves to a new core.
-- **Work lands on `main`.** `neoforge-1.21.8` is the release branch and takes only what `main` has.
+- **Work lands on `main`.** `neoforge-1.21.8` is the release branch: `main` plus port-only commits (the Port CI workflows, `.port/`, the README Ports block). `release-line.yml` refuses any other commit not on `main`.

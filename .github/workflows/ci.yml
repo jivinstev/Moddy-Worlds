@@ -54,6 +54,7 @@ jobs:
           python3 tools/test-licence-scan.py
           python3 tools/check-level-jar.py --self-test
           python3 tools/changed-worlds.py --self-test
+          python3 tools/test-release-line.py
           python3 tools/core-pins.py --self-test
       - name: Each world's core.lock is its Port CI workflow's pin, inside its core_version_range
         run: python3 tools/core-pins.py --check
